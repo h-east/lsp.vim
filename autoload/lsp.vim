@@ -147,6 +147,29 @@ def OnChange(bufnr: number, start: number, endlnum: number, added: number,
   SendChange(cl, bufnr, changes->mapnew((_, c) => ChangeToLsp(c)))
 enddef
 
+# A server that only looks at a file when it is written needs telling.  What
+# it says about "save" decides whether the text goes along: asking for it
+# means it would rather not read the file itself.
+def DidSave(bufnr: number)
+  var cl = BufClient(bufnr)
+  if cl->empty() || !cl.initialized
+    return
+  endif
+  var uri = util.PathToUri(bufname(bufnr))
+  if !cl.documents->has_key(uri)
+    return
+  endif
+  var params: dict<any> = {textDocument: {uri: uri}}
+  var sync = cl.capabilities->get('textDocumentSync', {})
+  if type(sync) == v:t_dict
+    var save = sync->get('save', false)
+    if type(save) == v:t_dict && save->get('includeText', false)
+      params.text = BufText(bufnr)
+    endif
+  endif
+  lspclient.Notify(cl, 'textDocument/didSave', params)
+enddef
+
 def DidClose(bufnr: number)
   var cl = BufClient(bufnr)
   if cl->empty()
@@ -255,6 +278,7 @@ def HookBuffer()
   augroup lsp_buf
     autocmd! * <buffer>
     autocmd BufUnload <buffer> Detach(expand('<abuf>')->str2nr())
+    autocmd BufWritePost <buffer> DidSave(expand('<abuf>')->str2nr())
     autocmd CompleteChanged <buffer> OnCompleteChanged()
     autocmd CompleteDone <buffer> OnCompleteDone()
     autocmd CursorMoved <buffer> diag.EchoAtCursor()
@@ -845,17 +869,21 @@ def RunAction(cl: dict<any>, action: dict<any>)
   # A bare Command has the name at the top level, a CodeAction wrapping one
   # keeps it in "command".
   var cmd = action->get('command', {})
-  if type(cmd) == v:t_dict && cmd->has_key('command')
-    cmd = cmd.command
-  endif
-  if type(cmd) != v:t_string || cmd->empty()
+  var wrapped = type(cmd) == v:t_dict
+  var name = wrapped ? cmd->get('command', '') : cmd
+  if type(name) != v:t_string || name->empty()
     util.WarningMsg('the action says neither what to change nor what to run')
     return
   endif
-  # Running it means the server sends back edits of its own, through a
-  # request this client does not answer yet.
-  util.WarningMsg('this action runs "' .. cmd
-		  .. '" on the server, which is not supported')
+  # The server does the work and hands the changes back through
+  # "workspace/applyEdit", which is what OnRequest() is there for.  The reply
+  # to this carries nothing worth showing.
+  lspclient.Request(cl, 'workspace/executeCommand', {
+    command: name,
+    arguments: wrapped ? cmd->get('arguments', [])
+		       : action->get('arguments', []),
+  }, (_) => {
+  })
 enddef
 
 export def CodeAction(first: number, last: number)
@@ -1240,6 +1268,35 @@ export def Log()
   setlocal buftype=nofile bufhidden=wipe noswapfile nomodified
 enddef
 
+# A server asks for two things.  "workspace/applyEdit" is how it hands over
+# changes it worked out itself, which is what a code action it runs on its
+# side comes back as.  "window/workDoneProgress/create" only asks whether it
+# may report progress under a token, and is answered by saying nothing went
+# wrong.  Anything else is turned down by the caller.
+def OnRequest(cl: dict<any>, method: string, params: any,
+	      Answer: func(any)): bool
+  if method ==# 'window/workDoneProgress/create'
+    Answer(v:null)
+    return true
+  endif
+  if method !=# 'workspace/applyEdit'
+    return false
+  endif
+  var edit = type(params) == v:t_dict ? params->get('edit', {}) : {}
+  if type(edit) != v:t_dict || edit->empty()
+    Answer({applied: false, failureReason: 'nothing to apply'})
+    return true
+  endif
+  var done = ApplyWorkspaceEdit(edit)
+  if done > 0
+    echomsg printf('lsp: the server changed %d file%s, not written yet',
+					  done, done == 1 ? '' : 's')
+  endif
+  Answer({applied: done > 0})
+  return true
+enddef
+
 lspclient.SetNotifyHandler(OnNotify)
+lspclient.SetRequestHandler(OnRequest)
 
 # vim: sw=2 sts=2 et

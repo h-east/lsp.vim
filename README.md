@@ -56,6 +56,8 @@ The server is started once per workspace root.
 - Incremental document synchronisation with `listener_add()`
 - What the server reports about itself: messages, logs, and what it is busy
   with
+- Changes the server works out on its own, including an action it carries out
+  itself
 
 ## Commands
 

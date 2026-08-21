@@ -215,3 +215,63 @@ def g:Test_an_edit_wider_than_the_word()
   undo
   assert_equal('    obj->fie', getline(3))
 enddef
+
+def g:Test_a_save_is_announced()
+  assert_true(t.StartServer({
+    capabilities: extend(SYNC->copy(),
+	{textDocumentSync: {change: 2, save: {includeText: true}}}),
+  }, ['int x;']))
+
+  setline(1, 'int y;')
+  write
+  assert_true(t.WaitFor(() => !t.Sent('textDocument/didSave')->empty()),
+	      'the save should be announced')
+  var saved = t.Sent('textDocument/didSave')[0].params
+  assert_match('/Xsrc\.c$', saved.textDocument.uri)
+  # The server asked for the text, so it comes along.
+  assert_equal("int y;\n", saved.text)
+enddef
+
+def g:Test_a_save_without_the_text()
+  assert_true(t.StartServer({capabilities: SYNC}, ['int x;']))
+
+  write
+  assert_true(t.WaitFor(() => !t.Sent('textDocument/didSave')->empty()),
+	      'the save should be announced')
+  assert_false(t.Sent('textDocument/didSave')[0].params->has_key('text'),
+	       'the text should be left out when it was not asked for')
+enddef
+
+def g:Test_the_server_hands_over_an_edit()
+  assert_true(t.StartServer({
+    capabilities: Offering({codeActionProvider: true,
+			    executeCommandProvider: {commands: ['fix']}}),
+    replies: {'textDocument/codeAction': [
+      {title: 'let the server do it', command: 'fix', arguments: [1]}]},
+    ask: {'workspace/executeCommand': [{
+      method: 'workspace/applyEdit',
+      params: {edit: {changes: {['file://' .. t.SRC]: [{
+	newText: 'ONE',
+	range: {start: {line: 0, character: 4},
+		end: {line: 0, character: 7}},
+      }]}}},
+    }]},
+  }, ['int one;', 'int two;']))
+
+  LspCodeAction
+  # The menu takes the first entry on <CR>.
+  assert_true(t.WaitFor(() => !popup_list()->empty()), 'a menu should be up')
+  feedkeys("\<CR>", 'tx')
+
+  assert_true(t.WaitFor(() =>
+	      !t.Sent('workspace/executeCommand')->empty()),
+	      'the command should be sent on')
+  var sent = t.Sent('workspace/executeCommand')[0].params
+  assert_equal('fix', sent.command)
+  assert_equal([1], sent.arguments)
+
+  # Running it, the server hands back the change through applyEdit.
+  assert_true(t.WaitFor(() => getline(1) ==# 'int ONE;'),
+	      'what the server sent should be applied')
+  assert_equal('int two;', getline(2))
+enddef

@@ -23,6 +23,15 @@ export def SetNotifyHandler(Handler: func(dict<any>, string, any))
   NotifyHandler = Handler
 enddef
 
+# Answers a request the server made.  Returns whether it dealt with it; what
+# it did not deal with is turned down here.
+var RequestHandler: func(dict<any>, string, any, func(any)): bool
+
+export def SetRequestHandler(
+	Handler: func(dict<any>, string, any, func(any)): bool)
+  RequestHandler = Handler
+enddef
+
 def ClientCapabilities(): dict<any>
   return {
     general: {
@@ -30,7 +39,7 @@ def ClientCapabilities(): dict<any>
     },
     textDocument: {
       synchronization: {
-	didSave: false,
+	didSave: true,
 	willSave: false,
 	dynamicRegistration: false,
       },
@@ -87,7 +96,9 @@ def ClientCapabilities(): dict<any>
     },
     workspace: {
       workspaceFolders: false,
-      applyEdit: false,
+      # A server that works a change out on its side hands it over this way,
+      # which is how an action it runs itself comes back.
+      applyEdit: true,
     },
     window: {
       # A server only reports what it is busy with when it is told someone is
@@ -140,7 +151,9 @@ def OnMessage(client: dict<any>, ch: channel, msg: dict<any>)
       # No per-server configuration is kept, answer with a null for each item.
       var items = msg->get('params', {})->get('items', [])
       Respond(client, msg.id, items->mapnew((_, _) => v:null))
-    else
+    elseif RequestHandler == null_function
+	  || !RequestHandler(client, method, msg->get('params', {}),
+			     (result) => Respond(client, msg.id, result))
       RespondError(client, msg.id, METHOD_NOT_FOUND,
 					  'method not supported: ' .. method)
     endif

@@ -6,6 +6,8 @@ What it does is read from the JSON file named by $LSP_SCENARIO:
     capabilities  what to answer "initialize" with
     notify        messages to send once "initialized" arrives, in order
     replies       result by method name, for requests that arrive later
+    ask           requests of the server's own, by the method that sets
+                  them off; this is how a server hands over an edit
 
 Every message that comes in is appended to $LSP_TRACE as one JSON object per
 line, so a test can check what the client sent as well as what it did with
@@ -17,6 +19,14 @@ import sys
 
 SCENARIO = json.load(open(os.environ['LSP_SCENARIO']))
 TRACE = open(os.environ.get('LSP_TRACE', os.devnull), 'w')
+
+
+_counter = [0]
+
+
+def next_id():
+    _counter[0] += 1
+    return _counter[0]
 
 
 def read_msg():
@@ -70,6 +80,12 @@ def main():
             # holds for it, and null when it holds nothing.
             send({'jsonrpc': '2.0', 'id': msg['id'],
                   'result': SCENARIO.get('replies', {}).get(method)})
+            # A method may also be what sets off a request of the server's
+            # own, which is how it hands over an edit it worked out itself.
+            for item in SCENARIO.get('ask', {}).get(method, []):
+                send({'jsonrpc': '2.0', 'id': 100000 + next_id(),
+                      'method': item['method'],
+                      'params': item.get('params', {})})
 
 
 if __name__ == '__main__':
