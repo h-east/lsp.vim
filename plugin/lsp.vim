@@ -8,7 +8,9 @@ vim9script noclear
 # package loaded with "packadd! lsp", and describe the servers to use in
 # g:lsp_servers.  See |lsp.txt|.
 
-if !has('job') || !has('channel')
+# Patch 9.2.970 is what lets listener_add() ask for the text of a change,
+# which is how the buffer is kept in step with the server.
+if !has('job') || !has('channel') || !has('patch-9.2.970')
   finish
 endif
 

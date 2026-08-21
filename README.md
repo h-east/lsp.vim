@@ -8,7 +8,9 @@ answers.
 
 ## Requirements
 
-- Vim with the `+job` and `+channel` features
+- Vim 9.2.970 or later, with the `+job` and `+channel` features.  That patch
+  is what lets `listener_add()` ask for the text of a change, which is how a
+  buffer is kept in step with the server.
 - A language server for the language you work in, installed separately
 
 ## Installation
@@ -65,6 +67,35 @@ The server is started once per workspace root.
 | `:LspLog` | Open what the server wrote to its standard error |
 
 See `:help lsp.txt` for the options and the details.
+
+## TODO
+
+Signature help:
+
+- [ ] `:LspSignature` on its own.  Only the automatic path, the one driven by
+      the trigger characters, has been measured.
+- [ ] `g:lsp_signature_help` set to `false`.  Never exercised.
+- [ ] The popup going below the cursor when the completion menu sits above it.
+      Only the other way round has been seen on screen.
+
+Requests not implemented:
+
+- [ ] `textDocument/references`
+- [ ] `textDocument/rename`
+- [ ] `textDocument/formatting`
+- [ ] `textDocument/codeAction`
+- [ ] `workspace/symbol`
+
+Other:
+
+- [ ] No tests.  Running them without a real language server needs a fake one
+      that speaks just enough of the protocol.
+- [ ] Only the text of a `textEdit` in a completion item is applied.  Omni
+      completion replaces the word before the cursor, so an item that wants to
+      change more than that is not honoured in full.
+- [ ] `window/logMessage` and `$/progress` are received and dropped.  There is
+      no place to show them yet.
+- [ ] Diagnostics ignore `relatedInformation`.
 
 ## License
 
