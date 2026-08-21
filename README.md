@@ -79,11 +79,9 @@ See `:help lsp.txt` for the options and the details.
 
 Signature help:
 
-- [ ] `:LspSignature` on its own.  Only the automatic path, the one driven by
-      the trigger characters, has been measured.
-- [ ] `g:lsp_signature_help` set to `false`.  Never exercised.
-- [ ] The popup going below the cursor when the completion menu sits above it.
-      Only the other way round has been seen on screen.
+- [x] `:LspSignature` on its own.
+- [x] `g:lsp_signature_help` set to `false`.
+- [x] The popup going below the cursor when the completion menu sits above it.
 
 Requests:
 
