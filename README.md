@@ -50,7 +50,9 @@ The server is started once per workspace root.
   info popup
 - Diagnostics as signs, text highlights and a message on the cursor line
 - Signature help while a call is being typed
-- Hover and jump to definition
+- Hover, jump to definition, every mention of a symbol, and a workspace-wide
+  symbol search, the last two into the quickfix list
+- Rename across files, whole-buffer formatting, and code actions from a menu
 - Incremental document synchronisation with `listener_add()`
 
 ## Commands
@@ -62,7 +64,12 @@ The server is started once per workspace root.
 | `:LspStatus` | List the running servers |
 | `:LspHover` | Show what the server knows about the symbol under the cursor |
 | `:LspDefinition` | Jump to the definition of the symbol under the cursor |
+| `:LspReferences` | Put every mention of the symbol into the quickfix list |
+| `:LspSymbol {query}` | Search the workspace for symbols matching a query |
 | `:LspSignature` | Show what the call the cursor is in takes |
+| `:LspCodeAction` | Offer what the server can do about the current line |
+| `:LspRename [{name}]` | Rename the symbol everywhere the server knows it |
+| `:LspFormat` | Format the current buffer |
 | `:LspDiag` | Put the diagnostics into the location list |
 | `:LspLog` | Open what the server wrote to its standard error |
 
@@ -78,13 +85,13 @@ Signature help:
 - [ ] The popup going below the cursor when the completion menu sits above it.
       Only the other way round has been seen on screen.
 
-Requests not implemented:
+Requests:
 
-- [ ] `textDocument/references`
-- [ ] `textDocument/rename`
-- [ ] `textDocument/formatting`
-- [ ] `textDocument/codeAction`
-- [ ] `workspace/symbol`
+- [x] `textDocument/references`
+- [x] `textDocument/rename`
+- [x] `textDocument/formatting`
+- [x] `textDocument/codeAction`
+- [x] `workspace/symbol`
 
 Other:
 

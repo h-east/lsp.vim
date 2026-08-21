@@ -1,7 +1,7 @@
 vim9script
 
 # LSP client for Vim - one server process and the JSON-RPC traffic to it
-# Maintainer: Vim project
+# Maintainer: Hirohito Higashi <h.east.727@gmail.com>
 # Latest Change: 2026 Aug 21
 #
 # Vim itself frames the messages and matches responses to requests when the
@@ -66,6 +66,20 @@ def ClientCapabilities(): dict<any>
       definition: {
 	linkSupport: false,
 	dynamicRegistration: false,
+      },
+      codeAction: {
+	dynamicRegistration: false,
+	# Without this a server answers with Commands, which it has to be
+	# asked to run; a CodeAction carries the edit itself.  The empty
+	# string in the set is what the protocol asks for so that a kind
+	# this client has never heard of still comes through.
+	codeActionLiteralSupport: {
+	  codeActionKind: {
+	    valueSet: ['', 'quickfix', 'refactor', 'refactor.extract',
+		       'refactor.inline', 'refactor.rewrite', 'source',
+		       'source.organizeImports'],
+	  },
+	},
       },
       publishDiagnostics: {
 	relatedInformation: false,

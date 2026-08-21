@@ -131,7 +131,43 @@ g:lsp_signature_help
 		up, how many buffers it has, and how many diagnostics are
 		known for the current buffer.
 
-								*:LspDiag*
+							      *:LspCodeAction*
+:LspCodeAction
+:{range}LspCodeAction
+		Ask what the server can do about the current line, or about
+		the lines in {range}, and put the answers in a menu.  What is
+		picked is applied the way |:LspRename| applies its changes.
+
+		The reports on those lines go with the question, so what
+		comes back is mostly fixes for them.  An action the server
+		wants to carry out on its side is turned down.
+
+							*:LspRename*
+:LspRename [{name}]
+		Rename the symbol under the cursor to {name} everywhere the
+		server knows of it.  Without an argument the new name is
+		asked for, starting from the word under the cursor.
+
+		A file that was not open is loaded so it can be changed.
+		Nothing is written: |:wall| is what makes it stick, and an
+		|undo| in each buffer is what takes it back.  A server asking
+		for files to be created, renamed or deleted is turned down,
+		since that is not supported.
+
+							*:LspFormat*
+:LspFormat	Ask the server to format the current buffer and apply what it
+		answers.  The answer describes the buffer as it was when the
+		question went out, so nothing is applied if the buffer moved
+		on in the meantime.  A single |undo| takes all of it back.
+
+								*:LspSymbol*
+:LspSymbol {query}
+		Put the symbols in the workspace whose name matches {query}
+		into the |quickfix| list and open it.  What counts as a match
+		is up to the server.  An entry names the kind of symbol and
+		what it is called rather than showing the line it sits on.
+
+							*:LspDiag*
 :LspDiag	Put the diagnostics for the current buffer into its location
 		list and open it.  See |lsp-diagnostics|.
 
@@ -147,6 +183,13 @@ g:lsp_signature_help
 :LspDefinition	Jump to the definition of the symbol under the cursor.  When
 		the definition is in another file it is opened in the current
 		window.
+
+							*:LspReferences*
+:LspReferences	Put every mention of the symbol under the cursor into the
+		|quickfix| list and open it.  The declaration counts as a
+		mention, so it is in the list too.  A file that is not open
+		is read for the line to show, which is also what places the
+		column.
 
 								*:LspLog*
 :LspLog		Open a scratch buffer holding what the server for the current
@@ -240,7 +283,10 @@ it expands to, so a call of a macro wrapping a function shows the function.
 ==============================================================================
 8. Limitations						*lsp-limitations*
 
-References, rename and formatting are not implemented.
+A code action is asked for by line, never by a range within one, so a server
+with something to offer about the exact text under the cursor is not given the
+chance to say so.  An action the server wants to carry out on its side is
+turned down, as answering that takes a request this client does not serve.
 
 Only the text of a "textEdit" in a completion item is used.  Omni completion
 replaces the word before the cursor, so an item that wants to change more

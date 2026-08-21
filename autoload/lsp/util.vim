@@ -1,7 +1,7 @@
 vim9script
 
 # LSP client for Vim - conversions between Vim and LSP representations
-# Maintainer: Vim project
+# Maintainer: Hirohito Higashi <h.east.727@gmail.com>
 # Latest Change: 2026 Aug 21
 
 # Characters that may appear in a URI path without being escaped.
@@ -73,12 +73,19 @@ export def PosToLsp(bufnr: number, lnum: number, col: number): dict<number>
   return {line: lnum - 1, character: idx < 0 ? 0 : idx}
 enddef
 
+# The byte column in "line" that an LSP character offset points at.  Takes the
+# line itself rather than a buffer, so it also works for a file that is not
+# open.  A character past the end of the line lands after its last byte.
+export def ColFromLsp(line: string, character: number): number
+  var idx = byteidxcomp(line, character, true)
+  return (idx < 0 ? line->strlen() : idx) + 1
+enddef
+
 # LSP Position to a Vim position, returned as [lnum, col].
 export def PosFromLsp(bufnr: number, pos: dict<number>): list<number>
   var lnum = pos->get('line', 0) + 1
   var line = getbufline(bufnr, lnum)->get(0, '')
-  var idx = byteidxcomp(line, pos->get('character', 0), true)
-  return [lnum, (idx < 0 ? line->strlen() : idx) + 1]
+  return [lnum, ColFromLsp(line, pos->get('character', 0))]
 enddef
 
 # The buffer position an LSP request is made for.

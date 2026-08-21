@@ -1,7 +1,7 @@
 vim9script
 
 # LSP client for Vim - showing what a server reports about a buffer
-# Maintainer: Vim project
+# Maintainer: Hirohito Higashi <h.east.727@gmail.com>
 # Latest Change: 2026 Aug 21
 
 import autoload './util.vim'
@@ -127,6 +127,19 @@ export def ForLine(bufnr: number, lnum: number): list<dict<any>>
   return diagnostics->get(string(bufnr), [])
 		    ->copy()
 		    ->filter((_, item) => StartLine(bufnr, item) == lnum)
+enddef
+
+# The reports that touch lines "first" to "last".  A code action request
+# carries these, so the server knows which of them it is asked to act on.
+export def ForRange(bufnr: number, first: number, last: number): list<dict<any>>
+  return diagnostics->get(string(bufnr), [])
+		    ->copy()
+		    ->filter((_, item) => {
+		      var range = item->get('range', {})
+		      var from = range->get('start', {})->get('line', 0) + 1
+		      var to = range->get('end', {})->get('line', 0) + 1
+		      return from <= last && to >= first
+		    })
 enddef
 
 def Truncate(s: string, width: number): string

@@ -1,7 +1,7 @@
 vim9script
 
 # LSP client for Vim - server registry, document synchronisation, features
-# Maintainer: Vim project
+# Maintainer: Hirohito Higashi <h.east.727@gmail.com>
 # Latest Change: 2026 Aug 21
 
 import autoload './lsp/client.vim' as lspclient
@@ -16,6 +16,15 @@ const SYNC_INCREMENTAL = 2
 # How a hover reply is shown.
 const POPUP_OPTIONS = {
   moved: 'any',
+  border: [],
+  padding: [0, 1, 0, 1],
+  maxwidth: 78,
+}
+
+# How a list to pick from is shown.  Kept out of the function that uses it
+# because a dictionary written inside a lambda block is not accepted there.
+const MENU_OPTIONS = {
+  title: ' code action ',
   border: [],
   padding: [0, 1, 0, 1],
   maxwidth: 78,
@@ -509,18 +518,69 @@ def OnTextChanged()
   endif
 enddef
 
+# A Location names its file in "uri" and a LocationLink in "targetUri"; the
+# link also offers a wider range around the one that is meant.
+def LocationUri(loc: dict<any>): string
+  return loc->get('uri', loc->get('targetUri', ''))
+enddef
+
+def LocationRange(loc: dict<any>): dict<any>
+  return loc->get('range', loc->get('targetSelectionRange',
+				    loc->get('targetRange', {})))
+enddef
+
 # A definition reply is a Location, a list of them, or a list of LocationLink.
 def FirstLocation(result: any): dict<any>
   var item = type(result) == v:t_list ? result->get(0, {}) : result
   if type(item) != v:t_dict || item->empty()
     return {}
   endif
-  if item->has_key('targetUri')
-    return {uri: item.targetUri,
-	    range: item->get('targetSelectionRange',
-			     item->get('targetRange', {}))}
-  endif
-  return item
+  return {uri: LocationUri(item), range: LocationRange(item)}
+enddef
+
+# The lines of a file.  A loaded buffer wins over what is on disk so that
+# unsaved changes count; bufnr() would take the path as a pattern, hence the
+# walk over the buffer list.
+def FileLines(path: string): list<string>
+  for info in getbufinfo({bufloaded: 1})
+    if info.name ==# path
+      return getbufline(info.bufnr, 1, '$')
+    endif
+  endfor
+  return filereadable(path) ? readfile(path) : []
+enddef
+
+# Locations turned into |setqflist()| items.  Each file is read once however
+# many locations fall in it, since the line is needed to place the column.
+# A "text" of its own overrides the line, for a caller that has something
+# better to say than what the file holds there.
+def LocationItems(result: any): list<dict<any>>
+  var locs = type(result) == v:t_list ? result : [result]
+  var lines: dict<list<string>> = {}
+  var items: list<dict<any>> = []
+  for loc in locs
+    if type(loc) != v:t_dict
+      continue
+    endif
+    var uri = LocationUri(loc)
+    if uri->empty()
+      continue
+    endif
+    var path = util.UriToPath(uri)
+    if !lines->has_key(path)
+      lines[path] = FileLines(path)
+    endif
+    var start = LocationRange(loc)->get('start', {})
+    var lnum = start->get('line', 0) + 1
+    var text = lines[path]->get(lnum - 1, '')
+    items->add({
+      filename: path,
+      lnum: lnum,
+      col: util.ColFromLsp(text, start->get('character', 0)),
+      text: loc->get('text', text->trim()),
+    })
+  endfor
+  return items
 enddef
 
 export def Definition()
@@ -544,6 +604,338 @@ export def Definition()
 	cursor(lnum, col)
 	normal! zv
       })
+enddef
+
+def BufLineCount(bufnr: number): number
+  return getbufinfo(bufnr)->get(0, {})->get('linecount', 0)
+enddef
+
+# Edits are expressed in the coordinates of the document as it is before any
+# of them are applied, so the later ones are applied first and the earlier
+# ones still mean what they said.  The protocol forbids them from overlapping.
+def SortedEdits(edits: list<any>): list<any>
+  return edits->copy()
+      ->filter((_, e) => type(e) == v:t_dict)
+      ->sort((a, b) => {
+	var pa = a->get('range', {})->get('start', {})
+	var pb = b->get('range', {})->get('start', {})
+	var la = pa->get('line', 0)
+	var lb = pb->get('line', 0)
+	return la == lb ? pb->get('character', 0) - pa->get('character', 0)
+			: lb - la
+      })
+enddef
+
+# One edit applied to lines held in a list.  The range covers whole lines only
+# by accident, so what is before it on its first line and after it on its last
+# stays, and the new text is spliced in between.
+def EditLines(lines: list<string>, edit: dict<any>): list<string>
+  var range = edit->get('range', {})
+  var start = range->get('start', {})
+  var last = range->get('end', {})
+  var sl = start->get('line', 0)
+  if sl < 0 || sl >= len(lines)
+    return lines
+  endif
+  # An end past the last line means "to the end of the document".
+  var el = last->get('line', 0)
+  if el >= len(lines)
+    el = len(lines) - 1
+  endif
+  if el < sl
+    el = sl
+  endif
+  var head = strpart(lines[sl], 0,
+		     util.ColFromLsp(lines[sl], start->get('character', 0)) - 1)
+  var tail = strpart(lines[el],
+		     util.ColFromLsp(lines[el], last->get('character', 0)) - 1)
+  var before = sl > 0 ? lines[0 : sl - 1] : []
+  var after = el + 1 < len(lines) ? lines[el + 1 : ] : []
+  return before + split(head .. edit->get('newText', '') .. tail, "\n", true)
+	 + after
+enddef
+
+# The edits are worked out on a copy of the lines and the result is put back,
+# so the buffer is written once however many edits there were.
+def ApplyTextEdits(bufnr: number, edits: list<any>)
+  var lines = getbufline(bufnr, 1, '$')
+  for edit in SortedEdits(edits)
+    lines = EditLines(lines, edit)
+  endfor
+  var was = BufLineCount(bufnr)
+  setbufline(bufnr, 1, lines)
+  if was > len(lines)
+    deletebufline(bufnr, len(lines) + 1, was)
+  endif
+enddef
+
+export def Format()
+  var cl = ReadyClient()
+  if cl->empty()
+    return
+  endif
+  if !cl.capabilities->has_key('documentFormattingProvider')
+    util.WarningMsg('the server does not offer formatting')
+    return
+  endif
+  var bufnr = bufnr('%')
+  # The reply is in the coordinates of the buffer as it was asked about, so it
+  # is only safe to apply while the buffer has not moved on.
+  var tick = getbufvar(bufnr, 'changedtick')
+  var params = {
+    textDocument: {uri: util.PathToUri(bufname(bufnr))},
+    options: {tabSize: &tabstop, insertSpaces: &expandtab ? true : false},
+  }
+  lspclient.Request(cl, 'textDocument/formatting', params, (result: any) => {
+    if type(result) != v:t_list || result->empty()
+      util.WarningMsg('nothing to format')
+      return
+    endif
+    if getbufvar(bufnr, 'changedtick') != tick
+      util.WarningMsg('the buffer changed while formatting, nothing applied')
+      return
+    endif
+    ApplyTextEdits(bufnr, result)
+  })
+enddef
+
+# The buffer for a file, loading it when it is not open already.  A rename
+# reaches files the user never opened.
+def LoadedBufnr(path: string): number
+  var bufnr = bufadd(path)
+  if !bufloaded(bufnr)
+    bufload(bufnr)
+  endif
+  return bufnr
+enddef
+
+# A workspace edit lists its changes per file, either as "documentChanges",
+# which can also ask for files to be created, renamed or deleted, or as the
+# older plain "changes".  Only changes to the text of a file are understood,
+# so anything else makes this give up rather than apply half of the answer.
+def WorkspaceEditFiles(edit: dict<any>): list<dict<any>>
+  var out: list<dict<any>> = []
+  var changes = edit->get('documentChanges', [])
+  if type(changes) == v:t_list && !changes->empty()
+    for change in changes
+      if type(change) != v:t_dict || !change->has_key('edits')
+	util.WarningMsg('the server wants to create or remove files, '
+			.. 'which is not supported')
+	return []
+      endif
+      out->add({uri: change->get('textDocument', {})->get('uri', ''),
+		edits: change.edits})
+    endfor
+    return out
+  endif
+  for [uri, edits] in edit->get('changes', {})->items()
+    out->add({uri: uri, edits: edits})
+  endfor
+  return out
+enddef
+
+# Applies a workspace edit and returns how many files it touched.  Nothing is
+# written; the buffers are left changed for the user to look at and save.
+def ApplyWorkspaceEdit(edit: dict<any>): number
+  var files = WorkspaceEditFiles(edit)
+  var done = 0
+  for file in files
+    if file.uri->empty() || type(file.edits) != v:t_list || file.edits->empty()
+      continue
+    endif
+    ApplyTextEdits(LoadedBufnr(util.UriToPath(file.uri)), file.edits)
+    done += 1
+  endfor
+  return done
+enddef
+
+export def Rename(newname: string)
+  var cl = ReadyClient()
+  if cl->empty()
+    return
+  endif
+  if !cl.capabilities->has_key('renameProvider')
+    util.WarningMsg('the server does not offer rename')
+    return
+  endif
+  var name = newname
+  if name->empty()
+    name = input('lsp: new name: ', expand('<cword>'))
+    if name->empty()
+      return
+    endif
+  endif
+  var params = CursorParams()
+  params.newName = name
+  lspclient.Request(cl, 'textDocument/rename', params, (result: any) => {
+    if type(result) != v:t_dict || result->empty()
+      util.WarningMsg('the server renamed nothing')
+      return
+    endif
+    var done = ApplyWorkspaceEdit(result)
+    if done > 0
+      echomsg printf('lsp: renamed to %s in %d file%s, not written yet',
+					  name, done, done == 1 ? '' : 's')
+    endif
+  })
+enddef
+
+# A reply holds Commands, CodeActions, or a mix of the two.  A Command is run
+# by the server and can only be asked for by name; a CodeAction usually
+# carries the edit it stands for and is applied here.
+def ActionTitle(action: dict<any>): string
+  return action->get('title', action->get('command', ''))
+enddef
+
+def RunAction(cl: dict<any>, action: dict<any>)
+  if action->has_key('edit')
+    var done = ApplyWorkspaceEdit(action.edit)
+    if done > 0
+      echomsg printf('lsp: %s, %d file%s changed and not written yet',
+			  ActionTitle(action), done, done == 1 ? '' : 's')
+    endif
+    return
+  endif
+  # A bare Command has the name at the top level, a CodeAction wrapping one
+  # keeps it in "command".
+  var cmd = action->get('command', {})
+  if type(cmd) == v:t_dict && cmd->has_key('command')
+    cmd = cmd.command
+  endif
+  if type(cmd) != v:t_string || cmd->empty()
+    util.WarningMsg('the action says neither what to change nor what to run')
+    return
+  endif
+  # Running it means the server sends back edits of its own, through a
+  # request this client does not answer yet.
+  util.WarningMsg('this action runs "' .. cmd
+		  .. '" on the server, which is not supported')
+enddef
+
+export def CodeAction(first: number, last: number)
+  var cl = ReadyClient()
+  if cl->empty()
+    return
+  endif
+  if !cl.capabilities->has_key('codeActionProvider')
+    util.WarningMsg('the server does not offer code actions')
+    return
+  endif
+  var bufnr = bufnr('%')
+  var params = {
+    textDocument: {uri: util.PathToUri(bufname(bufnr))},
+    range: {
+      start: util.PosToLsp(bufnr, first, 1),
+      end: util.PosToLsp(bufnr, last, getline(last)->strlen() + 1),
+    },
+    context: {diagnostics: diag.ForRange(bufnr, first, last)},
+  }
+  lspclient.Request(cl, 'textDocument/codeAction', params, (result: any) => {
+    var actions = type(result) == v:t_list
+		  ? result->copy()->filter((_, a) => type(a) == v:t_dict) : []
+    if actions->empty()
+      util.WarningMsg('the server offers nothing here')
+      return
+    endif
+    # The reply arrives whenever the server is done, which is no moment to
+    # stop and wait for an answer on the command line; a menu can sit there
+    # until it is dealt with.
+    var options = MENU_OPTIONS->copy()
+    options.callback = (_, idx) => {
+      if idx > 0 && idx <= len(actions)
+	RunAction(cl, actions[idx - 1])
+      endif
+    }
+    popup_menu(actions->mapnew((_, a) => ActionTitle(a)), options)
+  })
+enddef
+
+export def References()
+  var cl = ReadyClient()
+  if cl->empty()
+    return
+  endif
+  if !cl.capabilities->has_key('referencesProvider')
+    util.WarningMsg('the server does not offer references')
+    return
+  endif
+  var params = CursorParams()
+  # The declaration is a mention of the symbol as well, so it belongs in the
+  # list rather than being the one entry that is missing from it.
+  params.context = {includeDeclaration: true}
+  lspclient.Request(cl, 'textDocument/references', params, (result: any) => {
+    var items = LocationItems(result)
+    if items->empty()
+      util.WarningMsg('no references found')
+      return
+    endif
+    setqflist([], ' ', {title: 'LSP references', items: items})
+    copen
+  })
+enddef
+
+# A SymbolInformation carries its place in "location", a WorkspaceSymbol may
+# leave out the range and give only the file.  Either way what comes back is
+# turned into something LocationItems() understands.
+def SymbolLocation(sym: dict<any>): dict<any>
+  var loc = sym->get('location', {})
+  if type(loc) != v:t_dict
+    return {}
+  endif
+  var range = loc->get('range', {})
+  if range->empty()
+    range = {start: {line: 0, character: 0}}
+  endif
+  return {uri: loc->get('uri', ''), range: range}
+enddef
+
+# A SymbolKind is a number from 1 to 26.  The names are what a server would
+# have written itself, so the list is shown the way the protocol names it.
+#                    1         2         3         4         5         6
+const SYMBOL_KINDS = ['File', 'Module', 'Namespace', 'Package', 'Class',
+    'Method', 'Property', 'Field', 'Constructor', 'Enum', 'Interface',
+    'Function', 'Variable', 'Constant', 'String', 'Number', 'Boolean',
+    'Array', 'Object', 'Key', 'Null', 'EnumMember', 'Struct', 'Event',
+    'Operator', 'TypeParameter']
+
+# The name the server matched, and what sort of thing it is, say more than the
+# line the symbol sits on.
+def SymbolText(sym: dict<any>): string
+  var kind = sym->get('kind', 0)
+  var name = kind >= 1 && kind <= len(SYMBOL_KINDS)
+					      ? SYMBOL_KINDS[kind - 1] : ''
+  var container = sym->get('containerName', '')
+  return (name->empty() ? '' : '[' .. name .. '] ')
+	 .. (container->empty() ? '' : container .. '::')
+	 .. sym->get('name', '')
+enddef
+
+export def Symbol(query: string)
+  var cl = ReadyClient()
+  if cl->empty()
+    return
+  endif
+  if !cl.capabilities->has_key('workspaceSymbolProvider')
+    util.WarningMsg('the server does not offer workspace symbols')
+    return
+  endif
+  # An empty query means "everything" to the protocol, which is not a list to
+  # end up with by accident.
+  if query->empty()
+    util.WarningMsg('a query is needed')
+    return
+  endif
+  lspclient.Request(cl, 'workspace/symbol', {query: query}, (result: any) => {
+    var syms = type(result) == v:t_list ? result : []
+    var items = LocationItems(syms->mapnew((_, s) =>
+			  extend(SymbolLocation(s), {text: SymbolText(s)})))
+    if items->empty()
+      util.WarningMsg('no symbol matches ' .. query)
+      return
+    endif
+    setqflist([], ' ', {title: 'LSP symbols: ' .. query, items: items})
+    copen
+  })
 enddef
 
 # A CompletionItemKind is a number from 1 to 25 and "kind" in a completion
