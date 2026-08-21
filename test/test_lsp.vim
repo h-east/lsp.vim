@@ -351,3 +351,54 @@ def g:Test_a_request_the_server_does_not_offer()
   assert_true(t.Sent('textDocument/typeDefinition')->empty(),
 	      'no request should go out')
 enddef
+
+def g:Test_the_symbol_under_the_cursor_is_marked()
+  # Two mentions of "one": the second writes to it.
+  const MARKS = [
+    {range: {start: {line: 0, character: 4}, end: {line: 0, character: 7}},
+     kind: 2},
+    {range: {start: {line: 2, character: 0}, end: {line: 2, character: 3}},
+     kind: 3},
+  ]
+  assert_true(t.StartServer({
+    capabilities: Offering({documentHighlightProvider: true}),
+    replies: {'textDocument/documentHighlight': MARKS},
+  }, ['int one;', 'int two;', 'one = 1;']))
+
+  cursor(1, 5)
+  doautocmd CursorHold
+  assert_true(t.WaitFor(() =>
+	      len(prop_list(1)) == 1 && len(prop_list(3)) == 1),
+	      'both mentions should be marked')
+
+  var read = prop_list(1)[0]
+  assert_equal([5, 3, 'LspHighlightRead'],
+	       [read.col, read.length, read.type])
+  var write = prop_list(3)[0]
+  assert_equal([1, 3, 'LspHighlightWrite'],
+	       [write.col, write.length, write.type])
+
+  # Moving takes them away again.
+  cursor(2, 1)
+  doautocmd CursorMoved
+  assert_equal([], prop_list(1))
+  assert_equal([], prop_list(3))
+enddef
+
+def g:Test_the_marks_are_left_alone_when_turned_off()
+  g:lsp_document_highlight = false
+  defer execute('unlet g:lsp_document_highlight')
+  assert_true(t.StartServer({
+    capabilities: Offering({documentHighlightProvider: true}),
+    replies: {'textDocument/documentHighlight': [
+      {range: {start: {line: 0, character: 4},
+	       end: {line: 0, character: 7}}, kind: 2}]},
+  }, ['int one;']))
+
+  cursor(1, 5)
+  doautocmd CursorHold
+  sleep 100m
+  assert_true(t.Sent('textDocument/documentHighlight')->empty(),
+	      'nothing should be asked for')
+  assert_equal([], prop_list(1))
+enddef

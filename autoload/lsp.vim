@@ -6,6 +6,7 @@ vim9script
 
 import autoload './lsp/client.vim' as lspclient
 import autoload './lsp/diag.vim'
+import autoload './lsp/hl.vim'
 import autoload './lsp/util.vim'
 
 # Values of the "textDocumentSync" server capability.
@@ -282,6 +283,8 @@ def HookBuffer()
     autocmd CompleteChanged <buffer> OnCompleteChanged()
     autocmd CompleteDone <buffer> OnCompleteDone()
     autocmd CursorMoved <buffer> diag.EchoAtCursor()
+    autocmd CursorMoved <buffer> hl.Clear(bufnr('%'))
+    autocmd CursorHold <buffer> HighlightSymbol()
     autocmd TextChangedI,TextChangedP <buffer> OnTextChanged()
     autocmd InsertLeave <buffer> CloseSignature()
   augroup END
@@ -337,6 +340,7 @@ export def Detach(bufnr: number = bufnr('%'))
   endif
   DidClose(bufnr)
   diag.Clear(bufnr)
+  hl.Clear(bufnr)
   if bufexists(bufnr)
     var saved = getbufvar(bufnr, 'lsp_omnifunc_save', v:null)
     if type(saved) == v:t_string
@@ -946,6 +950,29 @@ export def CodeAction(first: number, last: number)
     }
     popup_menu(actions->mapnew((_, a) => ActionTitle(a)), options)
   })
+enddef
+
+# Marking where else the symbol under the cursor is used, once the cursor has
+# come to rest.  How long that takes is 'updatetime'.
+def HighlightSymbol()
+  if !get(g:, 'lsp_document_highlight', true)
+    return
+  endif
+  var cl = BufClient(bufnr('%'))
+  if cl->empty() || !cl.initialized
+	|| !cl.capabilities->has_key('documentHighlightProvider')
+    return
+  endif
+  var at = [bufnr('%'), line('.'), col('.')]
+  lspclient.Request(cl, 'textDocument/documentHighlight', CursorParams(),
+      (result: any) => {
+	# The cursor may have moved on while the answer was on its way, and
+	# the answer is about where it was.
+	if at != [bufnr('%'), line('.'), col('.')]
+	  return
+	endif
+	hl.Update(at[0], type(result) == v:t_list ? result : [])
+      })
 enddef
 
 export def References()

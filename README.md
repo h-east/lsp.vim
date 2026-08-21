@@ -50,6 +50,7 @@ The server is started once per workspace root.
   info popup
 - Diagnostics as signs, text highlights and a message on the cursor line
 - Signature help while a call is being typed
+- The other places the symbol under the cursor is used, marked in the buffer
 - Hover, and jumps to a definition, declaration, type or implementation
 - Every mention of a symbol, the symbols in a file, and a workspace-wide
   symbol search

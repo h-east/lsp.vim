@@ -13,7 +13,8 @@ CONTENTS							*lsp-contents*
 5. Completion		|lsp-completion|
 6. Diagnostics		|lsp-diagnostics|
 7. Signature help	|lsp-signature|
-8. Limitations		|lsp-limitations|
+8. Symbol highlight	|lsp-highlight|
+9. Limitations		|lsp-limitations|
 
 ==============================================================================
 1. Introduction						*lsp-introduction*
@@ -107,6 +108,14 @@ g:lsp_completion_timeout
 		above what a warmed up server answers in.
 
 		Default: 2000
+
+						  *g:lsp_document_highlight*
+g:lsp_document_highlight
+		When true, the other places the symbol under the cursor is
+		used are marked once the cursor comes to rest.  How long that
+		takes is 'updatetime'.  See |lsp-highlight|.
+
+		Default: |v:true|
 
 							*g:lsp_signature_help*
 g:lsp_signature_help
@@ -326,7 +335,24 @@ What a signature says is the server's business.  A macro is reported as what
 it expands to, so a call of a macro wrapping a function shows the function.
 
 ==============================================================================
-8. Limitations						*lsp-limitations*
+8. Symbol highlight					*lsp-highlight*
+
+Once the cursor has rested on a symbol for 'updatetime', the server is asked
+where else that symbol is used in the buffer, and those places are marked.
+Moving the cursor takes the marks away again.  Set |g:lsp_document_highlight|
+to |v:false| to leave the buffer alone.
+
+Somewhere the symbol is written to is marked differently from somewhere it is
+only read, when the server says which is which.  These are the groups, each
+linked to an existing one and free to be given a look of its own with
+|:highlight|:
+
+	LspHighlightText	a mention, the server not saying more
+	LspHighlightRead	where the symbol is read, |hl-CursorColumn|
+	LspHighlightWrite	where it is written to, |hl-Visual|
+
+==============================================================================
+9. Limitations						*lsp-limitations*
 
 A code action is asked for by line, never by a range within one, so a server
 with something to offer about the exact text under the cursor is not given the
