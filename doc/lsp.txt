@@ -236,11 +236,15 @@ Adding "popuphidden" keeps the popup out of sight until it has something to
 show, see |complete-popuphidden|.  Only the item that is selected is resolved,
 and only when its documentation is missing.
 
-An item may ask for changes elsewhere in the file as well as for the word
-itself, an include to add for the name being completed being the usual case.
-Omni completion puts in the word and knows nothing of the rest, so the rest is
-applied once the item is taken.  A single |undo| does not take both back: the
-word and the changes around it are separate steps.
+An item may ask for more than the word before the cursor, "obj->fie" becoming
+"obj.field" for instance, which is all omni completion is able to replace by
+itself.  What the server asked for is put in place of what completion did, as
+part of the same |undo| step.
+
+An item may also ask for changes elsewhere in the file, an include to add for
+the name being completed being the usual case.  Those are applied once the
+item is taken.  A single |undo| does not take those back with the word: they
+are a step of their own.
 
 ==============================================================================
 6. Diagnostics						*lsp-diagnostics*
@@ -305,9 +309,9 @@ with something to offer about the exact text under the cursor is not given the
 chance to say so.  An action the server wants to carry out on its side is
 turned down, as answering that takes a request this client does not serve.
 
-Only the text of a "textEdit" in a completion item is used.  Omni completion
-replaces the word before the cursor, so an item that wants to change more
-than that is not applied in full.
+A "textEdit" in a completion item is followed only when it stays within the
+line the cursor is on.  One reaching across lines is left to omni completion,
+which replaces the word before the cursor and no more.
 
 ==============================================================================
  vim:tw=78:ts=8:noet:ft=help:norl:

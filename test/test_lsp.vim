@@ -187,3 +187,31 @@ def g:Test_format_replaces_the_buffer_in_one_undo()
   assert_equal('int  main(void)', getline(1))
   assert_equal('  return 0;', getline(3))
 enddef
+
+def g:Test_an_edit_wider_than_the_word()
+  # The server wants "obj->fie" to become "obj.field", which is more than the
+  # word before the cursor that omni completion can replace on its own.
+  const ITEM = {
+    label: 'field',
+    filterText: 'fie',
+    insertText: 'field',
+    insertTextFormat: 1,
+    kind: 5,
+    textEdit: {
+      newText: '.field',
+      range: {start: {line: 2, character: 7}, end: {line: 2, character: 12}},
+    },
+  }
+  assert_true(t.StartServer({
+    capabilities: Offering({completionProvider: {resolveProvider: false}}),
+    replies: {'textDocument/completion': {isIncomplete: false, items: [ITEM]}},
+  }, ['int main(void)', '{', '    obj->fie', '}']))
+
+  cursor(3, 12)
+  feedkeys("A\<C-X>\<C-O>\<C-Y>\<Esc>", 'tx')
+  assert_equal('    obj.field', getline(3))
+
+  # Both what completion did and the fix belong to the one keystroke.
+  undo
+  assert_equal('    obj->fie', getline(3))
+enddef

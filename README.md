@@ -98,9 +98,8 @@ Other:
 - [x] `additionalTextEdits` in a completion item, such as an include to add.
 - [x] `window/logMessage`, `window/showMessage` and `$/progress`.
 - [x] Diagnostics carry `relatedInformation`.
-- [ ] A `textEdit` whose range reaches past the word before the cursor is
-      still only honoured for its text.  Omni completion cannot replace more
-      than that word.
+- [x] A `textEdit` reaching wider than the word before the cursor, as long as
+      it stays within the line.
 
 ## Tests
 

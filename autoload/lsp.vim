@@ -1053,8 +1053,16 @@ export def OmniFunc(findstart: number, base: string): any
   endif
 
   if findstart
-    var before = strpart(getline('.'), 0, col('.') - 1)
-    return strlen(before) - strlen(matchstr(before, '\k*$'))
+    # Remembered so that a "textEdit" reaching wider than the word can still
+    # be honoured once the item is taken; see FixWiderEdit().
+    started = {
+      lnum: line('.'),
+      line: getline('.'),
+      cursor: col('.') - 1,
+    }
+    var before = strpart(started.line, 0, started.cursor)
+    started.word = strlen(before) - strlen(matchstr(before, '\k*$'))
+    return started.word
   endif
 
   listener_flush(bufnr('%'))
@@ -1126,6 +1134,49 @@ def OnCompleteChanged()
   })
 enddef
 
+# Where the completion that is running started from: the line as it was, the
+# cursor in it, and the byte the word being completed begins at.  Empty when
+# no completion of ours has been asked for yet.
+var started: dict<any> = {}
+
+# Omni completion replaces the word before the cursor and nothing else.  A
+# server may want to replace more than that, "obj->fie" becoming "obj.field"
+# for instance, and then what it asked for is put in place of what completion
+# did.  Returns whether it stepped in.
+def FixWiderEdit(item: dict<any>): bool
+  var edit = item->get('textEdit', {})
+  if started->empty() || type(edit) != v:t_dict || !edit->has_key('range')
+	|| line('.') != started.lnum
+    return false
+  endif
+  # Only an edit within the one line can be lined up with what was replaced.
+  var range = edit.range
+  var first = range->get('start', {})
+  var last = range->get('end', {})
+  if first->get('line', -1) != started.lnum - 1
+	|| last->get('line', -1) != started.lnum - 1
+    return false
+  endif
+
+  var from = util.ColFromLsp(started.line, first->get('character', 0)) - 1
+  var to = util.ColFromLsp(started.line, last->get('character', 0)) - 1
+  if from == started.word && to == started.cursor
+    # The edit covers the word and no more, which is what was replaced.
+    return false
+  endif
+
+  var text = strpart(started.line, 0, from) .. edit->get('newText', '')
+  var rest = strpart(started.line, to)
+  # Both changes belong to the one keystroke that took the item.
+  try
+    undojoin
+  catch
+  endtry
+  setline(started.lnum, text .. rest)
+  cursor(started.lnum, strlen(text) + 1)
+  return true
+enddef
+
 def OnCompleteDone()
   MoveSignature()
   resolve_seq += 1
@@ -1135,8 +1186,12 @@ def OnCompleteDone()
   # in the word and knows nothing of the rest, so it is applied here.
   var item = v:completed_item->get('user_data', {})
   if type(item) != v:t_dict
+    started = {}
     return
   endif
+  FixWiderEdit(item)
+  started = {}
+
   var edits = item->get('additionalTextEdits', [])
   if type(edits) != v:t_list || edits->empty()
     return
