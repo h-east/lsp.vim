@@ -139,7 +139,9 @@ def ChangeToLsp(change: dict<any>): dict<any>
   }
 enddef
 
-def OnChange(bufnr: number, start: number, endlnum: number, added: number,
+# Vim hands a listener five arguments.  The three in the middle repeat what
+# each item of the change list already holds, so they are taken and dropped.
+def OnChange(bufnr: number, _: number, _: number, _: number,
 	     changes: list<dict<any>>)
   var cl = BufClient(bufnr)
   if cl->empty() || !cl.initialized
