@@ -11,6 +11,13 @@ vim9script
 # Patch 9.2.970 is what lets listener_add() ask for the text of a change,
 # which is how the buffer is kept in step with the server.
 if !has('job') || !has('channel') || !has('patch-9.2.970')
+  # Nothing is said on startup, so leave one command to ask.
+  def Unsupported()
+    echohl WarningMsg
+    echomsg 'lsp: needs Vim 9.2.970 with +job and +channel'
+    echohl None
+  enddef
+  command! -bar LspStatus Unsupported()
   finish
 endif
 
