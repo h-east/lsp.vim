@@ -51,6 +51,7 @@ The server is started once per workspace root.
 - Diagnostics as signs, text highlights and a message on the cursor line
 - Signature help while a call is being typed
 - The other places the symbol under the cursor is used, marked in the buffer
+- Inlay hints, the names and types a server fills in, off until asked for
 - Hover, and jumps to a definition, declaration, type or implementation
 - Every mention of a symbol, the symbols in a file, and a workspace-wide
   symbol search
@@ -74,6 +75,7 @@ The server is started once per workspace root.
 | `:LspTypeDefinition` | Jump to the definition of the symbol's type |
 | `:LspImplementation` | Jump to what implements the symbol |
 | `:LspOutline` | Put the symbols in this buffer into the location list |
+| `:LspInlayHint` | Turn the inlay hints on or off |
 | `:LspReferences` | Put every mention of the symbol into the quickfix list |
 | `:LspSymbol {query}` | Search the workspace for symbols matching a query |
 | `:LspSignature` | Show what the call the cursor is in takes |

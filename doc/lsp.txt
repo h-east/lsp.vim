@@ -14,7 +14,8 @@ CONTENTS							*lsp-contents*
 6. Diagnostics		|lsp-diagnostics|
 7. Signature help	|lsp-signature|
 8. Symbol highlight	|lsp-highlight|
-9. Limitations		|lsp-limitations|
+9. Inlay hints		|lsp-inlay-hint|
+10. Limitations		|lsp-limitations|
 
 ==============================================================================
 1. Introduction						*lsp-introduction*
@@ -109,6 +110,14 @@ g:lsp_completion_timeout
 
 		Default: 2000
 
+							*g:lsp_inlay_hint*
+g:lsp_inlay_hint
+		When true, the names and types a server fills in are shown in
+		the window.  Off by default: this puts text on screen that
+		the file does not hold.  See |lsp-inlay-hint|.
+
+		Default: |v:false|
+
 						  *g:lsp_document_highlight*
 g:lsp_document_highlight
 		When true, the other places the symbol under the cursor is
@@ -172,6 +181,12 @@ g:lsp_signature_help
 		answers.  The answer describes the buffer as it was when the
 		question went out, so nothing is applied if the buffer moved
 		on in the meantime.  A single |undo| takes all of it back.
+
+							*:LspInlayHint*
+:LspInlayHint	Turn the inlay hints on when they are off and off when they
+		are on, and say which it now is.  Turning them off takes
+		away the ones already shown, in every buffer.  See
+		|lsp-inlay-hint|.
 
 							*:LspOutline*
 :LspOutline	Put the symbols in the current buffer into its location list
@@ -352,7 +367,29 @@ linked to an existing one and free to be given a look of its own with
 	LspHighlightWrite	where it is written to, |hl-Visual|
 
 ==============================================================================
-9. Limitations						*lsp-limitations*
+9. Inlay hints						*lsp-inlay-hint*
+
+A server can name what the file leaves unsaid: the parameter an argument is
+being passed as, and the type of something declared without one.  Set
+|g:lsp_inlay_hint| to |v:true| to have those shown as |virtual-text|, which is
+text in the window that the buffer does not hold: >vim
+
+	let g:lsp_inlay_hint = v:true
+<
+Only the part of the file on screen is asked about, and again whenever the
+buffer changes or the cursor comes to rest.
+
+|:LspInlayHint| turns them on and off without leaving Vim, which is the way
+to have a look at them and then be rid of them again.
+
+These are the groups, each linked to |hl-Comment| so the hints stay quieter
+than the file, and free to be given a look of their own with |:highlight|:
+
+	LspInlayType		the type of something declared without one
+	LspInlayParameter	the name an argument is passed as
+
+==============================================================================
+10. Limitations						*lsp-limitations*
 
 A code action is asked for by line, never by a range within one, so a server
 with something to offer about the exact text under the cursor is not given the

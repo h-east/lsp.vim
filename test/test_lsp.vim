@@ -402,3 +402,68 @@ def g:Test_the_marks_are_left_alone_when_turned_off()
 	      'nothing should be asked for')
   assert_equal([], prop_list(1))
 enddef
+
+def g:Test_inlay_hints_are_put_in_the_window()
+  g:lsp_inlay_hint = true
+  defer execute('unlet g:lsp_inlay_hint')
+  # A parameter name before the argument, and a type after the name.
+  const HINTS = [
+    {position: {line: 0, character: 8}, label: 'count:', kind: 2,
+     paddingRight: true},
+    {position: {line: 1, character: 5}, label: [{value: ': int'}], kind: 1},
+  ]
+  assert_true(t.StartServer({
+    capabilities: Offering({inlayHintProvider: true}),
+    replies: {'textDocument/inlayHint': HINTS},
+  }, ['    f(10);', 'var x = 1;']))
+
+  doautocmd CursorHold
+  assert_true(t.WaitFor(() => !prop_list(1)->empty()),
+	      'the hint should be shown')
+
+  var first = prop_list(1)[0]
+  assert_equal(['count: ', 'LspInlayParameter'],
+	       [first.text, first.type])
+  var second = prop_list(2)[0]
+  assert_equal([': int', 'LspInlayType'], [second.text, second.type])
+
+  # What the server was asked about is the part on screen.
+  var asked = t.Sent('textDocument/inlayHint')[0].params.range
+  assert_equal(0, asked.start.line)
+  assert_equal(1, asked.end.line)
+enddef
+
+def g:Test_inlay_hints_stay_away_unless_asked_for()
+  assert_true(t.StartServer({
+    capabilities: Offering({inlayHintProvider: true}),
+    replies: {'textDocument/inlayHint': [
+      {position: {line: 0, character: 8}, label: 'count:', kind: 2}]},
+  }, ['    f(10);']))
+
+  doautocmd CursorHold
+  sleep 100m
+  assert_true(t.Sent('textDocument/inlayHint')->empty(),
+	      'nothing should be asked for while the option is off')
+  assert_equal([], prop_list(1))
+enddef
+
+def g:Test_inlay_hints_can_be_turned_on_and_off()
+  defer execute('unlet! g:lsp_inlay_hint')
+  assert_true(t.StartServer({
+    capabilities: Offering({inlayHintProvider: true}),
+    replies: {'textDocument/inlayHint': [
+      {position: {line: 0, character: 8}, label: 'count:', kind: 2}]},
+  }, ['    f(10);']))
+
+  # Off to start with, so nothing is there.
+  assert_equal([], prop_list(1))
+
+  LspInlayHint
+  assert_true(t.WaitFor(() => !prop_list(1)->empty()),
+	      'the hints should appear')
+  assert_true(g:lsp_inlay_hint)
+
+  LspInlayHint
+  assert_equal([], prop_list(1), 'the hints should be taken away')
+  assert_false(g:lsp_inlay_hint)
+enddef

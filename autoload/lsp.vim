@@ -7,6 +7,7 @@ vim9script
 import autoload './lsp/client.vim' as lspclient
 import autoload './lsp/diag.vim'
 import autoload './lsp/hl.vim'
+import autoload './lsp/inlay.vim'
 import autoload './lsp/util.vim'
 
 # Values of the "textDocumentSync" server capability.
@@ -91,6 +92,11 @@ def DidOpen(cl: dict<any>, bufnr: number)
       text: BufText(bufnr),
     },
   })
+  # Hints are for what is on screen, and this is the first moment there is a
+  # server to ask.  Without this nothing appears until the cursor moves.
+  if bufnr == bufnr('%')
+    InlayHints()
+  endif
 enddef
 
 def SendChange(cl: dict<any>, bufnr: number, changes: list<dict<any>>)
@@ -285,6 +291,7 @@ def HookBuffer()
     autocmd CursorMoved <buffer> diag.EchoAtCursor()
     autocmd CursorMoved <buffer> hl.Clear(bufnr('%'))
     autocmd CursorHold <buffer> HighlightSymbol()
+    autocmd CursorHold,TextChanged,BufEnter <buffer> InlayHints()
     autocmd TextChangedI,TextChangedP <buffer> OnTextChanged()
     autocmd InsertLeave <buffer> CloseSignature()
   augroup END
@@ -341,6 +348,7 @@ export def Detach(bufnr: number = bufnr('%'))
   DidClose(bufnr)
   diag.Clear(bufnr)
   hl.Clear(bufnr)
+  inlay.Clear(bufnr)
   if bufexists(bufnr)
     var saved = getbufvar(bufnr, 'lsp_omnifunc_save', v:null)
     if type(saved) == v:t_string
@@ -950,6 +958,48 @@ export def CodeAction(first: number, last: number)
     }
     popup_menu(actions->mapnew((_, a) => ActionTitle(a)), options)
   })
+enddef
+
+# Asking for the names and types to fill in, for the part of the file that is
+# on screen.  Off by default: this puts text in the window that the file does
+# not hold, which is not something to spring on someone.
+def InlayHints()
+  if !get(g:, 'lsp_inlay_hint', false)
+    return
+  endif
+  var cl = BufClient(bufnr('%'))
+  if cl->empty() || !cl.initialized
+	|| !cl.capabilities->has_key('inlayHintProvider')
+    return
+  endif
+  var bufnr = bufnr('%')
+  var last = line('w$')
+  var params = {
+    textDocument: {uri: util.PathToUri(bufname(bufnr))},
+    range: {
+      start: util.PosToLsp(bufnr, line('w0'), 1),
+      end: util.PosToLsp(bufnr, last, getline(last)->strlen() + 1),
+    },
+  }
+  lspclient.Request(cl, 'textDocument/inlayHint', params, (result: any) => {
+    if bufnr != bufnr('%')
+      return
+    endif
+    inlay.Update(bufnr, type(result) == v:t_list ? result : [])
+  })
+enddef
+
+export def ToggleInlayHints()
+  g:lsp_inlay_hint = !get(g:, 'lsp_inlay_hint', false)
+  if g:lsp_inlay_hint
+    InlayHints()
+  else
+    # Every buffer, not just this one: they were put there while it was on.
+    for info in getbufinfo({bufloaded: 1})
+      inlay.Clear(info.bufnr)
+    endfor
+  endif
+  echo 'lsp: inlay hints ' .. (g:lsp_inlay_hint ? 'on' : 'off')
 enddef
 
 # Marking where else the symbol under the cursor is used, once the cursor has

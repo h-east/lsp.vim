@@ -5,6 +5,7 @@
 :LspFormat	lsp.txt	/*:LspFormat*
 :LspHover	lsp.txt	/*:LspHover*
 :LspImplementation	lsp.txt	/*:LspImplementation*
+:LspInlayHint	lsp.txt	/*:LspInlayHint*
 :LspLog	lsp.txt	/*:LspLog*
 :LspOutline	lsp.txt	/*:LspOutline*
 :LspReferences	lsp.txt	/*:LspReferences*
@@ -17,6 +18,7 @@
 :LspTypeDefinition	lsp.txt	/*:LspTypeDefinition*
 g:lsp_completion_timeout	lsp.txt	/*g:lsp_completion_timeout*
 g:lsp_document_highlight	lsp.txt	/*g:lsp_document_highlight*
+g:lsp_inlay_hint	lsp.txt	/*g:lsp_inlay_hint*
 g:lsp_servers	lsp.txt	/*g:lsp_servers*
 g:lsp_set_omnifunc	lsp.txt	/*g:lsp_set_omnifunc*
 g:lsp_signature_help	lsp.txt	/*g:lsp_signature_help*
@@ -26,6 +28,7 @@ lsp-configuration	lsp.txt	/*lsp-configuration*
 lsp-contents	lsp.txt	/*lsp-contents*
 lsp-diagnostics	lsp.txt	/*lsp-diagnostics*
 lsp-highlight	lsp.txt	/*lsp-highlight*
+lsp-inlay-hint	lsp.txt	/*lsp-inlay-hint*
 lsp-introduction	lsp.txt	/*lsp-introduction*
 lsp-limitations	lsp.txt	/*lsp-limitations*
 lsp-requirements	lsp.txt	/*lsp-requirements*

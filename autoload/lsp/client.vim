@@ -91,6 +91,9 @@ def ClientCapabilities(): dict<any>
       documentHighlight: {
 	dynamicRegistration: false,
       },
+      inlayHint: {
+	dynamicRegistration: false,
+      },
       documentSymbol: {
 	dynamicRegistration: false,
 	# Asking for the tree, since where a symbol sits in it is worth
