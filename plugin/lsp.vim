@@ -42,9 +42,8 @@ command! -bar LspSignature  lsp.Signature()
 command! -bar LspDiag       lsp.Diagnostics()
 command! -bar LspLog        lsp.Log()
 
-# Whether any server is meant for this buffer.  Kept here rather than in the
-# autoload script, because reaching that script is what this decides: a file
-# nothing is configured for should leave the plugin asleep.
+# Kept out of the autoload script, because reaching that script is what this
+# decides: a file nothing is configured for leaves the plugin asleep.
 def HasServer(): bool
   for config in get(g:, 'lsp_servers', [])
     if type(config) == v:t_dict
@@ -55,8 +54,6 @@ def HasServer(): bool
   return false
 enddef
 
-# Defining the autocommand does not load the autoload script, the first
-# FileType event for a buffer with a configured server does.
 augroup lsp
   autocmd!
   autocmd FileType * if HasServer() | lsp.Attach() | endif

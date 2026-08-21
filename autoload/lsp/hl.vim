@@ -6,8 +6,6 @@ vim9script
 
 import './util.vim'
 
-# What a server says about each place it found.  A plain mention, one that
-# reads the symbol, and one that writes to it.
 const KIND_TEXT = 1
 const KIND_READ = 2
 const KIND_WRITE = 3
@@ -24,8 +22,7 @@ def Define()
   if defined
     return
   endif
-  # Being written to is worth telling apart from being read; the rest is one
-  # look.  Each is linked, so :highlight can give it another.
+  # Being written to is worth telling apart from being read.
   highlight default link LspHighlightText CursorColumn
   highlight default link LspHighlightRead CursorColumn
   highlight default link LspHighlightWrite Visual
@@ -44,8 +41,7 @@ export def Clear(bufnr: number)
   prop_remove({bufnr: bufnr, types: TYPES->values(), all: true})
 enddef
 
-# Marks every place the server named.  What was marked before is dropped, so
-# this is also how the marks follow the cursor.
+# What was marked before is dropped, which is how the marks follow the cursor.
 export def Update(bufnr: number, items: list<any>)
   Clear(bufnr)
   if items->empty()

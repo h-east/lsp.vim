@@ -16,7 +16,6 @@ const SYNC_NONE = 0
 const SYNC_FULL = 1
 const SYNC_INCREMENTAL = 2
 
-# How a hover reply is shown.
 const POPUP_OPTIONS = {
   moved: 'any',
   border: [],
@@ -33,11 +32,9 @@ const MENU_OPTIONS = {
   maxwidth: 78,
 }
 
-# Running servers, keyed by "<name>@<root>" so that one server per workspace
-# is started rather than one per buffer.
+# Keyed by "<name>@<root>": one server per workspace, not one per buffer.
 var clients: dict<dict<any>> = {}
 
-# Buffers waiting for their server to finish initializing.
 var pending_open: dict<list<number>> = {}
 
 def ClientKey(name: string, root: string): string
@@ -62,12 +59,9 @@ def BufText(bufnr: number): string
   return getbufline(bufnr, 1, '$')->join("\n") .. "\n"
 enddef
 
-# What the server offers is only known once it has answered "initialize", so
-# the options that depend on it are set when a buffer is handed over.
-#
 # A filetype plugin has usually set 'omnifunc' by now, to a function working
-# from tags.  A server knows more than tags do, so it takes over, and the old
-# value is put back when the buffer is detached.
+# from tags.  A server knows more, so it takes over and the old value is put
+# back when the buffer is detached.
 def SetBufferOptions(cl: dict<any>, bufnr: number)
   if !cl.capabilities->has_key('completionProvider')
 	|| !get(g:, 'lsp_set_omnifunc', true)
@@ -77,7 +71,6 @@ def SetBufferOptions(cl: dict<any>, bufnr: number)
   setbufvar(bufnr, '&omnifunc', 'lsp#OmniFunc')
 enddef
 
-# Feed a buffer to a server that is ready for it.
 def DidOpen(cl: dict<any>, bufnr: number)
   var uri = util.PathToUri(bufname(bufnr))
   if cl.documents->has_key(uri)
@@ -93,8 +86,8 @@ def DidOpen(cl: dict<any>, bufnr: number)
       text: BufText(bufnr),
     },
   })
-  # Hints are for what is on screen, and this is the first moment there is a
-  # server to ask.  Without this nothing appears until the cursor moves.
+  # The first moment there is a server to ask; without this nothing appears
+  # until the cursor moves.
   if bufnr == bufnr('%')
     InlayHints()
     FoldingRanges()
@@ -114,8 +107,7 @@ def SendChange(cl: dict<any>, bufnr: number, changes: list<dict<any>>)
   })
 enddef
 
-# What a server wants for "textDocument/didChange", either as a plain number
-# or inside a Dict.
+# Either a plain number or inside a Dict.
 def SyncKind(cl: dict<any>): number
   var sync = cl.capabilities->get('textDocumentSync', SYNC_FULL)
   if type(sync) == v:t_dict
@@ -125,9 +117,8 @@ def SyncKind(cl: dict<any>): number
 enddef
 
 # A listener change says: replace the lines "lnum" up to but not including
-# "end" with "text".  That is a range edit covering whole lines, which is what
-# is built here.  The document as the server has it always ends in a newline,
-# so line "end - 1" exists even when "end" is one past the last line.
+# "end" with "text".  The document as the server has it always ends in a
+# newline, so line "end - 1" exists even when "end" is one past the last line.
 def ChangeToLsp(change: dict<any>): dict<any>
   var text = change->get('text', [])
   return {
@@ -158,9 +149,8 @@ def OnChange(bufnr: number, _: number, _: number, _: number,
   SendChange(cl, bufnr, changes->mapnew((_, c) => ChangeToLsp(c)))
 enddef
 
-# A server that only looks at a file when it is written needs telling.  What
-# it says about "save" decides whether the text goes along: asking for it
-# means it would rather not read the file itself.
+# What a server says about "save" decides whether the text goes along: asking
+# for it means it would rather not read the file itself.
 def DidSave(bufnr: number)
   var cl = BufClient(bufnr)
   if cl->empty() || !cl.initialized
@@ -250,14 +240,12 @@ def OnNotify(cl: dict<any>, method: string, params: any)
   if method ==# 'textDocument/publishDiagnostics'
     var uri = params->get('uri', '')
     cl.diagnostics[uri] = params->get('diagnostics', [])
-    # A server may report on a file that is not open here, there is nothing to
-    # draw on for those.
+    # A server may report on a file that is not open here.
     var bufnr = bufnr(util.UriToPath(uri))
     if bufnr > 0
       diag.Update(bufnr, cl.diagnostics[uri])
     endif
   elseif method ==# 'window/showMessage'
-    # This one is meant for the user to read now.
     var type = params->get('type', 0)
     var message = params->get('message', '')->substitute('\n', ' ', 'g')
     if type == MSG_ERROR
@@ -268,8 +256,7 @@ def OnNotify(cl: dict<any>, method: string, params: any)
       echomsg 'lsp: ' .. message
     endif
   elseif method ==# 'window/logMessage'
-    # This one is for the record, and there can be a lot of it; :LspLog is
-    # where someone goes looking.
+    # For the record, and there can be a lot of it.
     cl.log->add(params->get('message', ''))
     if len(cl.log) > 200
       remove(cl.log, 0, len(cl.log) - 201)
@@ -279,9 +266,8 @@ def OnNotify(cl: dict<any>, method: string, params: any)
   endif
 enddef
 
-# Watching every buffer for changes would pull this script in even when no
-# server is ever used, so the change and unload events are per buffer and are
-# only installed once a buffer really has a server.
+# Per buffer, and only once a buffer really has a server: watching every
+# buffer would pull this script in even when no server is ever used.
 var leaving_hooked = false
 
 def HookBuffer()
@@ -386,8 +372,7 @@ export def Status()
   endfor
 enddef
 
-# The "contents" of a hover reply may be a plain string, a Dict, or a List of
-# either.  Flatten whatever comes in.
+# The "contents" of a hover reply is a string, a Dict, or a List of either.
 def HoverText(contents: any): list<string>
   if type(contents) == v:t_string
     return contents->split("\n")
@@ -448,16 +433,16 @@ export def Hover()
       })
 enddef
 
-# The signature popup stays up while the call is being typed, so it is kept
-# and updated rather than made anew for every keystroke.
+# Kept and updated rather than made anew, since it stays up while the call is
+# being typed.
 var signature_popup = 0
 
 # The completion menu is drawn at zindex 100, see |popup-menu|.  A signature
 # is asked for while completing, so it has to sit above the menu.
 const SIGNATURE_ZINDEX = 101
 
-# A reply arrives after the cursor may have moved on.  Only the answer to the
-# last question asked is still worth showing; see also "resolve_seq".
+# Only the answer to the last question asked is still worth showing; see also
+# "resolve_seq".
 var signature_seq = 0
 
 # One edit is seen twice when the completion menu opens right after it: once
@@ -477,15 +462,13 @@ enddef
 
 def DefineSignatureProp()
   if prop_type_get('LspSignatureActive')->empty()
-    # Highlight of the parameter the cursor is in.
     highlight default link LspSignatureActive PmenuSel
     prop_type_add('LspSignatureActive', {highlight: 'LspSignatureActive'})
   endif
 enddef
 
-# "label" of a parameter is either a substring of the signature or, when the
-# server was told this client can take them, a pair of offsets into it.  The
-# offsets are in UTF-16 units, the same as everywhere else in the protocol.
+# A parameter's "label" is either a substring of the signature or a pair of
+# offsets into it, in UTF-16 units as everywhere else in the protocol.
 def ActiveRange(signature: dict<any>, index: number): list<number>
   var params = signature->get('parameters', [])
   if index < 0 || index >= len(params)
@@ -505,9 +488,9 @@ def ActiveRange(signature: dict<any>, index: number): list<number>
   return []
 enddef
 
-# The completion menu takes the room on one side of the cursor, so the
-# signature goes on the other side and both stay readable.  "pos" says which
-# corner "line" refers to, without it the popup lands above either way.
+# The signature goes on the side of the cursor the completion menu is not
+# using.  "pos" says which corner "line" refers to; without it the popup lands
+# above either way.
 def SignatureWhere(): dict<string>
   var pum = pum_getpos()
   if !pum->empty() && pum.row + 1 < screenrow()
@@ -516,7 +499,7 @@ def SignatureWhere(): dict<string>
   return {line: 'cursor-1', col: 'cursor', pos: 'botleft'}
 enddef
 
-# The menu comes up after the signature was asked for, so the side it leaves
+# The menu comes up after the signature was asked for, so which side it leaves
 # free is only known once it is there.
 def MoveSignature()
   if signature_popup > 0
@@ -542,8 +525,7 @@ def ShowSignature(help: any)
     return
   endif
 
-  # A signature may say which parameter is active itself, otherwise the reply
-  # says it for the whole set.
+  # A signature may say which parameter is active itself.
   var active = signature->get('activeParameter',
 					help->get('activeParameter', -1))
   var range = ActiveRange(signature, active)
@@ -594,10 +576,9 @@ export def Signature()
       })
 enddef
 
-# While typing, ask for the signature after a character the server named as a
-# trigger, which for a C server is "(" and ",".  A closing paren ends the
-# call, so the popup goes away with it.  This has to work while the completion
-# menu is up as well, which is what TextChangedP is for.
+# Asked for after a character the server named as a trigger, "(" and "," for a
+# C server.  A closing paren ends the call and takes the popup with it.
+# TextChangedP is there because this has to work while the menu is up.
 def OnTextChanged()
   if !get(g:, 'lsp_signature_help', true)
     return
@@ -622,8 +603,7 @@ def OnTextChanged()
   endif
 enddef
 
-# A Location names its file in "uri" and a LocationLink in "targetUri"; the
-# link also offers a wider range around the one that is meant.
+# A Location names its file in "uri" and a LocationLink in "targetUri".
 def LocationUri(loc: dict<any>): string
   return loc->get('uri', loc->get('targetUri', ''))
 enddef
@@ -642,10 +622,8 @@ def FirstLocation(result: any): dict<any>
   return {uri: LocationUri(item), range: LocationRange(item)}
 enddef
 
-# Locations turned into |setqflist()| items.  Each file is read once however
-# many locations fall in it, since the line is needed to place the column.
-# A "text" of its own overrides the line, for a caller that has something
-# better to say than what the file holds there.
+# Each file is read once however many locations fall in it, since the line is
+# what places the column.  A "text" of its own overrides that line.
 def LocationItems(result: any): list<dict<any>>
   var locs = type(result) == v:t_list ? result : [result]
   var lines: dict<list<string>> = {}
@@ -675,8 +653,7 @@ def LocationItems(result: any): list<dict<any>>
   return items
 enddef
 
-# Asking where a symbol leads to, which four requests do in the same shape:
-# what comes back is a place to go to.  "what" names it in a message.
+# Four requests have this shape: what comes back is a place to go to.
 def JumpTo(method: string, provider: string, what: string)
   var cl = ReadyClient()
   if cl->empty()
@@ -726,9 +703,8 @@ def BufLineCount(bufnr: number): number
   return getbufinfo(bufnr)->get(0, {})->get('linecount', 0)
 enddef
 
-# Edits are expressed in the coordinates of the document as it is before any
-# of them are applied, so the later ones are applied first and the earlier
-# ones still mean what they said.  The protocol forbids them from overlapping.
+# Edits are in the coordinates of the document before any are applied, so the
+# later ones go first.  The protocol forbids them from overlapping.
 def SortedEdits(edits: list<any>): list<any>
   return edits->copy()
       ->filter((_, e) => type(e) == v:t_dict)
@@ -742,9 +718,8 @@ def SortedEdits(edits: list<any>): list<any>
       })
 enddef
 
-# One edit applied to lines held in a list.  The range covers whole lines only
-# by accident, so what is before it on its first line and after it on its last
-# stays, and the new text is spliced in between.
+# A range covers whole lines only by accident, so what is before it on its
+# first line and after it on its last stays.
 def EditLines(lines: list<string>, edit: dict<any>): list<string>
   var range = edit->get('range', {})
   var start = range->get('start', {})
@@ -771,8 +746,8 @@ def EditLines(lines: list<string>, edit: dict<any>): list<string>
 	 + after
 enddef
 
-# The edits are worked out on a copy of the lines and the result is put back,
-# so the buffer is written once however many edits there were.
+# Worked out on a copy and put back in one go, so a single undo takes all of
+# it back.
 def ApplyTextEdits(bufnr: number, edits: list<any>)
   var lines = getbufline(bufnr, 1, '$')
   for edit in SortedEdits(edits)
@@ -795,8 +770,7 @@ export def Format()
     return
   endif
   var bufnr = bufnr('%')
-  # The reply is in the coordinates of the buffer as it was asked about, so it
-  # is only safe to apply while the buffer has not moved on.
+  # The reply describes the buffer as it was asked about.
   var tick = getbufvar(bufnr, 'changedtick')
   var params = {
     textDocument: {uri: util.PathToUri(bufname(bufnr))},
@@ -815,8 +789,7 @@ export def Format()
   })
 enddef
 
-# The buffer for a file, loading it when it is not open already.  A rename
-# reaches files the user never opened.
+# A rename reaches files the user never opened.
 def LoadedBufnr(path: string): number
   var bufnr = bufadd(path)
   if !bufloaded(bufnr)
@@ -825,10 +798,9 @@ def LoadedBufnr(path: string): number
   return bufnr
 enddef
 
-# A workspace edit lists its changes per file, either as "documentChanges",
-# which can also ask for files to be created, renamed or deleted, or as the
-# older plain "changes".  Only changes to the text of a file are understood,
-# so anything else makes this give up rather than apply half of the answer.
+# Changes come as "documentChanges", which can also ask for files to be
+# created, renamed or deleted, or as the older plain "changes".  Only changes
+# to the text are understood; anything else gives up rather than applying half.
 def WorkspaceEditFiles(edit: dict<any>): list<dict<any>>
   var out: list<dict<any>> = []
   var changes = edit->get('documentChanges', [])
@@ -850,8 +822,8 @@ def WorkspaceEditFiles(edit: dict<any>): list<dict<any>>
   return out
 enddef
 
-# Applies a workspace edit and returns how many files it touched.  Nothing is
-# written; the buffers are left changed for the user to look at and save.
+# Returns how many files were touched.  Nothing is written; the buffers are
+# left for the user to look at and save.
 def ApplyWorkspaceEdit(edit: dict<any>): number
   var files = WorkspaceEditFiles(edit)
   var done = 0
@@ -896,9 +868,8 @@ export def Rename(newname: string)
   })
 enddef
 
-# A reply holds Commands, CodeActions, or a mix of the two.  A Command is run
-# by the server and can only be asked for by name; a CodeAction usually
-# carries the edit it stands for and is applied here.
+# A reply holds Commands, CodeActions, or a mix.  A Command is run by the
+# server; a CodeAction usually carries the edit it stands for.
 def ActionTitle(action: dict<any>): string
   return action->get('title', action->get('command', ''))
 enddef
@@ -921,9 +892,8 @@ def RunAction(cl: dict<any>, action: dict<any>)
     util.WarningMsg('the action says neither what to change nor what to run')
     return
   endif
-  # The server does the work and hands the changes back through
-  # "workspace/applyEdit", which is what OnRequest() is there for.  The reply
-  # to this carries nothing worth showing.
+  # The changes come back through "workspace/applyEdit", which is what
+  # OnRequest() is there for.
   lspclient.Request(cl, 'workspace/executeCommand', {
     command: name,
     arguments: wrapped ? cmd->get('arguments', [])
@@ -958,8 +928,7 @@ export def CodeAction(first: number, last: number)
       return
     endif
     # The reply arrives whenever the server is done, which is no moment to
-    # stop and wait for an answer on the command line; a menu can sit there
-    # until it is dealt with.
+    # wait for an answer on the command line.
     var options = MENU_OPTIONS->copy()
     options.callback = (_, idx) => {
       if idx > 0 && idx <= len(actions)
@@ -970,9 +939,8 @@ export def CodeAction(first: number, last: number)
   })
 enddef
 
-# Asking for the names and types to fill in, for the part of the file that is
-# on screen.  Off by default: this puts text in the window that the file does
-# not hold, which is not something to spring on someone.
+# Only the part of the file on screen.  Off by default: this puts text in the
+# window that the file does not hold.
 def InlayHints()
   if !get(g:, 'lsp_inlay_hint', false)
     return
@@ -999,8 +967,8 @@ def InlayHints()
   })
 enddef
 
-# Folding is 'foldmethod' and 'foldexpr', which the user may well have set to
-# something they like, so what was there is put back on the way out.
+# 'foldmethod' and 'foldexpr' are likely set to something already, so what was
+# there is put back on the way out.
 def SetFolding(bufnr: number)
   if !getbufvar(bufnr, 'lsp_fold_save', {})->empty()
     return
@@ -1043,7 +1011,7 @@ def FoldingRanges()
     fold.Update(bufnr, type(result) == v:t_list ? result : [])
     SetFolding(bufnr)
     # The levels changed under 'foldexpr', which Vim does not know to ask
-    # about again on its own.
+    # about again.
     if bufnr == bufnr('%')
       setbufvar(bufnr, '&foldmethod', 'expr')
     endif
@@ -1079,8 +1047,7 @@ export def ToggleInlayHints()
   echo 'lsp: inlay hints ' .. (g:lsp_inlay_hint ? 'on' : 'off')
 enddef
 
-# Marking where else the symbol under the cursor is used, once the cursor has
-# come to rest.  How long that takes is 'updatetime'.
+# Once the cursor has come to rest, which takes 'updatetime'.
 def HighlightSymbol()
   if !get(g:, 'lsp_document_highlight', true)
     return
@@ -1093,8 +1060,7 @@ def HighlightSymbol()
   var at = [bufnr('%'), line('.'), col('.')]
   lspclient.Request(cl, 'textDocument/documentHighlight', CursorParams(),
       (result: any) => {
-	# The cursor may have moved on while the answer was on its way, and
-	# the answer is about where it was.
+	# The answer is about where the cursor was.
 	if at != [bufnr('%'), line('.'), col('.')]
 	  return
 	endif
@@ -1112,8 +1078,7 @@ export def References()
     return
   endif
   var params = CursorParams()
-  # The declaration is a mention of the symbol as well, so it belongs in the
-  # list rather than being the one entry that is missing from it.
+  # The declaration is a mention as well, so it belongs in the list.
   params.context = {includeDeclaration: true}
   lspclient.Request(cl, 'textDocument/references', params, (result: any) => {
     var items = LocationItems(result)
@@ -1126,9 +1091,8 @@ export def References()
   })
 enddef
 
-# A SymbolInformation carries its place in "location", a WorkspaceSymbol may
-# leave out the range and give only the file.  Either way what comes back is
-# turned into something LocationItems() understands.
+# A SymbolInformation carries its place in "location"; a WorkspaceSymbol may
+# give only the file.
 def SymbolLocation(sym: dict<any>): dict<any>
   var loc = sym->get('location', {})
   if type(loc) != v:t_dict
@@ -1141,8 +1105,7 @@ def SymbolLocation(sym: dict<any>): dict<any>
   return {uri: loc->get('uri', ''), range: range}
 enddef
 
-# A SymbolKind is a number from 1 to 26.  The names are what a server would
-# have written itself, so the list is shown the way the protocol names it.
+# A SymbolKind is a number from 1 to 26, named the way the protocol names it.
 #                    1         2         3         4         5         6
 const SYMBOL_KINDS = ['File', 'Module', 'Namespace', 'Package', 'Class',
     'Method', 'Property', 'Field', 'Constructor', 'Enum', 'Interface',
@@ -1150,8 +1113,7 @@ const SYMBOL_KINDS = ['File', 'Module', 'Namespace', 'Package', 'Class',
     'Array', 'Object', 'Key', 'Null', 'EnumMember', 'Struct', 'Event',
     'Operator', 'TypeParameter']
 
-# The name the server matched, and what sort of thing it is, say more than the
-# line the symbol sits on.
+# Worth more than the line the symbol sits on.
 def SymbolText(sym: dict<any>): string
   var kind = sym->get('kind', 0)
   var name = kind >= 1 && kind <= len(SYMBOL_KINDS)
@@ -1162,10 +1124,8 @@ def SymbolText(sym: dict<any>): string
 	 .. sym->get('name', '')
 enddef
 
-# A reply about one file is either a flat list of SymbolInformation, which
-# names its place in "location", or a tree of DocumentSymbol, which carries
-# ranges and holds its children.  Both end up as one list, the depth in the
-# tree showing as indent.
+# A reply about one file is a flat list of SymbolInformation or a tree of
+# DocumentSymbol.  Both end up as one list, the depth showing as indent.
 def FlattenSymbols(syms: any, depth: number, uri: string,
 		   out: list<dict<any>>)
   if type(syms) != v:t_list
@@ -1208,9 +1168,9 @@ export def Outline()
   })
 enddef
 
-# A call is where one function names another.  What comes back holds the
-# function at the other end and the places the call is written; those places
-# are what one wants to go to, named after the function they sit in.
+# What comes back holds the function at the other end and the places the call
+# is written.  Those places are what one wants to go to, named after the
+# function they sit in.
 def CallLocations(calls: any, incoming: bool, here: string): list<dict<any>>
   var locs: list<dict<any>> = []
   for call in (type(calls) == v:t_list ? calls : [])
@@ -1244,7 +1204,6 @@ def CallHierarchy(incoming: bool)
     return
   endif
   var here = util.PathToUri(bufname('%'))
-  # Asking takes two rounds: what is under the cursor, then its calls.
   lspclient.Request(cl, 'textDocument/prepareCallHierarchy', CursorParams(),
       (result: any) => {
     var items = type(result) == v:t_list ? result : []
@@ -1285,8 +1244,7 @@ export def Symbol(query: string)
     util.WarningMsg('the server does not offer workspace symbols')
     return
   endif
-  # An empty query means "everything" to the protocol, which is not a list to
-  # end up with by accident.
+  # An empty query means "everything" to the protocol.
   if query->empty()
     util.WarningMsg('a query is needed')
     return
@@ -1304,9 +1262,8 @@ export def Symbol(query: string)
   })
 enddef
 
-# A CompletionItemKind is a number from 1 to 25 and "kind" in a completion
-# item is a single letter, so the letters are indexed by that number.  Index
-# zero is never used.
+# A CompletionItemKind is a number from 1 to 25 and "kind" is a single letter,
+# so the letters are indexed by that number.
 #                     1234567890123456789012345
 const KIND_LETTERS = ' tfffmvcimpuvekSCFrDEdsVoT'
 
@@ -1315,10 +1272,9 @@ def ItemKind(item: dict<any>): string
   return kind > 0 && kind < strlen(KIND_LETTERS) ? KIND_LETTERS[kind] : ''
 enddef
 
-# The text to insert.  A "textEdit" is what the server really wants applied,
-# but omni completion can only replace the word before the cursor, so only its
-# "newText" is taken.  Snippet placeholders cannot be expanded, for those the
-# label is the honest answer.
+# Omni completion can only replace the word before the cursor, so only the
+# "newText" of a "textEdit" is taken.  Snippet placeholders cannot be
+# expanded, for those the label is the honest answer.
 def ItemWord(item: dict<any>): string
   if item->get('insertTextFormat', 1) == 2
     return item->get('label', '')
@@ -1339,13 +1295,13 @@ def ItemInfo(item: dict<any>): string
   return lines->join("\n")
 enddef
 
-# The whole server item is kept in "user_data" so that it can be handed back
-# for "completionItem/resolve", which needs the item it produced.
+# The whole item is kept in "user_data" for "completionItem/resolve", which
+# needs back the item it produced.
 def ToCompleteItem(item: dict<any>): dict<any>
   return {
     word: ItemWord(item),
-    # A server may pad the label, clangd puts a space where a return type
-    # would go.  That shifts every entry in the menu by a column.
+    # A server may pad the label; clangd puts a space where a return type
+    # would go, which shifts every entry in the menu.
     abbr: item->get('label', '')->trim(),
     kind: ItemKind(item),
     menu: item->get('detail', '')->substitute("\n", ' ', 'g'),
@@ -1355,8 +1311,8 @@ def ToCompleteItem(item: dict<any>): dict<any>
   }
 enddef
 
-# The server decides what is relevant, but it is given the position and not
-# the word, so the word still has to be honoured here.
+# The server is given the position and not the word, so the word still has to
+# be honoured here.
 def ItemMatches(item: dict<any>, base: string): bool
   if base->empty()
     return true
@@ -1373,8 +1329,7 @@ export def OmniFunc(findstart: number, base: string): any
   endif
 
   if findstart
-    # Remembered so that a "textEdit" reaching wider than the word can still
-    # be honoured once the item is taken; see FixWiderEdit().
+    # For FixWiderEdit(), once the item is taken.
     started = {
       lnum: line('.'),
       line: getline('.'),
@@ -1400,11 +1355,10 @@ export def OmniFunc(findstart: number, base: string): any
 	      ->mapnew((_, it) => ToCompleteItem(it))
 enddef
 
-# Servers are allowed to leave the documentation out of a completion item and
-# only produce it for the one that is actually looked at.  Asking for it takes
-# a round trip, so the info popup is filled in as the answers arrive; see
-# |complete-popuphidden|.  Every selection change bumps the counter so a reply
-# for an item that is no longer selected can be dropped.
+# A server may leave the documentation out and only produce it for the item
+# actually looked at.  That takes a round trip, so the info popup is filled in
+# as the answers arrive; see |complete-popuphidden|.  The counter is bumped on
+# every selection change, to drop a reply for an item no longer selected.
 var resolve_seq = 0
 
 def ResolveProvider(cl: dict<any>): bool
@@ -1430,8 +1384,8 @@ def OnCompleteChanged()
     return
   endif
 
-  # Whatever came with the item is shown at once, so the popup is never empty
-  # while the round trip is in flight.
+  # Shown at once, so the popup is never empty while the round trip is in
+  # flight.
   var known = ItemInfo(item)
   if !known->empty()
     ShowInfo(known)
@@ -1454,22 +1408,20 @@ def OnCompleteChanged()
   })
 enddef
 
-# Where the completion that is running started from: the line as it was, the
-# cursor in it, and the byte the word being completed begins at.  Empty when
-# no completion of ours has been asked for yet.
+# Where the running completion started from: the line as it was, the cursor in
+# it, and the byte the word begins at.
 var started: dict<any> = {}
 
-# Omni completion replaces the word before the cursor and nothing else.  A
-# server may want to replace more than that, "obj->fie" becoming "obj.field"
-# for instance, and then what it asked for is put in place of what completion
-# did.  Returns whether it stepped in.
+# Omni completion replaces the word before the cursor and nothing else.  When
+# a server wants more than that, "obj->fie" becoming "obj.field" for instance,
+# what it asked for is put in place of what completion did.
 def FixWiderEdit(item: dict<any>): bool
   var edit = item->get('textEdit', {})
   if started->empty() || type(edit) != v:t_dict || !edit->has_key('range')
 	|| line('.') != started.lnum
     return false
   endif
-  # Only an edit within the one line can be lined up with what was replaced.
+  # Only an edit within the one line lines up with what was replaced.
   var range = edit.range
   var first = range->get('start', {})
   var last = range->get('end', {})
@@ -1487,7 +1439,7 @@ def FixWiderEdit(item: dict<any>): bool
 
   var text = strpart(started.line, 0, from) .. edit->get('newText', '')
   var rest = strpart(started.line, to)
-  # Both changes belong to the one keystroke that took the item.
+  # Both changes belong to the keystroke that took the item.
   try
     undojoin
   catch
@@ -1501,9 +1453,8 @@ def OnCompleteDone()
   MoveSignature()
   resolve_seq += 1
 
-  # An item may come with edits elsewhere in the file, an include to add for
-  # the name that was just inserted being the usual one.  Omni completion puts
-  # in the word and knows nothing of the rest, so it is applied here.
+  # An item may come with edits elsewhere in the file, usually an include to
+  # add.  Omni completion puts in the word and knows nothing of the rest.
   var item = v:completed_item->get('user_data', {})
   if type(item) != v:t_dict
     started = {}
@@ -1516,17 +1467,14 @@ def OnCompleteDone()
   if type(edits) != v:t_list || edits->empty()
     return
   endif
-  # The edits are for the buffer as the server last saw it, and the word that
-  # was just inserted is not in that yet.  They never overlap what completion
-  # touched, so applying them as they are is safe; doing so after the event
-  # keeps this out of whatever the completion is still doing.
+  # They never overlap what completion touched, so they apply as they are.
+  # After the event, to stay out of whatever the completion is still doing.
   var bufnr = bufnr('%')
   timer_start(0, (_) => ApplyTextEdits(bufnr, edits))
 enddef
 
 export def Diagnostics()
-  # Tell "no server" apart from "nothing to report", they look the same to
-  # someone who just sees an empty list.
+  # "No server" and "nothing to report" look the same in an empty list.
   var cl = BufClient(bufnr('%'))
   if cl->empty() || !cl.initialized
     util.WarningMsg('no server for this buffer')
@@ -1541,9 +1489,8 @@ export def Log()
     util.WarningMsg('no server for this buffer')
     return
   endif
-  # A server logs in two places: what it writes to stderr on its own, and what
-  # it sends as "window/logMessage".  Both belong here, told apart by a
-  # heading rather than mixed into one stream.
+  # A server logs in two places; both belong here, told apart by a heading
+  # rather than mixed into one stream.
   var lines: list<string> = []
   if !cl.log->empty()
     lines += ['--- window/logMessage ---'] + cl.log
@@ -1560,11 +1507,9 @@ export def Log()
   setlocal buftype=nofile bufhidden=wipe noswapfile nomodified
 enddef
 
-# A server asks for two things.  "workspace/applyEdit" is how it hands over
-# changes it worked out itself, which is what a code action it runs on its
-# side comes back as.  "window/workDoneProgress/create" only asks whether it
-# may report progress under a token, and is answered by saying nothing went
-# wrong.  Anything else is turned down by the caller.
+# "workspace/applyEdit" is how a server hands over changes it worked out
+# itself; "window/workDoneProgress/create" only asks whether it may report
+# progress.  Anything else is turned down by the caller.
 def OnRequest(cl: dict<any>, method: string, params: any,
 	      Answer: func(any)): bool
   if method ==# 'window/workDoneProgress/create'

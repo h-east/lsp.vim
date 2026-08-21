@@ -6,8 +6,6 @@ vim9script
 
 import './util.vim'
 
-# What a hint stands for.  A type is one the reader did not have to write, a
-# parameter is the name of the argument being passed.
 const KIND_TYPE = 1
 const KIND_PARAMETER = 2
 
@@ -68,7 +66,6 @@ export def Update(bufnr: number, hints: list<any>)
     if text->empty()
       continue
     endif
-    # The server says whether the hint needs room around it to read well.
     if hint->get('paddingLeft', false)
       text = ' ' .. text
     endif

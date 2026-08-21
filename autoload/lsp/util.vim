@@ -34,8 +34,8 @@ def PercentDecode(s: string): string
   return list2blob(bytes)->blob2str()->get(0, '')
 enddef
 
-# Turn a file name into a "file://" URI.  A relative name is made absolute
-# first, so the result does not depend on the current directory.
+# A relative name is made absolute first, so the result does not depend on the
+# current directory.
 export def PathToUri(path: string): string
   var full = fnamemodify(path, ':p')
   if has('win32')
@@ -49,8 +49,8 @@ export def PathToUri(path: string): string
 					      (m) => PercentEncode(m[0]), 'g')
 enddef
 
-# Turn a "file://" URI back into a file name.  A URI with any other scheme is
-# returned unchanged, there is no file for it to name.
+# A URI with any other scheme is returned unchanged: there is no file for it
+# to name.
 export def UriToPath(uri: string): string
   if uri !~? '^file://'
     return uri
@@ -66,36 +66,31 @@ enddef
 # set so that a composing character is counted on its own, the way UTF-16
 # does.  Both directions round down to the start of a character.
 
-# Vim position (1-based line, 1-based byte column) to an LSP Position.
 export def PosToLsp(bufnr: number, lnum: number, col: number): dict<number>
   var line = getbufline(bufnr, lnum)->get(0, '')
   var idx = utf16idx(line, col - 1, 1)
   return {line: lnum - 1, character: idx < 0 ? 0 : idx}
 enddef
 
-# The byte column in "line" that an LSP character offset points at.  Takes the
-# line itself rather than a buffer, so it also works for a file that is not
-# open.  A character past the end of the line lands after its last byte.
+# Takes the line itself rather than a buffer, so it also works for a file that
+# is not open.
 export def ColFromLsp(line: string, character: number): number
   var idx = byteidxcomp(line, character, true)
   return (idx < 0 ? line->strlen() : idx) + 1
 enddef
 
-# LSP Position to a Vim position, returned as [lnum, col].
 export def PosFromLsp(bufnr: number, pos: dict<number>): list<number>
   var lnum = pos->get('line', 0) + 1
   var line = getbufline(bufnr, lnum)->get(0, '')
   return [lnum, ColFromLsp(line, pos->get('character', 0))]
 enddef
 
-# The buffer position an LSP request is made for.
 export def CursorPosToLsp(): dict<number>
   return PosToLsp(bufnr('%'), line('.'), col('.'))
 enddef
 
-# The lines of a file.  A loaded buffer wins over what is on disk so that
-# unsaved changes count; bufnr() would take the path as a pattern, hence the
-# walk over the buffer list.
+# A loaded buffer wins over what is on disk so that unsaved changes count;
+# bufnr() would take the path as a pattern, hence the walk.
 export def FileLines(path: string): list<string>
   for info in getbufinfo({bufloaded: 1})
     if info.name ==# path
@@ -105,8 +100,7 @@ export def FileLines(path: string): list<string>
   return filereadable(path) ? readfile(path) : []
 enddef
 
-# Walk up from "path" until a directory holding one of "patterns" is found.
-# Falls back to the directory of "path" so a server always gets a root.
+# Falls back to the directory of "path", so a server always gets a root.
 export def FindRoot(path: string, patterns: list<string>): string
   var dir = fnamemodify(path, ':p:h')
   for pattern in patterns

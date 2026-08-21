@@ -25,7 +25,6 @@ const SIGN_GROUP = 'lsp'
 const PROP_TYPES = ['LspDiagErrorText', 'LspDiagWarningText',
 		    'LspDiagInfoText', 'LspDiagHintText']
 
-# What each buffer was last told about, keyed by buffer number as a string.
 var diagnostics: dict<list<dict<any>>> = {}
 
 var defined = false
@@ -72,8 +71,7 @@ def Erase(bufnr: number)
   prop_remove({types: PROP_TYPES, bufnr: bufnr, all: true})
 enddef
 
-# Draw the signs and the highlights for what the buffer currently holds.  The
-# buffer has to be loaded: an unloaded one has no lines to put them on.
+# The buffer has to be loaded: an unloaded one has no lines to draw on.
 def Draw(bufnr: number)
   Erase(bufnr)
   var items = diagnostics->get(string(bufnr), [])
@@ -98,8 +96,8 @@ def Draw(bufnr: number)
       prop_add(lnum, col, {end_lnum: end_lnum, end_col: end_col,
 			   bufnr: bufnr, type: kind.prop})
     catch /^Vim\%((\a\+)\)\=:E96[456]:/
-      # The buffer moved on since the server looked at it.  The next round of
-      # diagnostics will line up again, so this one is dropped.
+      # The buffer moved on since the server looked at it; the next round
+      # will line up again.
     endtry
   endfor
   sign_placelist(signs)
@@ -129,8 +127,8 @@ export def ForLine(bufnr: number, lnum: number): list<dict<any>>
 		    ->filter((_, item) => StartLine(bufnr, item) == lnum)
 enddef
 
-# The reports that touch lines "first" to "last".  A code action request
-# carries these, so the server knows which of them it is asked to act on.
+# A code action request carries these, so the server knows which reports it is
+# being asked to act on.
 export def ForRange(bufnr: number, first: number, last: number): list<dict<any>>
   return diagnostics->get(string(bufnr), [])
 		    ->copy()
@@ -169,9 +167,8 @@ export def EchoAtCursor()
   echo Truncate(text, v:echospace)
 enddef
 
-# A report may point at other places that explain it, such as where a name
-# was declared before.  Those follow their report in the list, indented, and
-# can be in another file.
+# A report may point at other places that explain it, such as where a name was
+# declared before.  Those follow it in the list, indented.
 def RelatedEntries(item: dict<any>): list<dict<any>>
   var out: list<dict<any>> = []
   for related in item->get('relatedInformation', [])
@@ -196,7 +193,6 @@ def RelatedEntries(item: dict<any>): list<dict<any>>
   return out
 enddef
 
-# Put what is known about a buffer into its location list.
 export def ToLocList(bufnr: number)
   var items = diagnostics->get(string(bufnr), [])
   if items->empty()

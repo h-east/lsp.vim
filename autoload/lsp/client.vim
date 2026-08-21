@@ -15,16 +15,15 @@ import autoload './util.vim'
 # found" error, which servers are required to cope with.
 const METHOD_NOT_FOUND = -32601
 
-# Called with (client, method, params) for every notification from a server.
-# Set by lsp.vim, which owns what happens with them.
+# Set by lsp.vim, which owns what happens with a notification.
 var NotifyHandler: func(dict<any>, string, any)
 
 export def SetNotifyHandler(Handler: func(dict<any>, string, any))
   NotifyHandler = Handler
 enddef
 
-# Answers a request the server made.  Returns whether it dealt with it; what
-# it did not deal with is turned down here.
+# Returns whether it dealt with the request; what it did not is turned down
+# here.
 var RequestHandler: func(dict<any>, string, any, func(any)): bool
 
 export def SetRequestHandler(
@@ -51,10 +50,9 @@ def ClientCapabilities(): dict<any>
 	  # saying so a server is free to send snippets.
 	  snippetSupport: false,
 	  documentationFormat: ['plaintext', 'markdown'],
-	  # Not asking for labelDetailsSupport on purpose: a server that has
-	  # it puts the signature in "labelDetails" and leaves a bare name in
-	  # "label", while the popup menu is better off with the whole thing
-	  # in one string.
+	  # Not asking for labelDetailsSupport on purpose: a server that has it
+	  # leaves a bare name in "label", while the menu reads better with the
+	  # signature in there too.
 	},
       },
       hover: {
@@ -66,9 +64,8 @@ def ClientCapabilities(): dict<any>
 	signatureInformation: {
 	  documentationFormat: ['plaintext', 'markdown'],
 	  activeParameterSupport: true,
-	  # Ask for the parameter positions as offsets into the signature
-	  # rather than as text to search for, so the active one can be
-	  # highlighted without guessing which occurrence is meant.
+	  # Offsets into the signature rather than text to search for, so the
+	  # active parameter is found without guessing which occurrence is meant.
 	  parameterInformation: {labelOffsetSupport: true},
 	},
       },
@@ -103,16 +100,14 @@ def ClientCapabilities(): dict<any>
       },
       documentSymbol: {
 	dynamicRegistration: false,
-	# Asking for the tree, since where a symbol sits in it is worth
-	# showing; the flat list a server may send instead is read as well.
+	# The flat list a server may send instead is read as well.
 	hierarchicalDocumentSymbolSupport: true,
       },
       codeAction: {
 	dynamicRegistration: false,
-	# Without this a server answers with Commands, which it has to be
-	# asked to run; a CodeAction carries the edit itself.  The empty
-	# string in the set is what the protocol asks for so that a kind
-	# this client has never heard of still comes through.
+	# Without this a server answers with Commands, which it has to be asked
+	# to run; a CodeAction carries the edit itself.  The empty string is
+	# what lets a kind this client never heard of come through.
 	codeActionLiteralSupport: {
 	  codeActionKind: {
 	    valueSet: ['', 'quickfix', 'refactor', 'refactor.extract',
@@ -132,9 +127,7 @@ def ClientCapabilities(): dict<any>
       applyEdit: true,
     },
     window: {
-      # A server only reports what it is busy with when it is told someone is
-      # listening.  Indexing a large project takes long enough to be worth
-      # saying so.
+      # A server only reports what it is busy with when told someone listens.
       workDoneProgress: true,
     },
   }
@@ -150,8 +143,7 @@ def OnExit(client: dict<any>, job: job, status: number)
 enddef
 
 def OnStderr(client: dict<any>, ch: channel, msg: string)
-  # Servers use stderr for their own logging.  Keep it out of the way, it is
-  # available with :LspLog when the user asks for it.
+  # Kept out of the way; :LspLog is where it can be looked at.
   add(client.stderr, msg)
   if len(client.stderr) > 200
     remove(client.stderr, 0, len(client.stderr) - 201)
@@ -166,15 +158,14 @@ def RespondError(client: dict<any>, id: any, code: number, message: string)
   ch_sendexpr(client.channel, {id: id, error: {code: code, message: message}})
 enddef
 
-# A message from the server that is not a reply to one of our requests: either
-# a notification or a request that wants an answer.
+# A message that is not a reply to one of our requests: a notification, or a
+# request that wants an answer.
 def OnMessage(client: dict<any>, ch: channel, msg: dict<any>)
   var method = msg->get('method', '')
   if method->empty()
     return
   endif
   if msg->has_key('id')
-    # A request.  Only the ones a client must answer are handled.
     if method ==# 'client/registerCapability'
 	  || method ==# 'client/unregisterCapability'
       Respond(client, msg.id, v:null)
@@ -193,7 +184,6 @@ def OnMessage(client: dict<any>, ch: channel, msg: dict<any>)
   endif
 enddef
 
-# Send a notification.  Nothing comes back, so nothing is waited for.
 export def Notify(client: dict<any>, method: string, params: any = {})
   if !client.running
     return
@@ -201,9 +191,8 @@ export def Notify(client: dict<any>, method: string, params: any = {})
   ch_sendexpr(client.channel, {method: method, params: params})
 enddef
 
-# Send a request.  "Cb" is called with the "result" of the reply; an error
-# reply is reported and Cb is not called.  Returns the request id, which can
-# be passed to Cancel().
+# "Cb" is called with the "result" of the reply; an error is reported and Cb
+# is not called.  Returns the request id, for Cancel().
 export def Request(client: dict<any>, method: string, params: any,
 						  Cb: func(any)): number
   if !client.running
@@ -213,9 +202,8 @@ export def Request(client: dict<any>, method: string, params: any,
       {callback: (ch: channel, reply: dict<any>) => {
 	if reply->has_key('error')
 	  var err = reply.error
-	  # A server may offer something and still turn down a part of it, as
-	  # one that answers about incoming calls but not outgoing ones does.
-	  # "method not found" says so in words that read like a fault here.
+	  # A server may offer something and still turn down a part of it.
+	  # "method not found" reads like a fault at this end.
 	  if err->get('code', 0) == METHOD_NOT_FOUND
 	    util.WarningMsg(printf('the server does not answer %s', method))
 	  else
@@ -228,9 +216,8 @@ export def Request(client: dict<any>, method: string, params: any,
   return status->get('id', -1)
 enddef
 
-# Send a request and wait for the reply.  Vim's completion functions have to
-# answer on the spot, which is what this is for; everything else should use
-# Request().  Returns v:null on an error or when "timeout" milliseconds pass.
+# For Vim's completion functions, which have to answer on the spot; everything
+# else should use Request().  Returns v:null on an error or a timeout.
 export def RequestSync(client: dict<any>, method: string, params: any,
 						   timeout: number): any
   if !client.running
@@ -239,8 +226,8 @@ export def RequestSync(client: dict<any>, method: string, params: any,
   var reply = ch_evalexpr(client.channel, {method: method, params: params},
 							{timeout: timeout})
   if type(reply) != v:t_dict || reply->empty()
-    # An empty reply is what running out of time looks like.  Say so: without
-    # it the caller returns nothing and the user is left guessing.
+    # An empty reply is what running out of time looks like; without saying
+    # so the user is left guessing.
     util.WarningMsg(printf('%s: no answer within %dms', method, timeout))
     return v:null
   endif
@@ -262,9 +249,8 @@ export def Cancel(client: dict<any>, id: number)
   endif
 enddef
 
-# Tell the server who we are and what we support.  The document
-# synchronisation only starts once the reply is in, so "OnReady" is called
-# from there.
+# Document synchronisation only starts once the reply is in, so "OnReady" is
+# called from there.
 def Initialize(client: dict<any>, OnReady: func(dict<any>))
   var params = {
     processId: getpid(),
@@ -286,7 +272,6 @@ def Initialize(client: dict<any>, OnReady: func(dict<any>))
   })
 enddef
 
-# Start a server described by "config" with "root" as its workspace root.
 # Returns an empty Dict when the server could not be started.
 export def Start(config: dict<any>, root: string,
 			      OnReady: func(dict<any>)): dict<any>
@@ -331,9 +316,8 @@ export def Start(config: dict<any>, root: string,
   return client
 enddef
 
-# Shut the server down the way the protocol asks for: a "shutdown" request,
-# then an "exit" notification.  The job is stopped as a fallback for a server
-# that does not leave on its own.
+# What the protocol asks for: "shutdown", then "exit".  The job is stopped as
+# a fallback for a server that does not leave on its own.
 export def Stop(client: dict<any>)
   if !client->get('running', false)
     return

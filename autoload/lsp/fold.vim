@@ -4,8 +4,8 @@ vim9script
 # Maintainer: Hirohito Higashi <h.east.727@gmail.com>
 # Latest Change: 2026 Aug 22
 
-# The level of every line, by buffer.  'foldexpr' is asked about one line at a
-# time and often, so the answer is worked out once and looked up after that.
+# 'foldexpr' is asked about one line at a time and often, so the level of
+# every line is worked out once and looked up after that.
 var levels: dict<list<number>> = {}
 
 export def Clear(bufnr: number)
@@ -15,8 +15,7 @@ export def Clear(bufnr: number)
   endif
 enddef
 
-# A range covers whole lines, "startLine" through "endLine".  A line's level
-# is how many ranges are wrapped around it, which is what 'foldexpr' wants.
+# A line's level is how many ranges are wrapped around it.
 export def Update(bufnr: number, ranges: list<any>)
   var count = getbufinfo(bufnr)->get(0, {})->get('linecount', 0)
   if count <= 0
@@ -40,8 +39,7 @@ export def Update(bufnr: number, ranges: list<any>)
   levels[string(bufnr)] = level
 enddef
 
-# 'foldexpr' for a buffer whose folds the server works out.  A line nothing is
-# known about folds with whatever is around it, which is what "=" says.
+# 'foldexpr' for a buffer whose folds the server works out.
 export def Expr(lnum: number): string
   var level = levels->get(string(bufnr('%')), [])
   if lnum < 1 || lnum > len(level)
