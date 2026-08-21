@@ -93,6 +93,18 @@ export def CursorPosToLsp(): dict<number>
   return PosToLsp(bufnr('%'), line('.'), col('.'))
 enddef
 
+# The lines of a file.  A loaded buffer wins over what is on disk so that
+# unsaved changes count; bufnr() would take the path as a pattern, hence the
+# walk over the buffer list.
+export def FileLines(path: string): list<string>
+  for info in getbufinfo({bufloaded: 1})
+    if info.name ==# path
+      return getbufline(info.bufnr, 1, '$')
+    endif
+  endfor
+  return filereadable(path) ? readfile(path) : []
+enddef
+
 # Walk up from "path" until a directory holding one of "patterns" is found.
 # Falls back to the directory of "path" so a server always gets a root.
 export def FindRoot(path: string, patterns: list<string>): string

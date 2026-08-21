@@ -172,6 +172,46 @@ def OnReady(cl: dict<any>)
   endif
 enddef
 
+# The "type" of a window message, from most to least serious.
+const MSG_ERROR = 1
+const MSG_WARNING = 2
+
+# What a server says it is busy with, kept by the token it named, since only
+# the first message of a run carries the title.
+var progress_title: dict<string> = {}
+
+def ShowProgress(params: any)
+  if type(params) != v:t_dict
+    return
+  endif
+  var token = string(params->get('token', ''))
+  var value = params->get('value', {})
+  if type(value) != v:t_dict
+    return
+  endif
+  var kind = value->get('kind', '')
+  if kind ==# 'end'
+    if progress_title->has_key(token)
+      remove(progress_title, token)
+    endif
+    echo ''
+    return
+  endif
+  if kind ==# 'begin'
+    progress_title[token] = value->get('title', '')
+  endif
+  var parts = [progress_title->get(token, '')]
+  var message = value->get('message', '')
+  if !message->empty()
+    parts->add(message)
+  endif
+  var percentage = value->get('percentage', -1)
+  if percentage >= 0
+    parts->add(percentage .. '%')
+  endif
+  echo 'lsp: ' .. parts->filter((_, s) => !s->empty())->join(' ')
+enddef
+
 def OnNotify(cl: dict<any>, method: string, params: any)
   if method ==# 'textDocument/publishDiagnostics'
     var uri = params->get('uri', '')
@@ -182,9 +222,27 @@ def OnNotify(cl: dict<any>, method: string, params: any)
     if bufnr > 0
       diag.Update(bufnr, cl.diagnostics[uri])
     endif
+  elseif method ==# 'window/showMessage'
+    # This one is meant for the user to read now.
+    var type = params->get('type', 0)
+    var message = params->get('message', '')->substitute('\n', ' ', 'g')
+    if type == MSG_ERROR
+      util.ErrorMsg(message)
+    elseif type == MSG_WARNING
+      util.WarningMsg(message)
+    else
+      echomsg 'lsp: ' .. message
+    endif
+  elseif method ==# 'window/logMessage'
+    # This one is for the record, and there can be a lot of it; :LspLog is
+    # where someone goes looking.
+    cl.log->add(params->get('message', ''))
+    if len(cl.log) > 200
+      remove(cl.log, 0, len(cl.log) - 201)
+    endif
+  elseif method ==# '$/progress'
+    ShowProgress(params)
   endif
-  # "window/logMessage" and "$/progress" are dropped on purpose, there is no
-  # place to show them yet.
 enddef
 
 # Watching every buffer for changes would pull this script in even when no
@@ -538,18 +596,6 @@ def FirstLocation(result: any): dict<any>
   return {uri: LocationUri(item), range: LocationRange(item)}
 enddef
 
-# The lines of a file.  A loaded buffer wins over what is on disk so that
-# unsaved changes count; bufnr() would take the path as a pattern, hence the
-# walk over the buffer list.
-def FileLines(path: string): list<string>
-  for info in getbufinfo({bufloaded: 1})
-    if info.name ==# path
-      return getbufline(info.bufnr, 1, '$')
-    endif
-  endfor
-  return filereadable(path) ? readfile(path) : []
-enddef
-
 # Locations turned into |setqflist()| items.  Each file is read once however
 # many locations fall in it, since the line is needed to place the column.
 # A "text" of its own overrides the line, for a caller that has something
@@ -568,7 +614,7 @@ def LocationItems(result: any): list<dict<any>>
     endif
     var path = util.UriToPath(uri)
     if !lines->has_key(path)
-      lines[path] = FileLines(path)
+      lines[path] = util.FileLines(path)
     endif
     var start = LocationRange(loc)->get('start', {})
     var lnum = start->get('line', 0) + 1
@@ -1083,6 +1129,24 @@ enddef
 def OnCompleteDone()
   MoveSignature()
   resolve_seq += 1
+
+  # An item may come with edits elsewhere in the file, an include to add for
+  # the name that was just inserted being the usual one.  Omni completion puts
+  # in the word and knows nothing of the rest, so it is applied here.
+  var item = v:completed_item->get('user_data', {})
+  if type(item) != v:t_dict
+    return
+  endif
+  var edits = item->get('additionalTextEdits', [])
+  if type(edits) != v:t_list || edits->empty()
+    return
+  endif
+  # The edits are for the buffer as the server last saw it, and the word that
+  # was just inserted is not in that yet.  They never overlap what completion
+  # touched, so applying them as they are is safe; doing so after the event
+  # keeps this out of whatever the completion is still doing.
+  var bufnr = bufnr('%')
+  timer_start(0, (_) => ApplyTextEdits(bufnr, edits))
 enddef
 
 export def Diagnostics()
@@ -1102,12 +1166,22 @@ export def Log()
     util.WarningMsg('no server for this buffer')
     return
   endif
-  if cl.stderr->empty()
-    echo 'lsp: the server wrote nothing to stderr'
+  # A server logs in two places: what it writes to stderr on its own, and what
+  # it sends as "window/logMessage".  Both belong here, told apart by a
+  # heading rather than mixed into one stream.
+  var lines: list<string> = []
+  if !cl.log->empty()
+    lines += ['--- window/logMessage ---'] + cl.log
+  endif
+  if !cl.stderr->empty()
+    lines += (lines->empty() ? [] : ['']) + ['--- stderr ---'] + cl.stderr
+  endif
+  if lines->empty()
+    echo 'lsp: the server has logged nothing'
     return
   endif
   new
-  setline(1, cl.stderr)
+  setline(1, lines)
   setlocal buftype=nofile bufhidden=wipe noswapfile nomodified
 enddef
 

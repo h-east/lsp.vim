@@ -54,6 +54,8 @@ The server is started once per workspace root.
   symbol search, the last two into the quickfix list
 - Rename across files, whole-buffer formatting, and code actions from a menu
 - Incremental document synchronisation with `listener_add()`
+- What the server reports about itself: messages, logs, and what it is busy
+  with
 
 ## Commands
 
@@ -93,14 +95,28 @@ Requests:
 
 Other:
 
-- [ ] No tests.  Running them without a real language server needs a fake one
-      that speaks just enough of the protocol.
-- [ ] Only the text of a `textEdit` in a completion item is applied.  Omni
-      completion replaces the word before the cursor, so an item that wants to
-      change more than that is not honoured in full.
-- [ ] `window/logMessage` and `$/progress` are received and dropped.  There is
-      no place to show them yet.
-- [ ] Diagnostics ignore `relatedInformation`.
+- [x] `additionalTextEdits` in a completion item, such as an include to add.
+- [x] `window/logMessage`, `window/showMessage` and `$/progress`.
+- [x] Diagnostics carry `relatedInformation`.
+- [ ] A `textEdit` whose range reaches past the word before the cursor is
+      still only honoured for its text.  Omni completion cannot replace more
+      than that word.
+
+## Tests
+
+```
+cd test && ./run
+```
+
+`$VIMPROG` names the Vim to test, `vim` by default, and `$TEST_FILTER` narrows
+a run down to the tests whose name matches it.  The results go to
+`test/messages`, and the exit status says whether anything failed.
+
+They run against `test/fakeserver.py`, which answers from a scenario file
+rather than being a real language server: the scenario says what capabilities
+to announce, what to send unprompted, and what to reply to each request with.
+It records everything the client sent, so a test can check that as well as
+what the client did with the answers.
 
 ## License
 

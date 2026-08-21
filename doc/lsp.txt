@@ -193,8 +193,15 @@ g:lsp_signature_help
 
 								*:LspLog*
 :LspLog		Open a scratch buffer holding what the server for the current
-		buffer wrote to its standard error.  Servers use it for their
-		own logging, which is where one explains why it is unhappy.
+		buffer has logged, which is where one explains why it is
+		unhappy.  A server logs in two places and both are shown,
+		under a heading each: what it sent as "window/logMessage" and
+		what it wrote to its standard error.
+
+		What a server sends as "window/showMessage" is not kept here;
+		that one is meant to be read at once and goes to the message
+		line as it arrives.  So does what a server says it is busy
+		with, such as indexing a project.
 
 ==============================================================================
 5. Completion						*lsp-completion*
@@ -229,6 +236,12 @@ Adding "popuphidden" keeps the popup out of sight until it has something to
 show, see |complete-popuphidden|.  Only the item that is selected is resolved,
 and only when its documentation is missing.
 
+An item may ask for changes elsewhere in the file as well as for the word
+itself, an include to add for the name being completed being the usual case.
+Omni completion puts in the word and knows nothing of the rest, so the rest is
+applied once the item is taken.  A single |undo| does not take both back: the
+word and the changes around it are separate steps.
+
 ==============================================================================
 6. Diagnostics						*lsp-diagnostics*
 
@@ -244,6 +257,10 @@ through them with |:lnext| and |:lprevious|.
 
 Every report replaces what the server said before, so the signs and the
 highlights follow the file as it is edited.
+
+A report may point at other places that explain it, such as where a name was
+declared the first time.  Those follow their report in the location list,
+indented and without a type of their own, and can be in another file.
 
 These highlight groups are used.  Each is linked to an existing group and can
 be given a look of its own with |:highlight|:

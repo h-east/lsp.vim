@@ -169,6 +169,33 @@ export def EchoAtCursor()
   echo Truncate(text, v:echospace)
 enddef
 
+# A report may point at other places that explain it, such as where a name
+# was declared before.  Those follow their report in the list, indented, and
+# can be in another file.
+def RelatedEntries(item: dict<any>): list<dict<any>>
+  var out: list<dict<any>> = []
+  for related in item->get('relatedInformation', [])
+    if type(related) != v:t_dict
+      continue
+    endif
+    var loc = related->get('location', {})
+    var path = util.UriToPath(loc->get('uri', ''))
+    if path->empty()
+      continue
+    endif
+    var start = loc->get('range', {})->get('start', {})
+    var lnum = start->get('line', 0) + 1
+    var line = util.FileLines(path)->get(lnum - 1, '')
+    out->add({
+      filename: path,
+      lnum: lnum,
+      col: util.ColFromLsp(line, start->get('character', 0)),
+      text: '  ' .. related->get('message', '')->substitute('\n', ' ', 'g'),
+    })
+  endfor
+  return out
+enddef
+
 # Put what is known about a buffer into its location list.
 export def ToLocList(bufnr: number)
   var items = diagnostics->get(string(bufnr), [])
@@ -190,6 +217,7 @@ export def ToLocList(bufnr: number)
       text: (source->empty() ? '' : '[' .. source .. '] ')
 	    .. item->get('message', '')->substitute('\n', ' ', 'g'),
     })
+    entries += RelatedEntries(item)
   endfor
   setloclist(0, [], ' ', {title: 'LSP diagnostics', items: entries})
   lopen

@@ -1,0 +1,8 @@
+#!/bin/sh
+# Run the tests.  $VIMPROG names the Vim to test, "vim" by default.
+#
+#   ./run
+#   VIMPROG=../../../samba/github/vim/src/vim ./run
+set -e
+here=$(cd "$(dirname "$0")" && pwd)
+"${VIMPROG:-vim}" -u NONE -N -n --not-a-term -S "$here/runtest.vim"

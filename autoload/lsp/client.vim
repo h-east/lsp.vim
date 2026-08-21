@@ -82,12 +82,18 @@ def ClientCapabilities(): dict<any>
 	},
       },
       publishDiagnostics: {
-	relatedInformation: false,
+	relatedInformation: true,
       },
     },
     workspace: {
       workspaceFolders: false,
       applyEdit: false,
+    },
+    window: {
+      # A server only reports what it is busy with when it is told someone is
+      # listening.  Indexing a large project takes long enough to be worth
+      # saying so.
+      workDoneProgress: true,
     },
   }
 enddef
@@ -243,6 +249,7 @@ export def Start(config: dict<any>, root: string,
     initialized: false,
     capabilities: {},
     stderr: [],
+    log: [],
     documents: {},
     diagnostics: {},
   }
