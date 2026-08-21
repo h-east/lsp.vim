@@ -467,3 +467,30 @@ def g:Test_inlay_hints_can_be_turned_on_and_off()
   assert_equal([], prop_list(1), 'the hints should be taken away')
   assert_false(g:lsp_inlay_hint)
 enddef
+
+def g:Test_folds_come_from_the_server()
+  defer execute('unlet! g:lsp_folding')
+  const RANGES = [
+    {startLine: 0, endLine: 4},
+    {startLine: 1, endLine: 2},
+  ]
+  assert_true(t.StartServer({
+    capabilities: Offering({foldingRangeProvider: true}),
+    replies: {'textDocument/foldingRange': RANGES},
+  }, ['one', 'two', 'three', 'four', 'five']))
+
+  # Off to start with: the buffer keeps whatever folding it had.
+  assert_equal('manual', &foldmethod)
+
+  LspFolding
+  assert_true(t.WaitFor(() => &foldmethod ==# 'expr'),
+	      'folding should be handed over')
+  assert_equal('lsp#FoldExpr(v:lnum)', &foldexpr)
+  # The inner range sits inside the outer one, so those lines are deeper.
+  assert_equal(['1', '2', '2', '1', '1'],
+	       range(1, 5)->mapnew((_, l) => lsp#FoldExpr(l)))
+
+  LspFolding
+  assert_equal('manual', &foldmethod, 'what was there should come back')
+  assert_false(g:lsp_folding)
+enddef

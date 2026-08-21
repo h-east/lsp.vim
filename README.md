@@ -52,6 +52,7 @@ The server is started once per workspace root.
 - Signature help while a call is being typed
 - The other places the symbol under the cursor is used, marked in the buffer
 - Inlay hints, the names and types a server fills in, off until asked for
+- Folds worked out by the server, off until asked for
 - Hover, and jumps to a definition, declaration, type or implementation
 - Every mention of a symbol, the symbols in a file, and a workspace-wide
   symbol search
@@ -66,24 +67,25 @@ The server is started once per workspace root.
 
 | Category | Command | Description |
 | --- | --- | --- |
-| Server | `:LspStart` | Connect the current buffer to the server for its filetype |
+| Server | `:LspStart` | Connect this buffer to the server for its filetype |
 |  | `:LspStop` | Shut down every running server |
 |  | `:LspStatus` | List the running servers |
 |  | `:LspLog` | Open what the server has logged |
-| Asking | `:LspHover` | Show what the server knows about the symbol under the cursor |
-|  | `:LspSignature` | Show what the call the cursor is in takes |
-| Jumping | `:LspDefinition` | Jump to the definition of the symbol under the cursor |
+| Asking | `:LspHover` | What the server knows about the symbol |
+|  | `:LspSignature` | What the call the cursor is in takes |
+| Jumping | `:LspDefinition` | Jump to the definition of the symbol |
 |  | `:LspDeclaration` | Jump to the declaration, a prototype in C |
 |  | `:LspTypeDefinition` | Jump to the definition of the symbol's type |
 |  | `:LspImplementation` | Jump to what implements the symbol |
-| Lists | `:LspReferences` | Put every mention of the symbol into the quickfix list |
-|  | `:LspOutline` | Put the symbols in this buffer into the location list |
-|  | `:LspSymbol {query}` | Search the workspace for symbols matching a query |
-|  | `:LspDiag` | Put the diagnostics into the location list |
-| Changing | `:LspCodeAction` | Offer what the server can do about the current line |
-|  | `:LspRename [{name}]` | Rename the symbol everywhere the server knows it |
-|  | `:LspFormat` | Format the current buffer |
+| Lists | `:LspReferences` | Every mention, into the quickfix list |
+|  | `:LspOutline` | The symbols in this buffer, into the location list |
+|  | `:LspSymbol {query}` | Search the workspace for symbols |
+|  | `:LspDiag` | The diagnostics, into the location list |
+| Changing | `:LspCodeAction` | Offer what the server can do here |
+|  | `:LspRename [{name}]` | Rename the symbol everywhere |
+|  | `:LspFormat` | Format this buffer |
 | Display | `:LspInlayHint` | Turn the inlay hints on or off |
+|  | `:LspFolding` | Turn the folds from the server on or off |
 
 See `:help lsp.txt` for the options and the details.
 

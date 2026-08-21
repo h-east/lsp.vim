@@ -94,6 +94,10 @@ def ClientCapabilities(): dict<any>
       inlayHint: {
 	dynamicRegistration: false,
       },
+      foldingRange: {
+	dynamicRegistration: false,
+	lineFoldingOnly: true,
+      },
       documentSymbol: {
 	dynamicRegistration: false,
 	# Asking for the tree, since where a symbol sits in it is worth

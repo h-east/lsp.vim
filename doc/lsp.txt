@@ -15,7 +15,8 @@ CONTENTS							*lsp-contents*
 7. Signature help	|lsp-signature|
 8. Symbol highlight	|lsp-highlight|
 9. Inlay hints		|lsp-inlay-hint|
-10. Limitations		|lsp-limitations|
+10. Folding		|lsp-folding|
+11. Limitations		|lsp-limitations|
 
 ==============================================================================
 1. Introduction						*lsp-introduction*
@@ -109,6 +110,15 @@ g:lsp_completion_timeout
 		above what a warmed up server answers in.
 
 		Default: 2000
+
+							*g:lsp_folding*
+g:lsp_folding
+		When true, the folds are the ones the server works out from
+		the syntax.  Off by default: this takes over 'foldmethod' and
+		'foldexpr', which are likely set to something already.  See
+		|lsp-folding|.
+
+		Default: |v:false|
 
 							*g:lsp_inlay_hint*
 g:lsp_inlay_hint
@@ -239,6 +249,12 @@ Changing the text ~
 		on in the meantime.  A single |undo| takes all of it back.
 
 What is shown ~
+							*:LspFolding*
+:LspFolding	Turn the folds from the server on when they are off and off
+		when they are on, and say which it now is.  Turning them off
+		puts 'foldmethod' and 'foldexpr' back the way they were, in
+		every buffer.  See |lsp-folding|.
+
 							*:LspInlayHint*
 :LspInlayHint	Turn the inlay hints on when they are off and off when they
 		are on, and say which it now is.  Turning them off takes
@@ -383,7 +399,27 @@ than the file, and free to be given a look of their own with |:highlight|:
 	LspInlayParameter	the name an argument is passed as
 
 ==============================================================================
-10. Limitations						*lsp-limitations*
+10. Folding						*lsp-folding*
+
+A server knows where a function or a comment begins and ends, which is more
+than 'foldmethod' set to "indent" or "syntax" can work out.  Set
+|g:lsp_folding| to |v:true| to fold by what it says, or turn it on for a
+while with |:LspFolding|.
+
+Doing so sets 'foldmethod' to "expr" and 'foldexpr' to a function of this
+plugin, keeping what was there to put back when the folds are turned off
+again or the buffer is detached.  The ranges are asked for afresh whenever
+the buffer changes.
+
+Only whole lines are folded.  A server able to fold part of a line is told
+not to bother.
+
+What is folded is what the server says, which is not always what 'foldmethod'
+set to "syntax" would have done.  A range ends on the line before the closing
+bracket, for one, so that line stays outside the fold.
+
+==============================================================================
+11. Limitations						*lsp-limitations*
 
 A code action is asked for by line, never by a range within one, so a server
 with something to offer about the exact text under the cursor is not given the

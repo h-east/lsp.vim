@@ -6,6 +6,7 @@ vim9script
 
 import autoload './lsp/client.vim' as lspclient
 import autoload './lsp/diag.vim'
+import autoload './lsp/fold.vim'
 import autoload './lsp/hl.vim'
 import autoload './lsp/inlay.vim'
 import autoload './lsp/util.vim'
@@ -96,6 +97,7 @@ def DidOpen(cl: dict<any>, bufnr: number)
   # server to ask.  Without this nothing appears until the cursor moves.
   if bufnr == bufnr('%')
     InlayHints()
+    FoldingRanges()
   endif
 enddef
 
@@ -292,6 +294,7 @@ def HookBuffer()
     autocmd CursorMoved <buffer> hl.Clear(bufnr('%'))
     autocmd CursorHold <buffer> HighlightSymbol()
     autocmd CursorHold,TextChanged,BufEnter <buffer> InlayHints()
+    autocmd TextChanged,BufEnter <buffer> FoldingRanges()
     autocmd TextChangedI,TextChangedP <buffer> OnTextChanged()
     autocmd InsertLeave <buffer> CloseSignature()
   augroup END
@@ -349,6 +352,7 @@ export def Detach(bufnr: number = bufnr('%'))
   diag.Clear(bufnr)
   hl.Clear(bufnr)
   inlay.Clear(bufnr)
+  UnsetFolding(bufnr)
   if bufexists(bufnr)
     var saved = getbufvar(bufnr, 'lsp_omnifunc_save', v:null)
     if type(saved) == v:t_string
@@ -987,6 +991,73 @@ def InlayHints()
     endif
     inlay.Update(bufnr, type(result) == v:t_list ? result : [])
   })
+enddef
+
+# Folding is 'foldmethod' and 'foldexpr', which the user may well have set to
+# something they like, so what was there is put back on the way out.
+def SetFolding(bufnr: number)
+  if !getbufvar(bufnr, 'lsp_fold_save', {})->empty()
+    return
+  endif
+  setbufvar(bufnr, 'lsp_fold_save', {
+    foldmethod: getbufvar(bufnr, '&foldmethod'),
+    foldexpr: getbufvar(bufnr, '&foldexpr'),
+  })
+  setbufvar(bufnr, '&foldexpr', 'lsp#FoldExpr(v:lnum)')
+  setbufvar(bufnr, '&foldmethod', 'expr')
+enddef
+
+def UnsetFolding(bufnr: number)
+  fold.Clear(bufnr)
+  if !bufexists(bufnr)
+    return
+  endif
+  var saved = getbufvar(bufnr, 'lsp_fold_save', {})
+  if type(saved) != v:t_dict || saved->empty()
+    return
+  endif
+  setbufvar(bufnr, '&foldexpr', saved.foldexpr)
+  setbufvar(bufnr, '&foldmethod', saved.foldmethod)
+  setbufvar(bufnr, 'lsp_fold_save', {})
+enddef
+
+def FoldingRanges()
+  if !get(g:, 'lsp_folding', false)
+    return
+  endif
+  var cl = BufClient(bufnr('%'))
+  if cl->empty() || !cl.initialized
+	|| !cl.capabilities->has_key('foldingRangeProvider')
+    return
+  endif
+  var bufnr = bufnr('%')
+  lspclient.Request(cl, 'textDocument/foldingRange',
+		    {textDocument: {uri: util.PathToUri(bufname(bufnr))}},
+		    (result: any) => {
+    fold.Update(bufnr, type(result) == v:t_list ? result : [])
+    SetFolding(bufnr)
+    # The levels changed under 'foldexpr', which Vim does not know to ask
+    # about again on its own.
+    if bufnr == bufnr('%')
+      setbufvar(bufnr, '&foldmethod', 'expr')
+    endif
+  })
+enddef
+
+export def ToggleFolding()
+  g:lsp_folding = !get(g:, 'lsp_folding', false)
+  if g:lsp_folding
+    FoldingRanges()
+  else
+    for info in getbufinfo({bufloaded: 1})
+      UnsetFolding(info.bufnr)
+    endfor
+  endif
+  echo 'lsp: folding ' .. (g:lsp_folding ? 'on' : 'off')
+enddef
+
+export def FoldExpr(lnum: number): string
+  return fold.Expr(lnum)
 enddef
 
 export def ToggleInlayHints()
