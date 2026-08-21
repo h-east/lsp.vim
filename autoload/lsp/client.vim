@@ -213,7 +213,14 @@ export def Request(client: dict<any>, method: string, params: any,
       {callback: (ch: channel, reply: dict<any>) => {
 	if reply->has_key('error')
 	  var err = reply.error
-	  util.ErrorMsg(printf('%s: %s', method, err->get('message', '')))
+	  # A server may offer something and still turn down a part of it, as
+	  # one that answers about incoming calls but not outgoing ones does.
+	  # "method not found" says so in words that read like a fault here.
+	  if err->get('code', 0) == METHOD_NOT_FOUND
+	    util.WarningMsg(printf('the server does not answer %s', method))
+	  else
+	    util.ErrorMsg(printf('%s: %s', method, err->get('message', '')))
+	  endif
 	  return
 	endif
 	Cb(reply->get('result', v:null))
@@ -238,8 +245,12 @@ export def RequestSync(client: dict<any>, method: string, params: any,
     return v:null
   endif
   if reply->has_key('error')
-    util.ErrorMsg(printf('%s: %s', method,
-				 reply.error->get('message', '')))
+    if reply.error->get('code', 0) == METHOD_NOT_FOUND
+      util.WarningMsg(printf('the server does not answer %s', method))
+    else
+      util.ErrorMsg(printf('%s: %s', method,
+				   reply.error->get('message', '')))
+    endif
     return v:null
   endif
   return reply->get('result', v:null)

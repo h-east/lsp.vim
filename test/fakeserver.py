@@ -6,6 +6,7 @@ What it does is read from the JSON file named by $LSP_SCENARIO:
     capabilities  what to answer "initialize" with
     notify        messages to send once "initialized" arrives, in order
     replies       result by method name, for requests that arrive later
+    errors        error by method name, for a request to be turned down
     ask           requests of the server's own, by the method that sets
                   them off; this is how a server hands over an edit
 
@@ -77,9 +78,15 @@ def main():
             return
         elif 'id' in msg:
             # Anything else that expects an answer gets what the scenario
-            # holds for it, and null when it holds nothing.
-            send({'jsonrpc': '2.0', 'id': msg['id'],
-                  'result': SCENARIO.get('replies', {}).get(method)})
+            # holds for it, and null when it holds nothing.  A method named
+            # under "errors" is turned down instead, the way a server does
+            # with a part of what it offers that it has not implemented.
+            error = SCENARIO.get('errors', {}).get(method)
+            if error is not None:
+                send({'jsonrpc': '2.0', 'id': msg['id'], 'error': error})
+            else:
+                send({'jsonrpc': '2.0', 'id': msg['id'],
+                      'result': SCENARIO.get('replies', {}).get(method)})
             # A method may also be what sets off a request of the server's
             # own, which is how it hands over an edit it worked out itself.
             for item in SCENARIO.get('ask', {}).get(method, []):

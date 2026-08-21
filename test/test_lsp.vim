@@ -562,3 +562,37 @@ def g:Test_what_this_calls()
   assert_match('Xsrc\.c$', bufname(item.bufnr))
   cclose
 enddef
+
+def g:Test_a_part_the_server_turns_down()
+  # A server can offer something and still turn down a part of it, as clangd
+  # does with outgoing calls.  That should not read like a fault here.
+  const ITEM = {name: 'f', kind: 12, uri: 'file://' .. t.SRC,
+		range: {start: {line: 0, character: 0},
+			end: {line: 0, character: 1}},
+		selectionRange: {start: {line: 0, character: 0},
+				 end: {line: 0, character: 1}}}
+  assert_true(t.StartServer({
+    capabilities: Offering({callHierarchyProvider: true}),
+    replies: {'textDocument/prepareCallHierarchy': [ITEM]},
+    errors: {'callHierarchy/outgoingCalls':
+	     {code: -32601, message: 'method not found'}},
+  }, ['f();']))
+
+  cursor(1, 1)
+  LspOutgoingCalls
+  assert_true(t.WaitFor(() =>
+	      execute('messages') =~# 'does not answer'),
+	      'the turn-down should be reported')
+  assert_match('the server does not answer callHierarchy/outgoingCalls',
+	       execute('messages'))
+enddef
+
+def g:Test_hover_needs_the_server_to_offer_it()
+  assert_true(t.StartServer({capabilities: SYNC}, ['int x;']))
+
+  LspHover
+  sleep 100m
+  assert_true(t.Sent('textDocument/hover')->empty(),
+	      'nothing should be asked of a server that cannot answer')
+  assert_match('does not offer hover', execute('messages'))
+enddef

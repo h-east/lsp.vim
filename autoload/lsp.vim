@@ -427,6 +427,10 @@ export def Hover()
   if cl->empty()
     return
   endif
+  if !cl.capabilities->has_key('hoverProvider')
+    util.WarningMsg('the server does not offer hover')
+    return
+  endif
   lspclient.Request(cl, 'textDocument/hover', CursorParams(),
       (result: any) => {
 	if type(result) != v:t_dict
