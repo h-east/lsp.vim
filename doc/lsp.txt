@@ -77,7 +77,9 @@ g:lsp_servers
 
 		The first entry whose "filetypes" holds the 'filetype' of a
 		buffer is the one used for it, so put a more specific entry
-		before a more general one.
+		before a more general one.  A buffer whose 'filetype' is in
+		none of them is left alone, and nothing of this plugin is
+		even loaded for it.
 
 		Example: >vim
 
