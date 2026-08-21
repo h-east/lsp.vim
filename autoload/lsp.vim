@@ -139,8 +139,10 @@ def ChangeToLsp(change: dict<any>): dict<any>
   }
 enddef
 
-def OnChange(bufnr: number, start: number, endlnum: number, added: number,
-	     changes: list<dict<any>>)
+# What the listener has to say about a change is the list of them; the line
+# numbers alongside it repeat what each item already holds, and the buffer is
+# the one this was added for.  The lambda below drops the rest.
+def OnChange(bufnr: number, changes: list<dict<any>>)
   var cl = BufClient(bufnr)
   if cl->empty() || !cl.initialized
     return
@@ -283,7 +285,10 @@ enddef
 var leaving_hooked = false
 
 def HookBuffer()
-  b:lsp_listener = listener_add(OnChange, bufnr('%'), {text: true})
+  var bufnr = bufnr('%')
+  b:lsp_listener = listener_add((_, _, _, _, changes) =>
+					OnChange(bufnr, changes),
+				bufnr, {text: true})
   augroup lsp_buf
     autocmd! * <buffer>
     autocmd BufUnload <buffer> Detach(expand('<abuf>')->str2nr())
