@@ -137,20 +137,78 @@ g:lsp_signature_help
 ==============================================================================
 4. Commands							*lsp-commands*
 
+The server ~
 								*:LspStart*
 :LspStart	Connect the current buffer to the server for its 'filetype'.
 		This happens on its own when a buffer is opened, the command
 		is for a buffer whose 'filetype' was decided later.
-
 								*:LspStop*
 :LspStop	Shut down every running server.  A buffer is connected again
 		when it is opened again.
-
 								*:LspStatus*
 :LspStatus	List the running servers, whether each one finished starting
 		up, how many buffers it has, and how many diagnostics are
 		known for the current buffer.
+								*:LspLog*
+:LspLog		Open a scratch buffer holding what the server for the current
+		buffer has logged, which is where one explains why it is
+		unhappy.  A server logs in two places and both are shown,
+		under a heading each: what it sent as "window/logMessage" and
+		what it wrote to its standard error.
 
+		What a server sends as "window/showMessage" is not kept here;
+		that one is meant to be read at once and goes to the message
+		line as it arrives.  So does what a server says it is busy
+		with, such as indexing a project.
+
+Asking ~
+								*:LspHover*
+:LspHover	Ask the server about the symbol under the cursor and show the
+		answer in a popup.  The popup closes when the cursor moves.
+								*:LspSignature*
+:LspSignature	Show what the call the cursor is in takes, in a popup.  See
+		|lsp-signature|.
+
+Jumping ~
+							*:LspDefinition*
+:LspDefinition	Jump to the definition of the symbol under the cursor.  When
+		the definition is in another file it is opened in the current
+		window.
+							*:LspDeclaration*
+:LspDeclaration	Jump to the declaration of the symbol under the cursor, which
+		in C is where its prototype is rather than where it is
+		written out.  Otherwise like |:LspDefinition|.
+						    *:LspTypeDefinition*
+:LspTypeDefinition
+		Jump to the definition of the type of the symbol under the
+		cursor.  Otherwise like |:LspDefinition|.
+						     *:LspImplementation*
+:LspImplementation
+		Jump to what implements the symbol under the cursor.
+		Otherwise like |:LspDefinition|.
+
+Filling a list ~
+							*:LspReferences*
+:LspReferences	Put every mention of the symbol under the cursor into the
+		|quickfix| list and open it.  The declaration counts as a
+		mention, so it is in the list too.  A file that is not open
+		is read for the line to show, which is also what places the
+		column.
+							*:LspOutline*
+:LspOutline	Put the symbols in the current buffer into its location list
+		and open it.  A symbol inside another, a field of a struct
+		for instance, is shown indented under it.
+								*:LspSymbol*
+:LspSymbol {query}
+		Put the symbols in the workspace whose name matches {query}
+		into the |quickfix| list and open it.  What counts as a match
+		is up to the server.  An entry names the kind of symbol and
+		what it is called rather than showing the line it sits on.
+							*:LspDiag*
+:LspDiag	Put the diagnostics for the current buffer into its location
+		list and open it.  See |lsp-diagnostics|.
+
+Changing the text ~
 							      *:LspCodeAction*
 :LspCodeAction
 :{range}LspCodeAction
@@ -162,7 +220,6 @@ g:lsp_signature_help
 		comes back is mostly fixes for them.  An action the server
 		would rather carry out itself is handed back to it, and the
 		changes it works out arrive the same way a rename's do.
-
 							*:LspRename*
 :LspRename [{name}]
 		Rename the symbol under the cursor to {name} everywhere the
@@ -175,81 +232,18 @@ g:lsp_signature_help
 		for files to be created, renamed or deleted is turned down,
 		since that is not supported.  The same goes for changes a
 		server sends on its own.
-
 							*:LspFormat*
 :LspFormat	Ask the server to format the current buffer and apply what it
 		answers.  The answer describes the buffer as it was when the
 		question went out, so nothing is applied if the buffer moved
 		on in the meantime.  A single |undo| takes all of it back.
 
+What is shown ~
 							*:LspInlayHint*
 :LspInlayHint	Turn the inlay hints on when they are off and off when they
 		are on, and say which it now is.  Turning them off takes
 		away the ones already shown, in every buffer.  See
 		|lsp-inlay-hint|.
-
-							*:LspOutline*
-:LspOutline	Put the symbols in the current buffer into its location list
-		and open it.  A symbol inside another, a field of a struct
-		for instance, is shown indented under it.
-
-								*:LspSymbol*
-:LspSymbol {query}
-		Put the symbols in the workspace whose name matches {query}
-		into the |quickfix| list and open it.  What counts as a match
-		is up to the server.  An entry names the kind of symbol and
-		what it is called rather than showing the line it sits on.
-
-							*:LspDiag*
-:LspDiag	Put the diagnostics for the current buffer into its location
-		list and open it.  See |lsp-diagnostics|.
-
-								*:LspHover*
-:LspHover	Ask the server about the symbol under the cursor and show the
-		answer in a popup.  The popup closes when the cursor moves.
-
-								*:LspSignature*
-:LspSignature	Show what the call the cursor is in takes, in a popup.  See
-		|lsp-signature|.
-
-							*:LspDefinition*
-:LspDefinition	Jump to the definition of the symbol under the cursor.  When
-		the definition is in another file it is opened in the current
-		window.
-
-							*:LspDeclaration*
-:LspDeclaration	Jump to the declaration of the symbol under the cursor, which
-		in C is where its prototype is rather than where it is
-		written out.  Otherwise like |:LspDefinition|.
-
-						    *:LspTypeDefinition*
-:LspTypeDefinition
-		Jump to the definition of the type of the symbol under the
-		cursor.  Otherwise like |:LspDefinition|.
-
-						     *:LspImplementation*
-:LspImplementation
-		Jump to what implements the symbol under the cursor.
-		Otherwise like |:LspDefinition|.
-
-							*:LspReferences*
-:LspReferences	Put every mention of the symbol under the cursor into the
-		|quickfix| list and open it.  The declaration counts as a
-		mention, so it is in the list too.  A file that is not open
-		is read for the line to show, which is also what places the
-		column.
-
-								*:LspLog*
-:LspLog		Open a scratch buffer holding what the server for the current
-		buffer has logged, which is where one explains why it is
-		unhappy.  A server logs in two places and both are shown,
-		under a heading each: what it sent as "window/logMessage" and
-		what it wrote to its standard error.
-
-		What a server sends as "window/showMessage" is not kept here;
-		that one is meant to be read at once and goes to the message
-		line as it arrives.  So does what a server says it is busy
-		with, such as indexing a project.
 
 ==============================================================================
 5. Completion						*lsp-completion*
