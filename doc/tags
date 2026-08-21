@@ -6,8 +6,10 @@
 :LspFormat	lsp.txt	/*:LspFormat*
 :LspHover	lsp.txt	/*:LspHover*
 :LspImplementation	lsp.txt	/*:LspImplementation*
+:LspIncomingCalls	lsp.txt	/*:LspIncomingCalls*
 :LspInlayHint	lsp.txt	/*:LspInlayHint*
 :LspLog	lsp.txt	/*:LspLog*
+:LspOutgoingCalls	lsp.txt	/*:LspOutgoingCalls*
 :LspOutline	lsp.txt	/*:LspOutline*
 :LspReferences	lsp.txt	/*:LspReferences*
 :LspRename	lsp.txt	/*:LspRename*

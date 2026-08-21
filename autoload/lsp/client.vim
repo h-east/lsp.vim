@@ -94,6 +94,9 @@ def ClientCapabilities(): dict<any>
       inlayHint: {
 	dynamicRegistration: false,
       },
+      callHierarchy: {
+	dynamicRegistration: false,
+      },
       foldingRange: {
 	dynamicRegistration: false,
 	lineFoldingOnly: true,

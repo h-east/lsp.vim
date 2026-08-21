@@ -56,6 +56,7 @@ The server is started once per workspace root.
 - Hover, and jumps to a definition, declaration, type or implementation
 - Every mention of a symbol, the symbols in a file, and a workspace-wide
   symbol search
+- Who calls a function and what it calls
 - Rename across files, whole-buffer formatting, and code actions from a menu
 - Incremental document synchronisation with `listener_add()`
 - What the server reports about itself: messages, logs, and what it is busy
@@ -78,6 +79,8 @@ The server is started once per workspace root.
 |  | `:LspTypeDefinition` | Jump to the definition of the symbol's type |
 |  | `:LspImplementation` | Jump to what implements the symbol |
 | Lists | `:LspReferences` | Every mention, into the quickfix list |
+|  | `:LspIncomingCalls` | Who calls the function under the cursor |
+|  | `:LspOutgoingCalls` | What the function under the cursor calls |
 |  | `:LspOutline` | The symbols in this buffer, into the location list |
 |  | `:LspSymbol {query}` | Search the workspace for symbols |
 |  | `:LspDiag` | The diagnostics, into the location list |

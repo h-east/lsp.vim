@@ -494,3 +494,71 @@ def g:Test_folds_come_from_the_server()
   assert_equal('manual', &foldmethod, 'what was there should come back')
   assert_false(g:lsp_folding)
 enddef
+
+def g:Test_who_calls_this()
+  const ITEM = {name: 'callee', kind: 12, uri: 'file://' .. t.SRC,
+		range: {start: {line: 0, character: 0},
+			end: {line: 0, character: 6}},
+		selectionRange: {start: {line: 0, character: 0},
+				 end: {line: 0, character: 6}}}
+  const CALLS = [{
+    from: {name: 'caller', kind: 12, uri: 'file://' .. t.SRC,
+	   range: {start: {line: 2, character: 0},
+		   end: {line: 2, character: 6}},
+	   selectionRange: {start: {line: 2, character: 0},
+			    end: {line: 2, character: 6}}},
+    fromRanges: [{start: {line: 2, character: 4},
+		  end: {line: 2, character: 10}}],
+  }]
+  assert_true(t.StartServer({
+    capabilities: Offering({callHierarchyProvider: true}),
+    replies: {'textDocument/prepareCallHierarchy': [ITEM],
+	      'callHierarchy/incomingCalls': CALLS},
+  }, ['callee();', '', '    callee();']))
+
+  cursor(1, 1)
+  LspIncomingCalls
+  assert_true(t.WaitFor(() => len(getqflist()) == 1),
+	      'the call should be listed')
+  var item = getqflist()[0]
+  # The place the call is written, named after the function it sits in.
+  assert_equal([3, 5, '[Function] caller'],
+	       [item.lnum, item.col, item.text])
+  cclose
+
+  # What was asked about is what prepare answered with.
+  var sent = t.Sent('callHierarchy/incomingCalls')[0].params
+  assert_equal('callee', sent.item.name)
+enddef
+
+def g:Test_what_this_calls()
+  const ITEM = {name: 'caller', kind: 12, uri: 'file://' .. t.SRC,
+		range: {start: {line: 0, character: 0},
+			end: {line: 0, character: 6}},
+		selectionRange: {start: {line: 0, character: 0},
+				 end: {line: 0, character: 6}}}
+  const CALLS = [{
+    to: {name: 'callee', kind: 12, uri: 'file:///elsewhere.c',
+	 range: {start: {line: 9, character: 0},
+		 end: {line: 9, character: 6}},
+	 selectionRange: {start: {line: 9, character: 0},
+			  end: {line: 9, character: 6}}},
+    fromRanges: [{start: {line: 1, character: 4},
+		  end: {line: 1, character: 10}}],
+  }]
+  assert_true(t.StartServer({
+    capabilities: Offering({callHierarchyProvider: true}),
+    replies: {'textDocument/prepareCallHierarchy': [ITEM],
+	      'callHierarchy/outgoingCalls': CALLS},
+  }, ['caller();', '    callee();']))
+
+  cursor(1, 1)
+  LspOutgoingCalls
+  assert_true(t.WaitFor(() => len(getqflist()) == 1))
+  var item = getqflist()[0]
+  # An outgoing call is written here, whatever file the callee lives in.
+  assert_equal([2, 5, '[Function] callee'],
+	       [item.lnum, item.col, item.text])
+  assert_match('Xsrc\.c$', bufname(item.bufnr))
+  cclose
+enddef

@@ -1202,6 +1202,74 @@ export def Outline()
   })
 enddef
 
+# A call is where one function names another.  What comes back holds the
+# function at the other end and the places the call is written; those places
+# are what one wants to go to, named after the function they sit in.
+def CallLocations(calls: any, incoming: bool, here: string): list<dict<any>>
+  var locs: list<dict<any>> = []
+  for call in (type(calls) == v:t_list ? calls : [])
+    if type(call) != v:t_dict
+      continue
+    endif
+    var other = call->get(incoming ? 'from' : 'to', {})
+    if type(other) != v:t_dict
+      continue
+    endif
+    # An incoming call is written in the caller's file, an outgoing one in
+    # this file.
+    var uri = incoming ? other->get('uri', '') : here
+    var text = SymbolText(other)
+    for range in call->get('fromRanges', [])
+      if type(range) == v:t_dict
+	locs->add({uri: uri, range: range, text: text})
+      endif
+    endfor
+  endfor
+  return locs
+enddef
+
+def CallHierarchy(incoming: bool)
+  var cl = ReadyClient()
+  if cl->empty()
+    return
+  endif
+  if !cl.capabilities->has_key('callHierarchyProvider')
+    util.WarningMsg('the server does not offer a call hierarchy')
+    return
+  endif
+  var here = util.PathToUri(bufname('%'))
+  # Asking takes two rounds: what is under the cursor, then its calls.
+  lspclient.Request(cl, 'textDocument/prepareCallHierarchy', CursorParams(),
+      (result: any) => {
+    var items = type(result) == v:t_list ? result : []
+    if items->empty() || type(items[0]) != v:t_dict
+      util.WarningMsg('there is no call hierarchy here')
+      return
+    endif
+    var what = incoming ? 'incoming' : 'outgoing'
+    lspclient.Request(cl, 'callHierarchy/' .. what .. 'Calls',
+		      {item: items[0]}, (calls: any) => {
+      var qf = LocationItems(CallLocations(calls, incoming, here))
+      if qf->empty()
+	util.WarningMsg(incoming ? 'nothing calls this'
+				 : 'this calls nothing')
+	return
+      endif
+      setqflist([], ' ', {title: 'LSP ' .. what .. ' calls: '
+			  .. items[0]->get('name', ''), items: qf})
+      copen
+    })
+  })
+enddef
+
+export def IncomingCalls()
+  CallHierarchy(true)
+enddef
+
+export def OutgoingCalls()
+  CallHierarchy(false)
+enddef
+
 export def Symbol(query: string)
   var cl = ReadyClient()
   if cl->empty()

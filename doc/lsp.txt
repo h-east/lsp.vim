@@ -204,6 +204,21 @@ Filling a list ~
 		mention, so it is in the list too.  A file that is not open
 		is read for the line to show, which is also what places the
 		column.
+						    *:LspIncomingCalls*
+:LspIncomingCalls
+		Put every place the function under the cursor is called from
+		into the |quickfix| list and open it.  An entry names the
+		function the call sits in, which is what tells this apart
+		from |:LspReferences|: a mention is where the name is
+		written, a call is who is doing the calling.
+
+						    *:LspOutgoingCalls*
+:LspOutgoingCalls
+		Put every call the function under the cursor makes into the
+		|quickfix| list and open it.  The places are in this file,
+		since that is where the calls are written, and each is named
+		after the function being called.
+
 							*:LspOutline*
 :LspOutline	Put the symbols in the current buffer into its location list
 		and open it.  A symbol inside another, a field of a struct

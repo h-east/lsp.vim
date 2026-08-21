@@ -47,6 +47,9 @@ def RunOne(name: string)
     add(v:errors, v:throwpoint .. ': ' .. v:exception)
   endtry
   helper.StopServer()
+  # The quickfix stack outlives a buffer, so the next test would find what
+  # this one left there and take it for its own.
+  setqflist([], 'f')
   silent! :%bwipe!
 
   if v:errors->empty()
