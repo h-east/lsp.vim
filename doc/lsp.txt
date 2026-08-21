@@ -1,0 +1,248 @@
+*lsp.txt*	A Language Server Protocol client for Vim
+
+Author:  Hirohito Higashi <h.east.727@gmail.com>
+License: Same terms as Vim itself.  See |license|.
+
+==============================================================================
+CONTENTS							*lsp-contents*
+
+1. Introduction		|lsp-introduction|
+2. Requirements		|lsp-requirements|
+3. Configuration	|lsp-configuration|
+4. Commands		|lsp-commands|
+5. Completion		|lsp-completion|
+6. Diagnostics		|lsp-diagnostics|
+7. Signature help	|lsp-signature|
+8. Limitations		|lsp-limitations|
+
+==============================================================================
+1. Introduction						*lsp-introduction*
+
+This plugin talks to a language server over the Language Server Protocol and
+brings what the server knows into Vim: what a symbol is, and where it is
+defined.
+
+Install it with a plugin manager, with vim-plug for instance: >vim
+
+	Plug 'h-east/lsp.vim'
+<
+Or put it under a |packages| directory as "pack/*/opt/lsp", which does not
+load on its own, and add this to your |vimrc|: >vim
+
+	packadd! lsp
+<
+Either way, describe the servers to use in |g:lsp_servers|.
+
+Vim frames the protocol messages and matches replies to requests itself, see
+|language-server-protocol|, so what is left to the plugin is the conversation
+and what to do with the answers.
+
+Changes are picked up with |listener_add()| and sent on as they are made.
+When the server asks for incremental updates, |listener-text| supplies the
+text of each change, so only the lines that were touched travel.
+
+==============================================================================
+2. Requirements						*lsp-requirements*
+
+Vim with the |+job| and |+channel| features.  Without them the plugin loads
+nothing and defines no command.
+
+A language server for the language you work in.  It has to be installed
+separately, none is shipped with Vim.
+
+==============================================================================
+3. Configuration					*lsp-configuration*
+
+							*g:lsp_servers*
+g:lsp_servers
+		A List of Dictionaries, one per server.  Each entry holds:
+
+		name		Name shown by |:LspStatus|.
+		filetypes	List of 'filetype' values the server is used
+				for.
+		cmd		The command to run, as a List, the way
+				|job_start()| takes it.
+		rootPatterns	Optional List of file or directory names.
+				The first one found from the file upwards
+				marks the root of the workspace.  When none
+				is found the directory of the file is used.
+				Default: [".git"]
+
+		The first entry whose "filetypes" holds the 'filetype' of a
+		buffer is the one used for it, so put a more specific entry
+		before a more general one.
+
+		Example: >vim
+
+			packadd! lsp
+			let g:lsp_servers = [
+			      \ #{name: 'clangd',
+			      \   filetypes: ['c', 'cpp'],
+			      \   cmd: ['clangd', '--background-index'],
+			      \   rootPatterns: ['compile_commands.json',
+			      \		       '.git']},
+			      \ ]
+<
+		One server is started per workspace root rather than per
+		buffer, so buffers from the same project share a server.
+
+							*g:lsp_set_omnifunc*
+g:lsp_set_omnifunc
+		When true, 'omnifunc' is set in a buffer whose server offers
+		completion.  Set this to |v:false| to keep whatever the
+		'filetype' plugin chose.
+
+		Default: |v:true|
+
+						*g:lsp_completion_timeout*
+g:lsp_completion_timeout
+		How long to wait for a reply to a completion request, in
+		milliseconds.  See |lsp-completion| for why there is a wait
+		at all.  A server that has not finished reading the file yet
+		takes noticeably longer than one that has, so this needs room
+		above what a warmed up server answers in.
+
+		Default: 2000
+
+							*g:lsp_signature_help*
+g:lsp_signature_help
+		When true, the signature of the call being typed is shown on
+		its own.  Set this to |v:false| to only ask for it with
+		|:LspSignature|.  See |lsp-signature|.
+
+		Default: |v:true|
+
+==============================================================================
+4. Commands							*lsp-commands*
+
+								*:LspStart*
+:LspStart	Connect the current buffer to the server for its 'filetype'.
+		This happens on its own when a buffer is opened, the command
+		is for a buffer whose 'filetype' was decided later.
+
+								*:LspStop*
+:LspStop	Shut down every running server.  A buffer is connected again
+		when it is opened again.
+
+								*:LspStatus*
+:LspStatus	List the running servers, whether each one finished starting
+		up, how many buffers it has, and how many diagnostics are
+		known for the current buffer.
+
+								*:LspDiag*
+:LspDiag	Put the diagnostics for the current buffer into its location
+		list and open it.  See |lsp-diagnostics|.
+
+								*:LspHover*
+:LspHover	Ask the server about the symbol under the cursor and show the
+		answer in a popup.  The popup closes when the cursor moves.
+
+								*:LspSignature*
+:LspSignature	Show what the call the cursor is in takes, in a popup.  See
+		|lsp-signature|.
+
+							*:LspDefinition*
+:LspDefinition	Jump to the definition of the symbol under the cursor.  When
+		the definition is in another file it is opened in the current
+		window.
+
+								*:LspLog*
+:LspLog		Open a scratch buffer holding what the server for the current
+		buffer wrote to its standard error.  Servers use it for their
+		own logging, which is where one explains why it is unhappy.
+
+==============================================================================
+5. Completion						*lsp-completion*
+
+When the server offers completion, 'omnifunc' is set to "lsp#OmniFunc" in the
+buffers it handles, so |i_CTRL-X_CTRL-O| asks the server.  A 'filetype' plugin
+has usually put a function working from tags there; the server knows more, so
+it takes over, and the old value is restored when the buffer is detached.  Set
+|g:lsp_set_omnifunc| to |v:false| to keep the filetype plugin's choice.
+
+Unlike the other requests this one waits for its answer, because a completion
+function has to return the matches itself.  |g:lsp_completion_timeout| bounds
+how long a keystroke can block that way.  When the time runs out a message
+says so and no matches are offered; raise the option if a server needs longer
+than that while it is still reading the file.
+
+The kind of an item is shown as the single letter |complete-items| asks for.
+What a server marks as a snippet is offered under its label: the placeholders
+in it cannot be expanded, and inserting them literally would be worse than
+inserting the plain name.
+
+A server is allowed to leave the documentation of an item out and hand it over
+only for the item that is actually looked at.  That answer arrives long after
+the completion function has returned, so what the item already carries goes
+into the info popup at once and the rest is filled in when the reply to
+"completionItem/resolve" comes.  Include "popup" in 'completeopt' for there to
+be a popup to fill in: >vim
+
+	set completeopt+=popup
+<
+Adding "popuphidden" keeps the popup out of sight until it has something to
+show, see |complete-popuphidden|.  Only the item that is selected is resolved,
+and only when its documentation is missing.
+
+==============================================================================
+6. Diagnostics						*lsp-diagnostics*
+
+A server reports what it thinks is wrong with a file on its own, without being
+asked.  What arrives is shown in three ways: a sign in the 'signcolumn' on
+every line that has something, a highlight over the text a report covers, and
+the message itself on the message line while the cursor is on that line.  A
+line without a diagnostic leaves the message line alone rather than clearing
+it, so this does not wipe out other messages.
+
+|:LspDiag| collects them into the location list, which is the way to walk
+through them with |:lnext| and |:lprevious|.
+
+Every report replaces what the server said before, so the signs and the
+highlights follow the file as it is edited.
+
+These highlight groups are used.  Each is linked to an existing group and can
+be given a look of its own with |:highlight|:
+
+	LspDiagError		sign of an error, |hl-ErrorMsg|
+	LspDiagWarning		sign of a warning, |hl-WarningMsg|
+	LspDiagInfo		sign of an information item, |hl-Directory|
+	LspDiagHint		sign of a hint, |hl-Comment|
+	LspDiagErrorText	text an error covers, |hl-SpellBad|
+	LspDiagWarningText	text a warning covers, |hl-SpellCap|
+	LspDiagInfoText		text an info item covers, |hl-SpellRare|
+	LspDiagHintText		text a hint covers, |hl-SpellLocal|
+
+==============================================================================
+7. Signature help						*lsp-signature*
+
+While a call is being typed the server is asked what it takes, and the answer
+appears in a popup next to the cursor with the parameter being filled in
+highlighted.  The server says which characters start this, "(" and "," for a
+C server; the closing paren ends the call and takes the popup with it, as does
+leaving Insert mode.  |:LspSignature| asks at any other moment, and setting
+|g:lsp_signature_help| to |v:false| leaves the asking to that command alone.
+
+This works while the completion menu is up as well, which is where
+'autocomplete' puts one on every keystroke.  The menu is drawn over popups
+(|popup-menu|), so the signature is given a "zindex" above it and goes on the
+side of the cursor the menu is not using.
+
+The parameter is highlighted with this group, linked to an existing one and
+free to be given a look of its own with |:highlight|:
+
+	LspSignatureActive	the parameter being filled in, |hl-PmenuSel|
+
+What a signature says is the server's business.  A macro is reported as what
+it expands to, so a call of a macro wrapping a function shows the function.
+
+==============================================================================
+8. Limitations						*lsp-limitations*
+
+References, rename and formatting are not implemented.
+
+Only the text of a "textEdit" in a completion item is used.  Omni completion
+replaces the word before the cursor, so an item that wants to change more
+than that is not applied in full.
+
+==============================================================================
+ vim:tw=78:ts=8:noet:ft=help:norl:
