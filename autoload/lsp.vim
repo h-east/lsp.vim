@@ -653,27 +653,51 @@ def LocationItems(result: any): list<dict<any>>
   return items
 enddef
 
-export def Definition()
+# Asking where a symbol leads to, which four requests do in the same shape:
+# what comes back is a place to go to.  "what" names it in a message.
+def JumpTo(method: string, provider: string, what: string)
   var cl = ReadyClient()
   if cl->empty()
     return
   endif
-  lspclient.Request(cl, 'textDocument/definition', CursorParams(),
-      (result: any) => {
-	var loc = FirstLocation(result)
-	if loc->empty()
-	  util.WarningMsg('definition not found')
-	  return
-	endif
-	var path = util.UriToPath(loc.uri)
-	if fnamemodify(path, ':p') != fnamemodify(bufname('%'), ':p')
-	  execute 'edit' fnameescape(path)
-	endif
-	var [lnum, col] = util.PosFromLsp(bufnr('%'),
-			      loc->get('range', {})->get('start', {}))
-	cursor(lnum, col)
-	normal! zv
-      })
+  if !cl.capabilities->has_key(provider)
+    util.WarningMsg('the server does not offer ' .. what)
+    return
+  endif
+  lspclient.Request(cl, method, CursorParams(), (result: any) => {
+    var loc = FirstLocation(result)
+    if loc->empty()
+      util.WarningMsg(what .. ' not found')
+      return
+    endif
+    var path = util.UriToPath(loc.uri)
+    if fnamemodify(path, ':p') != fnamemodify(bufname('%'), ':p')
+      execute 'edit' fnameescape(path)
+    endif
+    var [lnum, col] = util.PosFromLsp(bufnr('%'),
+			  loc->get('range', {})->get('start', {}))
+    cursor(lnum, col)
+    normal! zv
+  })
+enddef
+
+export def Definition()
+  JumpTo('textDocument/definition', 'definitionProvider', 'the definition')
+enddef
+
+export def Declaration()
+  JumpTo('textDocument/declaration', 'declarationProvider',
+	 'the declaration')
+enddef
+
+export def TypeDefinition()
+  JumpTo('textDocument/typeDefinition', 'typeDefinitionProvider',
+	 'the type definition')
+enddef
+
+export def Implementation()
+  JumpTo('textDocument/implementation', 'implementationProvider',
+	 'the implementation')
 enddef
 
 def BufLineCount(bufnr: number): number
@@ -982,6 +1006,52 @@ def SymbolText(sym: dict<any>): string
   return (name->empty() ? '' : '[' .. name .. '] ')
 	 .. (container->empty() ? '' : container .. '::')
 	 .. sym->get('name', '')
+enddef
+
+# A reply about one file is either a flat list of SymbolInformation, which
+# names its place in "location", or a tree of DocumentSymbol, which carries
+# ranges and holds its children.  Both end up as one list, the depth in the
+# tree showing as indent.
+def FlattenSymbols(syms: any, depth: number, uri: string,
+		   out: list<dict<any>>)
+  if type(syms) != v:t_list
+    return
+  endif
+  for sym in syms
+    if type(sym) != v:t_dict
+      continue
+    endif
+    var where = sym->has_key('location') ? SymbolLocation(sym)
+	: {uri: uri, range: sym->get('selectionRange', sym->get('range', {}))}
+    if !where->get('uri', '')->empty()
+      out->add(extend(where, {text: repeat('  ', depth) .. SymbolText(sym)}))
+    endif
+    FlattenSymbols(sym->get('children', []), depth + 1, uri, out)
+  endfor
+enddef
+
+export def Outline()
+  var cl = ReadyClient()
+  if cl->empty()
+    return
+  endif
+  if !cl.capabilities->has_key('documentSymbolProvider')
+    util.WarningMsg('the server does not offer symbols for a file')
+    return
+  endif
+  var uri = util.PathToUri(bufname('%'))
+  lspclient.Request(cl, 'textDocument/documentSymbol',
+		    {textDocument: {uri: uri}}, (result: any) => {
+    var locs: list<dict<any>> = []
+    FlattenSymbols(result, 0, uri, locs)
+    var items = LocationItems(locs)
+    if items->empty()
+      util.WarningMsg('the server found no symbols here')
+      return
+    endif
+    setloclist(0, [], ' ', {title: 'LSP symbols in this file', items: items})
+    lopen
+  })
 enddef
 
 export def Symbol(query: string)

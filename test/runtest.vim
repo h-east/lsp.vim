@@ -16,6 +16,18 @@ filetype plugin indent on
 # plugin has to be brought in by hand.
 execute 'source ' .. fnameescape(PLUGIN .. '/plugin/lsp.vim')
 
+# The plugin gives up quietly on a Vim that is too old, which would leave
+# every test failing on a missing command.  Say what is wrong instead.
+if !exists(':LspStart')
+  writefile(['This Vim cannot run the plugin, so nothing was tested.',
+	     'It needs 9.2.970 or later with +job and +channel; this one is '
+	     .. v:versionlong .. (has('job') ? '' : ' without +job')
+	     .. (has('channel') ? '' : ' without +channel') .. '.',
+	     'Name another with $VIMPROG:',
+	     '    VIMPROG=/path/to/vim ./run'], HERE .. '/messages')
+  cquit 1
+endif
+
 import './helper.vim' as helper
 
 var failed: list<string> = []

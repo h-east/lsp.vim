@@ -1,8 +1,23 @@
 #!/bin/sh
-# Run the tests.  $VIMPROG names the Vim to test, "vim" by default.
+# Run the tests and print what they said.
 #
 #   ./run
-#   VIMPROG=../../../samba/github/vim/src/vim ./run
-set -e
+#   VIMPROG=/path/to/vim ./run       # which Vim to test
+#   TEST_FILTER=rename ./run         # only the tests whose name matches
+#
+# The exit status is 0 when everything passed.  Vim's own output goes nowhere:
+# it is a screen being drawn, not something to read.
 here=$(cd "$(dirname "$0")" && pwd)
-"${VIMPROG:-vim}" -u NONE -N -n --not-a-term -S "$here/runtest.vim"
+rm -f "$here/messages"
+
+"${VIMPROG:-vim}" -u NONE -N -n --not-a-term -S "$here/runtest.vim" \
+    >/dev/null 2>&1
+status=$?
+
+if [ -f "$here/messages" ]; then
+    cat "$here/messages"
+else
+    echo "Nothing was written to $here/messages."
+    echo "\"${VIMPROG:-vim}\" may have failed to start; run it by hand to see."
+fi
+exit $status

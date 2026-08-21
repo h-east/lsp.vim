@@ -50,8 +50,9 @@ The server is started once per workspace root.
   info popup
 - Diagnostics as signs, text highlights and a message on the cursor line
 - Signature help while a call is being typed
-- Hover, jump to definition, every mention of a symbol, and a workspace-wide
-  symbol search, the last two into the quickfix list
+- Hover, and jumps to a definition, declaration, type or implementation
+- Every mention of a symbol, the symbols in a file, and a workspace-wide
+  symbol search
 - Rename across files, whole-buffer formatting, and code actions from a menu
 - Incremental document synchronisation with `listener_add()`
 - What the server reports about itself: messages, logs, and what it is busy
@@ -68,6 +69,10 @@ The server is started once per workspace root.
 | `:LspStatus` | List the running servers |
 | `:LspHover` | Show what the server knows about the symbol under the cursor |
 | `:LspDefinition` | Jump to the definition of the symbol under the cursor |
+| `:LspDeclaration` | Jump to the declaration, a prototype in C |
+| `:LspTypeDefinition` | Jump to the definition of the symbol's type |
+| `:LspImplementation` | Jump to what implements the symbol |
+| `:LspOutline` | Put the symbols in this buffer into the location list |
 | `:LspReferences` | Put every mention of the symbol into the quickfix list |
 | `:LspSymbol {query}` | Search the workspace for symbols matching a query |
 | `:LspSignature` | Show what the call the cursor is in takes |
@@ -109,9 +114,14 @@ Other:
 cd test && ./run
 ```
 
-`$VIMPROG` names the Vim to test, `vim` by default, and `$TEST_FILTER` narrows
-a run down to the tests whose name matches it.  The results go to
-`test/messages`, and the exit status says whether anything failed.
+```
+VIMPROG=/path/to/vim ./run       # which Vim to test, "vim" by default
+TEST_FILTER=rename ./run         # only the tests whose name matches
+```
+
+The results are printed and also left in `test/messages`, and the exit status
+says whether anything failed.  A Vim too old for the plugin is reported as
+such rather than failing every test on a missing command.
 
 They run against `test/fakeserver.py`, which answers from a scenario file
 rather than being a real language server: the scenario says what capabilities

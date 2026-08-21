@@ -1,9 +1,12 @@
 :LspCodeAction	lsp.txt	/*:LspCodeAction*
+:LspDeclaration	lsp.txt	/*:LspDeclaration*
 :LspDefinition	lsp.txt	/*:LspDefinition*
 :LspDiag	lsp.txt	/*:LspDiag*
 :LspFormat	lsp.txt	/*:LspFormat*
 :LspHover	lsp.txt	/*:LspHover*
+:LspImplementation	lsp.txt	/*:LspImplementation*
 :LspLog	lsp.txt	/*:LspLog*
+:LspOutline	lsp.txt	/*:LspOutline*
 :LspReferences	lsp.txt	/*:LspReferences*
 :LspRename	lsp.txt	/*:LspRename*
 :LspSignature	lsp.txt	/*:LspSignature*
@@ -11,6 +14,7 @@
 :LspStatus	lsp.txt	/*:LspStatus*
 :LspStop	lsp.txt	/*:LspStop*
 :LspSymbol	lsp.txt	/*:LspSymbol*
+:LspTypeDefinition	lsp.txt	/*:LspTypeDefinition*
 g:lsp_completion_timeout	lsp.txt	/*g:lsp_completion_timeout*
 g:lsp_servers	lsp.txt	/*g:lsp_servers*
 g:lsp_set_omnifunc	lsp.txt	/*g:lsp_set_omnifunc*

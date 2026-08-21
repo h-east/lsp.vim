@@ -76,6 +76,24 @@ def ClientCapabilities(): dict<any>
 	linkSupport: false,
 	dynamicRegistration: false,
       },
+      declaration: {
+	linkSupport: false,
+	dynamicRegistration: false,
+      },
+      typeDefinition: {
+	linkSupport: false,
+	dynamicRegistration: false,
+      },
+      implementation: {
+	linkSupport: false,
+	dynamicRegistration: false,
+      },
+      documentSymbol: {
+	dynamicRegistration: false,
+	# Asking for the tree, since where a symbol sits in it is worth
+	# showing; the flat list a server may send instead is read as well.
+	hierarchicalDocumentSymbolSupport: true,
+      },
       codeAction: {
 	dynamicRegistration: false,
 	# Without this a server answers with Commands, which it has to be

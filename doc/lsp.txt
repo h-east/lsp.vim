@@ -164,6 +164,11 @@ g:lsp_signature_help
 		question went out, so nothing is applied if the buffer moved
 		on in the meantime.  A single |undo| takes all of it back.
 
+							*:LspOutline*
+:LspOutline	Put the symbols in the current buffer into its location list
+		and open it.  A symbol inside another, a field of a struct
+		for instance, is shown indented under it.
+
 								*:LspSymbol*
 :LspSymbol {query}
 		Put the symbols in the workspace whose name matches {query}
@@ -187,6 +192,21 @@ g:lsp_signature_help
 :LspDefinition	Jump to the definition of the symbol under the cursor.  When
 		the definition is in another file it is opened in the current
 		window.
+
+							*:LspDeclaration*
+:LspDeclaration	Jump to the declaration of the symbol under the cursor, which
+		in C is where its prototype is rather than where it is
+		written out.  Otherwise like |:LspDefinition|.
+
+						    *:LspTypeDefinition*
+:LspTypeDefinition
+		Jump to the definition of the type of the symbol under the
+		cursor.  Otherwise like |:LspDefinition|.
+
+						     *:LspImplementation*
+:LspImplementation
+		Jump to what implements the symbol under the cursor.
+		Otherwise like |:LspDefinition|.
 
 							*:LspReferences*
 :LspReferences	Put every mention of the symbol under the cursor into the

@@ -275,3 +275,79 @@ def g:Test_the_server_hands_over_an_edit()
 	      'what the server sent should be applied')
   assert_equal('int two;', getline(2))
 enddef
+
+def g:Test_outline_reads_a_tree_of_symbols()
+  # DocumentSymbol nests; the depth shows as indent.
+  const TREE = [{
+    name: 'main',
+    kind: 12,
+    range: {start: {line: 0, character: 0}, end: {line: 3, character: 1}},
+    selectionRange: {start: {line: 0, character: 4},
+		     end: {line: 0, character: 8}},
+    children: [{
+      name: 'inner',
+      kind: 13,
+      range: {start: {line: 2, character: 4}, end: {line: 2, character: 14}},
+      selectionRange: {start: {line: 2, character: 8},
+		       end: {line: 2, character: 13}},
+    }],
+  }]
+  assert_true(t.StartServer({
+    capabilities: Offering({documentSymbolProvider: true}),
+    replies: {'textDocument/documentSymbol': TREE},
+  }, ['int main(void)', '{', '    int inner;', '}']))
+
+  LspOutline
+  assert_true(t.WaitFor(() => len(getloclist(0)) == 2),
+	      'both symbols should be listed')
+  var items = getloclist(0)
+  assert_equal([1, 5, '[Function] main'],
+	       [items[0].lnum, items[0].col, items[0].text])
+  assert_equal([3, 9, '  [Variable] inner'],
+	       [items[1].lnum, items[1].col, items[1].text])
+  lclose
+enddef
+
+def g:Test_outline_reads_a_flat_list_too()
+  # SymbolInformation carries a location instead of ranges.
+  const FLAT = [{
+    name: 'main',
+    kind: 12,
+    location: {uri: 'file://' .. t.SRC,
+	       range: {start: {line: 0, character: 4},
+		       end: {line: 0, character: 8}}},
+  }]
+  assert_true(t.StartServer({
+    capabilities: Offering({documentSymbolProvider: true}),
+    replies: {'textDocument/documentSymbol': FLAT},
+  }, ['int main(void)', '{', '}']))
+
+  LspOutline
+  assert_true(t.WaitFor(() => len(getloclist(0)) == 1))
+  assert_equal('[Function] main', getloclist(0)[0].text)
+  lclose
+enddef
+
+def g:Test_a_jump_to_the_declaration()
+  assert_true(t.StartServer({
+    capabilities: Offering({declarationProvider: true}),
+    replies: {'textDocument/declaration': {uri: 'file://' .. t.SRC,
+	      range: {start: {line: 2, character: 4},
+		      end: {line: 2, character: 7}}}},
+  }, ['int one;', 'int two;', 'int three;']))
+
+  cursor(1, 1)
+  LspDeclaration
+  assert_true(t.WaitFor(() => line('.') == 3), 'the cursor should move')
+  assert_equal(5, col('.'))
+enddef
+
+def g:Test_a_request_the_server_does_not_offer()
+  assert_true(t.StartServer({capabilities: SYNC}, ['int one;']))
+
+  # Nothing is asked for when the server never said it could answer.
+  LspTypeDefinition
+  sleep 100m
+  assert_true(t.Sent('textDocument/typeDefinition')->empty(),
+	      'no request should go out')
+enddef
