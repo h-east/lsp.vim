@@ -92,30 +92,6 @@ The server is started once per workspace root.
 
 See `:help lsp.txt` for the options and the details.
 
-## TODO
-
-Signature help:
-
-- [x] `:LspSignature` on its own.
-- [x] `g:lsp_signature_help` set to `false`.
-- [x] The popup going below the cursor when the completion menu sits above it.
-
-Requests:
-
-- [x] `textDocument/references`
-- [x] `textDocument/rename`
-- [x] `textDocument/formatting`
-- [x] `textDocument/codeAction`
-- [x] `workspace/symbol`
-
-Other:
-
-- [x] `additionalTextEdits` in a completion item, such as an include to add.
-- [x] `window/logMessage`, `window/showMessage` and `$/progress`.
-- [x] Diagnostics carry `relatedInformation`.
-- [x] A `textEdit` reaching wider than the word before the cursor, as long as
-      it stays within the line.
-
 ## Tests
 
 ```
