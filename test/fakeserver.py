@@ -8,7 +8,8 @@ What it does is read from the JSON file named by $LSP_SCENARIO:
     replies       result by method name, for requests that arrive later
     errors        error by method name, for a request to be turned down
     ask           requests of the server's own, by the method that sets
-                  them off; this is how a server hands over an edit
+                  them off; this is how a server hands over an edit.  An
+                  entry may name the "id" to ask under, a string included
 
 Every message that comes in is appended to $LSP_TRACE as one JSON object per
 line, so a test can check what the client sent as well as what it did with
@@ -76,7 +77,7 @@ def main():
             send({'jsonrpc': '2.0', 'id': msg['id'], 'result': None})
         elif method == 'exit':
             return
-        elif 'id' in msg:
+        elif 'id' in msg and method:
             # Anything else that expects an answer gets what the scenario
             # holds for it, and null when it holds nothing.  A method named
             # under "errors" is turned down instead, the way a server does
@@ -90,7 +91,8 @@ def main():
             # A method may also be what sets off a request of the server's
             # own, which is how it hands over an edit it worked out itself.
             for item in SCENARIO.get('ask', {}).get(method, []):
-                send({'jsonrpc': '2.0', 'id': 100000 + next_id(),
+                send({'jsonrpc': '2.0',
+                      'id': item.get('id', 100000 + next_id()),
                       'method': item['method'],
                       'params': item.get('params', {})})
 

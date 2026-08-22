@@ -71,6 +71,7 @@ symbol search, no inlay hints and no call hierarchy.
 - The other places the symbol under the cursor is used, marked in the buffer
 - Inlay hints, the names and types a server fills in, off until asked for
 - Folds worked out by the server, off until asked for
+- Code lenses above the line they are about, off until asked for
 - Hover, and jumps to a definition, declaration, type or implementation
 - Every mention of a symbol, the symbols in a file, and a workspace-wide
   symbol search
@@ -111,6 +112,8 @@ symbol search, no inlay hints and no call hierarchy.
 |  | `:LspFormat` | Format this buffer, or a range of it |
 | Display | `:LspInlayHint` | Turn the inlay hints on or off |
 |  | `:LspFolding` | Turn the folds from the server on or off |
+|  | `:LspCodeLens` | Turn the code lenses on or off |
+|  | `:LspCodeLensRun` | Run the lens above this line |
 
 See `:help lsp.txt` for the options and the details.
 

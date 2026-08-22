@@ -309,6 +309,40 @@ def g:Test_the_server_hands_over_an_edit()
   assert_equal('int two;', getline(2))
 enddef
 
+def g:Test_a_request_named_with_a_string()
+  # Vim answers a request of its own accord only when the id is a number, and
+  # a server is free to name one with a string.
+  const ASKED = 'e8a1-4c2f'
+  assert_true(t.StartServer({
+    capabilities: Offering({codeActionProvider: true,
+			    executeCommandProvider: {commands: ['fix']}}),
+    replies: {'textDocument/codeAction': [
+      {title: 'let the server do it', command: 'fix', arguments: []}]},
+    ask: {'workspace/executeCommand': [{
+      id: ASKED,
+      method: 'workspace/applyEdit',
+      params: {edit: {changes: {['file://' .. t.SRC]: [{
+	newText: 'ONE',
+	range: {start: {line: 0, character: 4},
+		end: {line: 0, character: 7}},
+      }]}}},
+    }]},
+  }, ['int one;']))
+
+  LspCodeAction
+  assert_true(t.WaitFor(() => !popup_list()->empty()), 'a menu should be up')
+  feedkeys("\<CR>", 'tx')
+
+  assert_true(t.WaitFor(() => getline(1) ==# 'int ONE;'),
+	      'what the server sent should be applied')
+  # The answer carries the id back as it came, rather than failing to go out.
+  var Answers = (): list<dict<any>> => t.Trace()->filter((_, m) =>
+			  type(m->get('id', 0)) == v:t_string && m.id ==# ASKED)
+  assert_true(t.WaitFor(() => !Answers()->empty()),
+	      'the request should be answered')
+  assert_equal({applied: true}, Answers()[0].result)
+enddef
+
 def g:Test_outline_reads_a_tree_of_symbols()
   # DocumentSymbol nests; the depth shows as indent.
   const TREE = [{
@@ -434,6 +468,42 @@ def g:Test_the_marks_are_left_alone_when_turned_off()
   assert_true(t.Sent('textDocument/documentHighlight')->empty(),
 	      'nothing should be asked for')
   assert_equal([], prop_list(1))
+enddef
+
+def g:Test_a_code_lens_sits_above_its_line()
+  g:lsp_code_lens = true
+  defer execute('unlet g:lsp_code_lens')
+  const LENSES = [
+    {range: {start: {line: 1, character: 4}, end: {line: 1, character: 10}},
+     command: {title: '2 uses', command: 'probe.say', arguments: ['one']}},
+    {range: {start: {line: 1, character: 4}, end: {line: 1, character: 10}},
+     command: {title: 'run', command: 'probe.run', arguments: []}},
+  ]
+  assert_true(t.StartServer({
+    capabilities: Offering({codeLensProvider: {resolveProvider: false}}),
+    replies: {'textDocument/codeLens': LENSES},
+  }, ['int main(void)', '    int one;']))
+
+  doautocmd BufEnter
+  assert_true(t.WaitFor(() => !prop_list(2)->empty()),
+	      'the lens should be shown')
+
+  # Both lenses of the line are one row, lined up with what they are about.
+  var shown = prop_list(2)[0]
+  assert_equal(['    2 uses | run', 'LspCodeLens'], [shown.text, shown.type])
+
+  # Running one of two asks which, so this picks the second.
+  cursor(2, 1)
+  LspCodeLensRun
+  feedkeys("j\<CR>", 'x')
+  assert_true(t.WaitFor(() => !t.Sent('workspace/executeCommand')->empty()),
+	      'the command should be run')
+  assert_equal('probe.run',
+	       t.Sent('workspace/executeCommand')[0].params.command)
+
+  # Turning them off takes the text out of the window.
+  LspCodeLens
+  assert_equal([], prop_list(2))
 enddef
 
 def g:Test_inlay_hints_are_put_in_the_window()

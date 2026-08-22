@@ -9,6 +9,7 @@ import autoload './lsp/diag.vim'
 import autoload './lsp/fold.vim'
 import autoload './lsp/hl.vim'
 import autoload './lsp/inlay.vim'
+import autoload './lsp/lens.vim'
 import autoload './lsp/util.vim'
 
 # Values of the "textDocumentSync" server capability.
@@ -91,6 +92,7 @@ def DidOpen(cl: dict<any>, bufnr: number)
   # until the cursor moves.
   if bufnr == bufnr('%')
     InlayHints()
+    CodeLenses()
     FoldingRanges()
   endif
 enddef
@@ -283,6 +285,7 @@ def HookBuffer()
     autocmd CursorMoved <buffer> hl.Clear(bufnr('%'))
     autocmd CursorHold <buffer> HighlightSymbol()
     autocmd CursorHold,TextChanged,BufEnter <buffer> InlayHints()
+    autocmd TextChanged,BufEnter <buffer> CodeLenses()
     autocmd TextChanged,BufEnter <buffer> FoldingRanges()
     autocmd TextChangedI,TextChangedP <buffer> OnTextChanged()
     autocmd InsertLeave <buffer> CloseSignature()
@@ -341,6 +344,7 @@ export def Detach(bufnr: number = bufnr('%'))
   diag.Clear(bufnr)
   hl.Clear(bufnr)
   inlay.Clear(bufnr)
+  lens.Clear(bufnr)
   UnsetFolding(bufnr)
   if bufexists(bufnr)
     var saved = getbufvar(bufnr, 'lsp_omnifunc_save', v:null)
@@ -1160,6 +1164,66 @@ export def ToggleInlayHints()
     endfor
   endif
   echo 'lsp: inlay hints ' .. (g:lsp_inlay_hint ? 'on' : 'off')
+enddef
+
+# What the server has to say about a line, shown above it.  Off by default:
+# this puts text in the window that the file does not hold.
+def CodeLenses()
+  if !get(g:, 'lsp_code_lens', false)
+    return
+  endif
+  var cl = BufClient(bufnr('%'))
+  if cl->empty() || !cl.initialized
+	|| !cl.capabilities->has_key('codeLensProvider')
+    return
+  endif
+  var bufnr = bufnr('%')
+  lspclient.Request(cl, 'textDocument/codeLens',
+      {textDocument: {uri: util.PathToUri(bufname(bufnr))}}, (result: any) => {
+    if bufnr != bufnr('%')
+      return
+    endif
+    lens.Update(bufnr, type(result) == v:t_list ? result : [])
+  })
+enddef
+
+export def ToggleCodeLens()
+  g:lsp_code_lens = !get(g:, 'lsp_code_lens', false)
+  if g:lsp_code_lens
+    CodeLenses()
+  else
+    # Every buffer, not just this one: they were put there while it was on.
+    for info in getbufinfo({bufloaded: 1})
+      lens.Clear(info.bufnr)
+    endfor
+  endif
+  echo 'lsp: code lens ' .. (g:lsp_code_lens ? 'on' : 'off')
+enddef
+
+# A lens carries the command it stands for, so running it is running that.
+export def RunCodeLens()
+  var cl = ReadyClient()
+  if cl->empty()
+    return
+  endif
+  var found = lens.ForLine(bufnr('%'), line('.'))
+  if found->empty()
+    util.WarningMsg('there is nothing on this line')
+    return
+  endif
+  if len(found) == 1
+    RunAction(cl, found[0])
+    return
+  endif
+  var options = MENU_OPTIONS->copy()
+  options.title = ' code lens '
+  options.callback = (_, idx) => {
+    if idx > 0 && idx <= len(found)
+      RunAction(cl, found[idx - 1])
+    endif
+  }
+  popup_menu(found->mapnew((_, l) =>
+		    l->get('command', {})->get('title', '')), options)
 enddef
 
 # Once the cursor has come to rest, which takes 'updatetime'.

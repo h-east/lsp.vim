@@ -16,7 +16,8 @@ CONTENTS							*lsp-contents*
 8. Symbol highlight	|lsp-highlight|
 9. Inlay hints		|lsp-inlay-hint|
 10. Folding		|lsp-folding|
-11. Limitations		|lsp-limitations|
+11. Code lens		|lsp-code-lens|
+12. Limitations		|lsp-limitations|
 
 ==============================================================================
 1. Introduction						*lsp-introduction*
@@ -119,6 +120,15 @@ g:lsp_folding
 		the syntax.  Off by default: this takes over 'foldmethod' and
 		'foldexpr', which are likely set to something already.  See
 		|lsp-folding|.
+
+		Default: |v:false|
+
+							*g:lsp_code_lens*
+g:lsp_code_lens
+		When true, what the server has to say about a line is shown
+		above it, such as how often something is used or what can be
+		run.  Off by default: this puts text on screen that the file
+		does not hold.  See |lsp-code-lens|.
 
 		Default: |v:false|
 
@@ -289,7 +299,16 @@ What is shown ~
 		puts 'foldmethod' and 'foldexpr' back the way they were, in
 		every buffer.  See |lsp-folding|.
 
-							*:LspInlayHint*
+							       *:LspCodeLens*
+:LspCodeLens	Turn the code lenses on when they are off and off when they
+		are on, and say which it now is.  See |lsp-code-lens|.
+
+						       *:LspCodeLensRun*
+:LspCodeLensRun
+		Run what the lens above the current line stands for.  When
+		the line has more than one, a menu asks which.
+
+						*:LspInlayHint*
 :LspInlayHint	Turn the inlay hints on when they are off and off when they
 		are on, and say which it now is.  Turning them off takes
 		away the ones already shown, in every buffer.  See
@@ -453,7 +472,29 @@ set to "syntax" would have done.  A range ends on the line before the closing
 bracket, for one, so that line stays outside the fold.
 
 ==============================================================================
-11. Limitations						*lsp-limitations*
+11. Code lens						*lsp-code-lens*
+
+A server can say something about a line without being asked about that line:
+how many places use a function, whether a test can be run from here.  Set
+|g:lsp_code_lens| to |v:true| to have those shown above the line they belong
+to, as |virtual-text|: >vim
+
+	let g:lsp_code_lens = v:true
+<
+The whole file is asked about, since the protocol has no way to ask about
+part of one, and again whenever the buffer changes.  |:LspCodeLens| turns them
+on and off without leaving Vim.
+
+A lens carries a command the server runs on its side, so it is worth acting
+on rather than only reading.  |:LspCodeLensRun| runs the one above the
+current line; when a line gathered more than one, they are shown side by side
+separated by a bar and the command asks which to run.
+
+The text is put in the group LspCodeLens, linked to |hl-Comment| so it stays
+quieter than the file.
+
+==============================================================================
+12. Limitations						*lsp-limitations*
 
 A code action is asked for by line, never by a range within one, so a server
 with something to offer about the exact text under the cursor is not given the

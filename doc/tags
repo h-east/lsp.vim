@@ -1,4 +1,6 @@
 :LspCodeAction	lsp.txt	/*:LspCodeAction*
+:LspCodeLens	lsp.txt	/*:LspCodeLens*
+:LspCodeLensRun	lsp.txt	/*:LspCodeLensRun*
 :LspDeclaration	lsp.txt	/*:LspDeclaration*
 :LspDefinition	lsp.txt	/*:LspDefinition*
 :LspDiag	lsp.txt	/*:LspDiag*
@@ -21,6 +23,7 @@
 :LspSuperTypes	lsp.txt	/*:LspSuperTypes*
 :LspSymbol	lsp.txt	/*:LspSymbol*
 :LspTypeDefinition	lsp.txt	/*:LspTypeDefinition*
+g:lsp_code_lens	lsp.txt	/*g:lsp_code_lens*
 g:lsp_completion_timeout	lsp.txt	/*g:lsp_completion_timeout*
 g:lsp_document_highlight	lsp.txt	/*g:lsp_document_highlight*
 g:lsp_folding	lsp.txt	/*g:lsp_folding*
@@ -28,6 +31,7 @@ g:lsp_inlay_hint	lsp.txt	/*g:lsp_inlay_hint*
 g:lsp_servers	lsp.txt	/*g:lsp_servers*
 g:lsp_set_omnifunc	lsp.txt	/*g:lsp_set_omnifunc*
 g:lsp_signature_help	lsp.txt	/*g:lsp_signature_help*
+lsp-code-lens	lsp.txt	/*lsp-code-lens*
 lsp-commands	lsp.txt	/*lsp-commands*
 lsp-completion	lsp.txt	/*lsp-completion*
 lsp-configuration	lsp.txt	/*lsp-configuration*
