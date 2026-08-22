@@ -82,6 +82,8 @@ symbol search, no inlay hints and no call hierarchy.
 - Diagnostics as signs, text highlights and a message on the cursor line
 - Signature help while a call is being typed
 - The other places the symbol under the cursor is used, marked in the buffer
+- Semantic tokens, the coloring a server works out from what it parsed, off
+  until asked for
 - Inlay hints, the names and types a server fills in, off until asked for
 - Folds worked out by the server, off until asked for
 - Code lenses above the line they are about, off until asked for
@@ -92,7 +94,7 @@ symbol search, no inlay hints and no call hierarchy.
   from or gives rise to
 - Rename across files, formatting a buffer or a range, and code actions from
   a menu
-- Incremental document synchronisation with `listener_add()`
+- Incremental document synchronization with `listener_add()`
 - What the server reports about itself: messages, logs, and what it is busy
   with
 - Changes the server works out on its own, including an action it carries out
@@ -127,6 +129,7 @@ symbol search, no inlay hints and no call hierarchy.
 |  | `:LspFolding` | Turn the folds from the server on or off |
 |  | `:LspCodeLens` | Turn the code lenses on or off |
 |  | `:LspCodeLensRun` | Run the lens above this line |
+|  | `:LspSemanticTokens` | Turn the coloring from the server on or off |
 
 See `:help lsp.txt` for the options and the details.
 
@@ -135,8 +138,8 @@ See `:help lsp.txt` for the options and the details.
 What a server can do that this client cannot ask for yet.  The ones that
 would be felt first:
 
-- [ ] `textDocument/semanticTokens/full`, `/range` and `/full/delta`, the
-      highlighting a server works out from what it parsed
+- [ ] The token modifiers, `readonly` and `deprecated` among them; only the
+      token type is used out of what `semanticTokens` answers with
 - [ ] `textDocument/diagnostic`, the pull kind; only the pushed
       `publishDiagnostics` is read, so a server offering nothing else
       reports nothing at all

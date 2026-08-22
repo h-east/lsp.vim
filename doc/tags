@@ -15,6 +15,7 @@
 :LspOutline	lsp.txt	/*:LspOutline*
 :LspReferences	lsp.txt	/*:LspReferences*
 :LspRename	lsp.txt	/*:LspRename*
+:LspSemanticTokens	lsp.txt	/*:LspSemanticTokens*
 :LspSignature	lsp.txt	/*:LspSignature*
 :LspStart	lsp.txt	/*:LspStart*
 :LspStatus	lsp.txt	/*:LspStatus*
@@ -38,5 +39,6 @@ lsp-inlay-hint	lsp.txt	/*lsp-inlay-hint*
 lsp-introduction	lsp.txt	/*lsp-introduction*
 lsp-limitations	lsp.txt	/*lsp-limitations*
 lsp-requirements	lsp.txt	/*lsp-requirements*
+lsp-semantic-tokens	lsp.txt	/*lsp-semantic-tokens*
 lsp-signature	lsp.txt	/*lsp-signature*
 lsp.txt	lsp.txt	/*lsp.txt*

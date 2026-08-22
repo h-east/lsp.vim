@@ -1,6 +1,6 @@
 vim9script
 
-# LSP client for Vim - server registry, document synchronisation, features
+# LSP client for Vim - server registry, document synchronization, features
 # Maintainer: Hirohito Higashi <h.east.727@gmail.com>
 # Latest Change: 2026 Aug 21
 
@@ -10,6 +10,7 @@ import autoload './lsp/fold.vim'
 import autoload './lsp/hl.vim'
 import autoload './lsp/inlay.vim'
 import autoload './lsp/lens.vim'
+import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
 # Values of the "textDocumentSync" server capability.
@@ -44,6 +45,7 @@ const DEFAULTS = {
   inlay_hint: false,
   code_lens: false,
   folding: false,
+  semantic_tokens: false,
 }
 
 def Setting(name: string): any
@@ -117,6 +119,7 @@ def DidOpen(cl: dict<any>, bufnr: number)
     InlayHints()
     CodeLenses()
     FoldingRanges()
+    SemanticTokens()
   endif
 enddef
 
@@ -311,6 +314,7 @@ def HookBuffer()
     autocmd TextChanged,BufEnter <buffer> InlayHints()
     autocmd TextChanged,BufEnter <buffer> CodeLenses()
     autocmd TextChanged,BufEnter <buffer> FoldingRanges()
+    autocmd TextChanged,BufEnter <buffer> SemanticLater()
     autocmd TextChangedI,TextChangedP <buffer> OnTextChanged()
     autocmd CursorMovedI <buffer> OnCursorMovedI()
     autocmd InsertLeave <buffer> CloseSignature()
@@ -322,6 +326,7 @@ def HookBuffer()
       autocmd!
       autocmd VimLeavePre * Stop()
       autocmd WinScrolled * InlayLater()
+      autocmd WinScrolled * SemanticLater()
     augroup END
     global_hooked = true
   endif
@@ -374,6 +379,9 @@ export def Detach(bufnr: number = bufnr('%'))
   StopHighlight()
   inlay.Clear(bufnr)
   lens.Clear(bufnr)
+  semtok.Clear(bufnr)
+  semtok.Forget(bufnr)
+  ForgetSemanticAsked(bufnr)
   UnsetFolding(bufnr)
   if bufexists(bufnr)
     var saved = getbufvar(bufnr, 'lsp_omnifunc_save', v:null)
@@ -1145,6 +1153,119 @@ def InlayLater()
     return
   endif
   inlay_timer = timer_start(INLAY_DELAY, (_) => InlayHints())
+enddef
+
+# What the server worked out about the text, painted over the syntax
+# highlighting.  Off by default: this recolors the buffer rather than adding
+# to a corner of it.
+#
+# The whole buffer is asked about where the server offers that, and only the
+# part on screen where it does not.  A full answer that comes with a
+# "resultId" is followed by a delta the next time, so an edit is answered with
+# the tokens that moved rather than all of them.
+
+# The |b:changedtick| a full answer was asked for, by buffer: without it a
+# buffer would be asked about again every time it is entered or scrolled.
+var semantic_asked: dict<number> = {}
+
+def ForgetSemanticAsked(bufnr: number)
+  var key = string(bufnr)
+  if semantic_asked->has_key(key)
+    remove(semantic_asked, key)
+  endif
+enddef
+
+# A server offers a request either with "true" or with a dictionary of what it
+# can do about it.
+def Offers(what: any): bool
+  return type(what) == v:t_dict || (type(what) == v:t_bool && what)
+enddef
+
+def SemanticTokens()
+  if !Setting('semantic_tokens')
+    return
+  endif
+  var cl = BufClient(bufnr('%'))
+  if cl->empty() || !cl.initialized
+    return
+  endif
+  var provider = cl.capabilities->get('semanticTokensProvider', {})
+  if type(provider) != v:t_dict
+    return
+  endif
+  var bufnr = bufnr('%')
+  var params: dict<any> = {textDocument: {uri: util.PathToUri(bufname(bufnr))}}
+  var method: string
+  var full = provider->get('full', false)
+  if Offers(full)
+    var tick = getbufvar(bufnr, 'changedtick', 0)
+    if semantic_asked->get(string(bufnr), -1) == tick
+      return
+    endif
+    semantic_asked[string(bufnr)] = tick
+    var previous = semtok.ResultId(bufnr)
+    if type(full) == v:t_dict && full->get('delta', false)
+	  && !previous->empty()
+      method = 'textDocument/semanticTokens/full/delta'
+      params.previousResultId = previous
+    else
+      method = 'textDocument/semanticTokens/full'
+    endif
+  elseif Offers(provider->get('range', false))
+    var last = line('w$')
+    params.range = {
+      start: util.PosToLsp(bufnr, line('w0'), 1),
+      end: util.PosToLsp(bufnr, last, getline(last)->strlen() + 1),
+    }
+    method = 'textDocument/semanticTokens/range'
+  else
+    return
+  endif
+  var legend = provider->get('legend', {})
+  listener_flush(bufnr)
+  lspclient.Request(cl, method, params, (result: any) => {
+    if bufnr != bufnr('%')
+      return
+    endif
+    if !semtok.Update(bufnr, legend, result)
+      # Nothing was painted, so the next thing that happens should ask again.
+      ForgetSemanticAsked(bufnr)
+    endif
+  })
+enddef
+
+# Longer than the wait for the inlay hints: a whole buffer is being asked
+# about, and what comes back is the coloring of text that is already on
+# screen and readable as it stands.
+const SEMANTIC_DELAY = 200
+
+var semantic_timer = -1
+
+def SemanticLater()
+  if semantic_timer != -1
+    timer_stop(semantic_timer)
+    semantic_timer = -1
+  endif
+  if !Setting('semantic_tokens')
+    return
+  endif
+  semantic_timer = timer_start(SEMANTIC_DELAY, (_) => SemanticTokens())
+enddef
+
+export def ToggleSemanticTokens()
+  var on = !Setting('semantic_tokens')
+  SetSetting('semantic_tokens', on)
+  if on
+    SemanticTokens()
+  else
+    # Every buffer, not just this one: they were painted while it was on.
+    for info in getbufinfo({bufloaded: 1})
+      semtok.Clear(info.bufnr)
+      semtok.Forget(info.bufnr)
+    endfor
+    semantic_asked = {}
+  endif
+  echo 'lsp: semantic tokens ' .. (on ? 'on' : 'off')
 enddef
 
 # 'foldmethod' and 'foldexpr' are likely set to something already, so what was

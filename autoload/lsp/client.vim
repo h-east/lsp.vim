@@ -119,6 +119,28 @@ def ClientCapabilities(): dict<any>
       publishDiagnostics: {
 	relatedInformation: true,
       },
+      semanticTokens: {
+	dynamicRegistration: false,
+	requests: {range: true, full: {delta: true}},
+	# What this client has a highlight group for; a server is free to name
+	# others in its legend and they are left to the syntax highlighting.
+	tokenTypes: ['namespace', 'type', 'class', 'enum', 'interface',
+		     'struct', 'typeParameter', 'parameter', 'variable',
+		     'property', 'enumMember', 'event', 'function', 'method',
+		     'macro', 'keyword', 'modifier', 'comment', 'string',
+		     'number', 'regexp', 'operator', 'decorator'],
+	# None of them are acted on yet, but a server needs the list to know
+	# what the bits in a token stand for.
+	tokenModifiers: ['declaration', 'definition', 'readonly', 'static',
+			 'deprecated', 'abstract', 'async', 'modification',
+			 'documentation', 'defaultLibrary'],
+	formats: ['relative'],
+	overlappingTokenSupport: false,
+	multilineTokenSupport: false,
+	# Vim keeps highlighting the file the way it always did, and what the
+	# server says is put on top of that.
+	augmentsSyntaxTokens: true,
+      },
     },
     workspace: {
       workspaceFolders: false,
@@ -262,7 +284,7 @@ export def Cancel(client: dict<any>, id: number)
   endif
 enddef
 
-# Document synchronisation only starts once the reply is in, so "OnReady" is
+# Document synchronization only starts once the reply is in, so "OnReady" is
 # called from there.
 def Initialize(client: dict<any>, OnReady: func(dict<any>))
   var params = {

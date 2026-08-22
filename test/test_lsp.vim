@@ -610,6 +610,108 @@ def g:Test_inlay_hints_can_be_turned_on_and_off()
   assert_false(g:lsp_client_config.inlay_hint)
 enddef
 
+# Five numbers per token, each counted from the one before: line, start,
+# length, type, modifiers.
+const LEGEND = {tokenTypes: ['type', 'variable', 'function'],
+		tokenModifiers: []}
+const TOKENS = [0, 0, 3, 0, 0,
+		0, 4, 1, 1, 0,
+		1, 0, 4, 0, 0,
+		0, 5, 1, 2, 0]
+const SOURCE = ['int x = 1;', 'void f(void);']
+
+def PaintedOn(lnum: number): list<list<any>>
+  return prop_list(lnum)->mapnew((_, p) => [p.col, p.length, p.type])
+enddef
+
+def g:Test_the_server_colors_what_it_parsed()
+  g:lsp_client_config.semantic_tokens = true
+  defer execute('unlet g:lsp_client_config.semantic_tokens')
+  assert_true(t.StartServer({
+    capabilities: Offering({semanticTokensProvider:
+					{legend: LEGEND, full: true}}),
+    replies: {'textDocument/semanticTokens/full': {data: TOKENS}},
+  }, SOURCE))
+
+  assert_true(t.WaitFor(() => !prop_list(1)->empty()),
+	      'the text should be colored')
+  assert_equal([[1, 3, 'LspSemType'], [5, 1, 'LspSemVariable']],
+	       PaintedOn(1))
+  assert_equal([[1, 4, 'LspSemType'], [6, 1, 'LspSemFunction']],
+	       PaintedOn(2))
+enddef
+
+def g:Test_a_delta_is_folded_into_what_was_there()
+  g:lsp_client_config.semantic_tokens = true
+  defer execute('unlet g:lsp_client_config.semantic_tokens')
+  assert_true(t.StartServer({
+    capabilities: Offering({semanticTokensProvider:
+				{legend: LEGEND, full: {delta: true}}}),
+    replies: {
+      'textDocument/semanticTokens/full': {resultId: '1', data: TOKENS},
+      # The first token becomes a function, the rest stays as it was.
+      'textDocument/semanticTokens/full/delta':
+	  {resultId: '2',
+	   edits: [{start: 0, deleteCount: 5, data: [0, 0, 3, 2, 0]}]},
+    },
+  }, SOURCE))
+
+  assert_true(t.WaitFor(() => !prop_list(1)->empty()),
+	      'the text should be colored')
+
+  setline(1, 'int y = 1;')
+  doautocmd TextChanged
+  assert_true(t.WaitFor(() =>
+		  !t.Sent('textDocument/semanticTokens/full/delta')->empty()),
+	      'a change should be asked about with a delta')
+  var asked = t.Sent('textDocument/semanticTokens/full/delta')[0]
+  assert_equal('1', asked.params.previousResultId)
+
+  assert_true(t.WaitFor(() => PaintedOn(1)[0][2] ==# 'LspSemFunction'),
+	      'the delta should reach the buffer')
+  assert_equal([[1, 3, 'LspSemFunction'], [5, 1, 'LspSemVariable']],
+	       PaintedOn(1))
+enddef
+
+def g:Test_the_colors_can_be_turned_on_and_off()
+  defer execute('unlet! g:lsp_client_config.semantic_tokens')
+  assert_true(t.StartServer({
+    capabilities: Offering({semanticTokensProvider:
+					{legend: LEGEND, full: true}}),
+    replies: {'textDocument/semanticTokens/full': {data: TOKENS}},
+  }, SOURCE))
+
+  # Off to start with, so nothing is painted.
+  assert_equal([], prop_list(1))
+
+  LspSemanticTokens
+  assert_true(t.WaitFor(() => !prop_list(1)->empty()),
+	      'the colors should appear')
+  assert_true(g:lsp_client_config.semantic_tokens)
+
+  LspSemanticTokens
+  assert_equal([], prop_list(1), 'the colors should be taken away')
+  assert_false(g:lsp_client_config.semantic_tokens)
+enddef
+
+def g:Test_only_the_part_on_screen_without_a_full_request()
+  g:lsp_client_config.semantic_tokens = true
+  defer execute('unlet g:lsp_client_config.semantic_tokens')
+  assert_true(t.StartServer({
+    capabilities: Offering({semanticTokensProvider:
+					{legend: LEGEND, range: true}}),
+    replies: {'textDocument/semanticTokens/range': {data: TOKENS}},
+  }, SOURCE))
+
+  assert_true(t.WaitFor(() => !prop_list(1)->empty()),
+	      'the text should be colored')
+  assert_true(t.Sent('textDocument/semanticTokens/full')->empty(),
+	      'a request the server does not offer should not be sent')
+  var asked = t.Sent('textDocument/semanticTokens/range')[0].params.range
+  assert_equal(0, asked.start.line)
+  assert_equal(1, asked.end.line)
+enddef
+
 def g:Test_folds_come_from_the_server()
   defer execute('unlet! g:lsp_client_config.folding')
   const RANGES = [

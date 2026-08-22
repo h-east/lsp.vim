@@ -17,8 +17,9 @@ CONTENTS							*lsp-contents*
 9. Inlay hints		|lsp-inlay-hint|
 10. Folding		|lsp-folding|
 11. Code lens		|lsp-code-lens|
-12. Limitations		|lsp-limitations|
-13. AI			|lsp-ai|
+12. Semantic tokens	|lsp-semantic-tokens|
+13. Limitations		|lsp-limitations|
+14. AI			|lsp-ai|
 
 ==============================================================================
 1. Introduction						*lsp-introduction*
@@ -154,6 +155,12 @@ g:lsp_client_config
 				See |lsp-folding|.
 				Default: |v:false|
 
+		semantic_tokens	When true, the buffer is colored from what
+				the server parsed.  Off by default: this
+				paints over the syntax highlighting rather
+				than adding to it.  See |lsp-semantic-tokens|.
+				Default: |v:false|
+
 		Example: >vim
 
 			let g:lsp_client_config = #{
@@ -161,9 +168,9 @@ g:lsp_client_config
 			      \ inlay_hint: v:true,
 			      \ }
 <
-		|:LspInlayHint|, |:LspCodeLens| and |:LspFolding| write into
-		this Dictionary, so what they turn on stays on for the rest
-		of the session.
+		|:LspInlayHint|, |:LspCodeLens|, |:LspFolding| and
+		|:LspSemanticTokens| write into this Dictionary, so what they
+		turn on stays on for the rest of the session.
 
 ==============================================================================
 4. Commands							*lsp-commands*
@@ -322,6 +329,12 @@ What is shown ~
 		are on, and say which it now is.  Turning them off takes
 		away the ones already shown, in every buffer.  See
 		|lsp-inlay-hint|.
+
+						  *:LspSemanticTokens*
+:LspSemanticTokens
+		Turn the coloring from the server on when it is off and off
+		when it is on, and say which it now is.  Turning it off takes
+		the colors away in every buffer.  See |lsp-semantic-tokens|.
 
 ==============================================================================
 5. Completion						*lsp-completion*
@@ -508,7 +521,43 @@ The text is put in the group LspCodeLens, linked to |hl-Comment| so it stays
 quieter than the file.
 
 ==============================================================================
-12. Limitations						*lsp-limitations*
+12. Semantic tokens					*lsp-semantic-tokens*
+
+A server that parsed the file knows what a name stands for, which is more
+than the highlighting worked out from the text alone can tell: a type from a
+variable, a call of a function from a mention of one.  Set "semantic_tokens"
+in |g:lsp_client_config| to |v:true| to color the buffer that way: >vim
+
+	let g:lsp_client_config = #{semantic_tokens: v:true}
+<
+It is painted on with |text-properties| and is off by default, since it
+recolors the buffer rather than adding to a corner of it.
+|:LspSemanticTokens| turns it on and off without leaving Vim.
+
+The whole buffer is asked about where the server offers that, and only the
+part on screen where it does not.  An answer that comes with a "resultId" is
+followed by a request for a delta, so a change is answered with the tokens
+that moved rather than with all of them again.
+
+The group for a token type is "LspSem" and the name the protocol uses,
+capitalized: LspSemFunction for "function", LspSemEnumMember for
+"enumMember".  Each is linked to the group Vim already uses for that kind of
+thing, and free to be given a look of its own with |:highlight|.  These are
+the types this client has a group for:
+
+	namespace	typeParameter	function	string
+	type		parameter	method		number
+	class		variable	macro		regexp
+	enum		property	keyword		operator
+	interface	enumMember	modifier	decorator
+	struct		event		comment
+
+A server names in its legend the token types it uses.  One that is not in
+the list is left to the syntax highlighting, as are the modifiers a token
+carries, such as "readonly" or "deprecated".
+
+==============================================================================
+13. Limitations						*lsp-limitations*
 
 A code action is asked for by line, never by a range within one, so a server
 with something to offer about the exact text under the cursor is not given the
@@ -520,7 +569,7 @@ line the cursor is on.  One reaching across lines is left to omni completion,
 which replaces the word before the cursor and no more.
 
 ==============================================================================
-13. AI								*lsp-ai*
+14. AI								*lsp-ai*
 
 This plugin is developed with the support of AI.
 
