@@ -16,6 +16,7 @@ const SYNC_NONE = 0
 const SYNC_FULL = 1
 const SYNC_INCREMENTAL = 2
 
+# How a hover reply is shown.
 const POPUP_OPTIONS = {
   moved: 'any',
   border: [],
@@ -491,19 +492,114 @@ enddef
 # The signature goes on the side of the cursor the completion menu is not
 # using.  "pos" says which corner "line" refers to; without it the popup lands
 # above either way.
-def SignatureWhere(): dict<string>
-  var pum = pum_getpos()
-  if !pum->empty() && pum.row + 1 < screenrow()
-    return {line: 'cursor+1', col: 'cursor', pos: 'topleft'}
+# The completion menu opens below the cursor when there is room, so the
+# signature goes above.  With nothing above -- right after "zt" -- it goes
+# under the menu instead, which is the one place left.
+#
+# screenrow() is not to be trusted from CompleteChanged, where it answers
+# about the menu rather than the cursor, so nothing here is worked out again
+# later: ClearOfMenu() only needs where the menu is.
+# How the signature popup is drawn, and what that costs it in rows and columns
+# beyond the text itself: a border all round, and a space either side.
+const SIGNATURE_PADDING = [0, 1, 0, 1]	# top, right, bottom, left
+# One row for the border above and one below; likewise a column either side.
+const BORDER_ROWS = 1 + 1 + SIGNATURE_PADDING[0] + SIGNATURE_PADDING[2]
+const BORDER_COLS = 1 + 1 + SIGNATURE_PADDING[1] + SIGNATURE_PADDING[3]
+
+# The screen row the cursor was on when the signature was asked for.
+# screenrow() answers about the menu rather than the cursor when called from
+# CompleteChanged, so it is read once, here, and remembered.
+var signature_row = 0
+
+# Where the signature fits without covering the cursor line or the menu.
+# Above the cursor is tried first, since that is where a call being typed is
+# read from.  Empty when neither side has room.
+def ClearOfMenu(pum: dict<any>, need: number): dict<any>
+  var last = &lines - &cmdheight
+  var row = signature_row
+  # The rows the menu covers.  pum_getpos() counts them from zero and
+  # everything here counts from one; zero stands for "no menu".
+  var mtop = pum->empty() ? 0 : pum.row + 1
+  var mbot = pum->empty() ? 0 : pum.row + pum.height
+
+  # Above: rows 1 to "bottom", which stops short of the menu when it is up
+  # there too.
+  var bottom = mbot > 0 && mbot < row ? mtop - 1 : row - 1
+  if bottom >= need
+    return {line: bottom, col: 'cursor', pos: 'botleft',
+	    maxheight: bottom - BORDER_ROWS}
   endif
-  return {line: 'cursor-1', col: 'cursor', pos: 'botleft'}
+  # Below: "top" to the last row, starting past the menu when it is there.
+  var top = mtop > row ? mbot + 1 : row + 1
+  if last - top + 1 >= need
+    return {line: top, col: 'cursor', pos: 'topleft',
+	    maxheight: last - top + 1 - BORDER_ROWS}
+  endif
+  return {}
 enddef
 
-# The menu comes up after the signature was asked for, so which side it leaves
-# free is only known once it is there.
+# How tall the popup will be: the text wrapped at the width it gets, plus the
+# border.
+def SignatureRows(text: string): number
+  var width = SignatureWidth()
+  return (strdisplaywidth(text) + width - 1) / width + BORDER_ROWS
+enddef
+
+def SignatureWidth(): number
+  # Never nothing, however narrow the window is.
+  return max([1, &columns - BORDER_COLS])
+enddef
+
+# Above or below the cursor, with the room that side has.
+def Side(up: bool, above: number, below: number): dict<any>
+  return up
+      ? {line: 'cursor-1', col: 'cursor', pos: 'botleft',
+	 maxheight: max([1, above - BORDER_ROWS])}
+      : {line: 'cursor+1', col: 'cursor', pos: 'topleft',
+	 maxheight: max([1, below - BORDER_ROWS])}
+enddef
+
+def SignatureWhere(text: string): dict<any>
+  signature_row = screenrow()
+  var need = SignatureRows(text)
+  var above = signature_row - 1
+  var below = &lines - &cmdheight - signature_row
+
+  var pum = pum_getpos()
+  if !pum->empty()
+    var clear = ClearOfMenu(pum, need)
+    if !clear->empty()
+      return clear
+    endif
+    # The menu leaves room for none of it.  Part of it beats none while the
+    # call is being typed, and MoveSignature() takes it away once the menu is
+    # touched.
+  endif
+  # Above when the whole of it fits there, below when it fits there instead,
+  # and the roomier side when neither does.  Where the menu will open is not
+  # worth guessing at; MoveSignature() moves out of its way once it is up.
+  return Side(above >= need || (below < need && above >= below), above, below)
+enddef
+
+# The menu may open after the signature is up.  Moving out of its way needs
+# only the menu's own position, so this is safe from CompleteChanged.
 def MoveSignature()
-  if signature_popup > 0
-    popup_move(signature_popup, SignatureWhere())
+  if signature_popup <= 0
+    return
+  endif
+  var pum = pum_getpos()
+  if pum->empty()
+    return
+  endif
+  # Always placed again rather than only when it looks like an overlap: the
+  # menu has just moved or grown, and where it ends up is what decides.
+  var text = getbufline(winbufnr(signature_popup), 1)->get(0, '')
+  var where = ClearOfMenu(pum, SignatureRows(text))
+  if where->empty()
+    # Nowhere left: the menu is the one being typed into.
+    CloseSignature()
+  else
+    popup_move(signature_popup, where)
   endif
 enddef
 
@@ -536,7 +632,11 @@ def ShowSignature(help: any)
 				  type: 'LspSignatureActive'}]}
   endif
 
-  var where = SignatureWhere()
+  var where = SignatureWhere(label)
+  if where->empty()
+    CloseSignature()
+    return
+  endif
   if signature_popup > 0 && popup_getpos(signature_popup)->empty()
     signature_popup = 0
   endif
@@ -548,11 +648,12 @@ def ShowSignature(help: any)
       line: where.line,
       col: where.col,
       pos: where.pos,
+      maxheight: where.maxheight,
       moved: [0, 0, 0],
       zindex: SIGNATURE_ZINDEX,
       border: [],
-      padding: [0, 1, 0, 1],
-      maxwidth: 78,
+      padding: SIGNATURE_PADDING,
+      maxwidth: SignatureWidth(),
     })
   endif
 enddef
@@ -1450,7 +1551,6 @@ def FixWiderEdit(item: dict<any>): bool
 enddef
 
 def OnCompleteDone()
-  MoveSignature()
   resolve_seq += 1
 
   # An item may come with edits elsewhere in the file, usually an include to
