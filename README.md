@@ -151,6 +151,10 @@ to announce, what to send unprompted, and what to reply to each request with.
 It records everything the client sent, so a test can check that as well as
 what the client did with the answers.
 
+## AI
+
+This plugin is developed with the support of AI.
+
 ## License
 
 Same terms as Vim itself.  See `:help license`.

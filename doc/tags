@@ -23,14 +23,9 @@
 :LspSuperTypes	lsp.txt	/*:LspSuperTypes*
 :LspSymbol	lsp.txt	/*:LspSymbol*
 :LspTypeDefinition	lsp.txt	/*:LspTypeDefinition*
-g:lsp_code_lens	lsp.txt	/*g:lsp_code_lens*
-g:lsp_completion_timeout	lsp.txt	/*g:lsp_completion_timeout*
-g:lsp_document_highlight	lsp.txt	/*g:lsp_document_highlight*
-g:lsp_folding	lsp.txt	/*g:lsp_folding*
-g:lsp_inlay_hint	lsp.txt	/*g:lsp_inlay_hint*
-g:lsp_servers	lsp.txt	/*g:lsp_servers*
-g:lsp_set_omnifunc	lsp.txt	/*g:lsp_set_omnifunc*
-g:lsp_signature_help	lsp.txt	/*g:lsp_signature_help*
+g:lsp_client_config	lsp.txt	/*g:lsp_client_config*
+g:lsp_server_list	lsp.txt	/*g:lsp_server_list*
+lsp-ai	lsp.txt	/*lsp-ai*
 lsp-code-lens	lsp.txt	/*lsp-code-lens*
 lsp-commands	lsp.txt	/*lsp-commands*
 lsp-completion	lsp.txt	/*lsp-completion*

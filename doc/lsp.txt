@@ -18,6 +18,7 @@ CONTENTS							*lsp-contents*
 10. Folding		|lsp-folding|
 11. Code lens		|lsp-code-lens|
 12. Limitations		|lsp-limitations|
+13. AI			|lsp-ai|
 
 ==============================================================================
 1. Introduction						*lsp-introduction*
@@ -517,6 +518,11 @@ turned down, as answering that takes a request this client does not serve.
 A "textEdit" in a completion item is followed only when it stays within the
 line the cursor is on.  One reaching across lines is left to omni completion,
 which replaces the word before the cursor and no more.
+
+==============================================================================
+13. AI								*lsp-ai*
+
+This plugin is developed with the support of AI.
 
 ==============================================================================
  vim:tw=78:ts=8:noet:ft=help:norl:
