@@ -135,9 +135,11 @@ See `:help lsp.txt` for the options and the details.
 
 ## TODO
 
-What a server can do that this client cannot ask for yet.  The ones that
+Where this client stands against what a server can offer.  The ones that
 would be felt first:
 
+- [x] `textDocument/semanticTokens/full`, `/range` and `/full/delta`, the
+      highlighting a server works out from what it parsed
 - [ ] The token modifiers, `readonly` and `deprecated` among them; only the
       token type is used out of what `semanticTokens` answers with
 - [ ] `textDocument/diagnostic`, the pull kind; only the pushed
