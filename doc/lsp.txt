@@ -404,8 +404,11 @@ be given a look of its own with |:highlight|:
 While a call is being typed the server is asked what it takes, and the answer
 appears in a popup next to the cursor with the parameter being filled in
 highlighted.  The server says which characters start this, "(" and "," for a
-C server; the closing paren ends the call and takes the popup with it, as does
-leaving Insert mode.  |:LspSignature| asks at any other moment, and setting
+C server.  From there on every change and every move of the cursor is asked
+about, and the popup goes when the answer holds no signature: that is what a
+server says once the cursor is out of the call, whether the closing paren was
+typed, the call deleted or the cursor moved away.  Leaving Insert mode closes
+it as well.  |:LspSignature| asks at any other moment, and setting
 "signature_help" to |v:false| leaves the asking to that command alone.
 
 This works while the completion menu is up as well, which is where

@@ -312,6 +312,7 @@ def HookBuffer()
     autocmd TextChanged,BufEnter <buffer> CodeLenses()
     autocmd TextChanged,BufEnter <buffer> FoldingRanges()
     autocmd TextChangedI,TextChangedP <buffer> OnTextChanged()
+    autocmd CursorMovedI <buffer> OnCursorMovedI()
     autocmd InsertLeave <buffer> CloseSignature()
   augroup END
   if !global_hooked
@@ -710,8 +711,11 @@ export def Signature()
 enddef
 
 # Asked for after a character the server named as a trigger, "(" and "," for a
-# C server.  A closing paren ends the call and takes the popup with it.
-# TextChangedP is there because this has to work while the menu is up.
+# C server, and asked again on every change while the popup is up.  What ends
+# the call is the server answering with no signature at all: it does that once
+# the cursor is no longer inside one, whether the ")" was typed or the "(" was
+# deleted.  TextChangedP is there because this has to work while the menu is
+# up.
 def OnTextChanged()
   if !Setting('signature_help')
     return
@@ -724,15 +728,25 @@ def OnTextChanged()
   if type(provider) != v:t_dict
     return
   endif
-  var typed = strpart(getline('.'), 0, col('.') - 1)->slice(-1)
-  if typed ==# ')'
-    CloseSignature()
-  elseif index(provider->get('triggerCharacters', []), typed) >= 0
-    var here = [bufnr('%'), line('.'), col('.'), getline('.')]
-    if here != signature_asked
-      signature_asked = here
-      Signature()
+  if signature_popup <= 0
+    var typed = strpart(getline('.'), 0, col('.') - 1)->slice(-1)
+    if index(provider->get('triggerCharacters', []), typed) < 0
+      return
     endif
+  endif
+  var here = [bufnr('%'), line('.'), col('.'), getline('.')]
+  if here != signature_asked
+    signature_asked = here
+    Signature()
+  endif
+enddef
+
+# The cursor can be taken out of the call without the text changing, and the
+# popup is asked not to close on its own so that it lives through an argument
+# being typed.
+def OnCursorMovedI()
+  if signature_popup > 0
+    OnTextChanged()
   endif
 enddef
 

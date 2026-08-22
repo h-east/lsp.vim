@@ -6,6 +6,9 @@ What it does is read from the JSON file named by $LSP_SCENARIO:
     capabilities  what to answer "initialize" with
     notify        messages to send once "initialized" arrives, in order
     replies       result by method name, for requests that arrive later
+    sequence      results by method name, one per request in the order they
+                  are listed, the last of them answering the rest; this is
+                  how a server changes its mind about what it said before
     errors        error by method name, for a request to be turned down
     ask           requests of the server's own, by the method that sets
                   them off; this is how a server hands over an edit.  An
@@ -24,11 +27,21 @@ TRACE = open(os.environ.get('LSP_TRACE', os.devnull), 'w')
 
 
 _counter = [0]
+_asked = {}
 
 
 def next_id():
     _counter[0] += 1
     return _counter[0]
+
+
+def result_for(method):
+    answers = SCENARIO.get('sequence', {}).get(method)
+    if not answers:
+        return SCENARIO.get('replies', {}).get(method)
+    at = _asked.get(method, 0)
+    _asked[method] = min(at + 1, len(answers) - 1)
+    return answers[at]
 
 
 def read_msg():
@@ -87,7 +100,7 @@ def main():
                 send({'jsonrpc': '2.0', 'id': msg['id'], 'error': error})
             else:
                 send({'jsonrpc': '2.0', 'id': msg['id'],
-                      'result': SCENARIO.get('replies', {}).get(method)})
+                      'result': result_for(method)})
             # A method may also be what sets off a request of the server's
             # own, which is how it hands over an edit it worked out itself.
             for item in SCENARIO.get('ask', {}).get(method, []):

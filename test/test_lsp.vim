@@ -507,6 +507,44 @@ def g:Test_a_code_lens_sits_above_its_line()
   assert_equal([], prop_list(2))
 enddef
 
+def g:Test_the_signature_goes_with_the_call_it_describes()
+  popup_clear()
+  defer popup_clear()
+  const SIGNATURE = {signatures: [{label: 'void f(int count)',
+				   parameters: [{label: 'int count'}]}]}
+  assert_true(t.StartServer({
+    capabilities: Offering({signatureHelpProvider:
+					      {triggerCharacters: ['(']}}),
+    sequence: {'textDocument/signatureHelp':
+			      [SIGNATURE, SIGNATURE, {signatures: []}]},
+  }, ['    f(x)']))
+
+  # As if the "(" had just been typed, with the cursor right after it.
+  cursor(1, 7)
+  doautocmd TextChangedI
+  assert_true(t.WaitFor(() => !popup_list()->empty()),
+	      'the signature should be shown')
+  assert_equal('void f(int count)',
+	       getbufline(winbufnr(popup_list()[0]), 1)->get(0, ''))
+
+  # The cursor can be taken out of the call without the text changing, so a
+  # move is worth asking about too.
+  cursor(1, 5)
+  doautocmd CursorMovedI
+  assert_true(t.WaitFor(() =>
+		    len(t.Sent('textDocument/signatureHelp')) == 2),
+	      'a move should be asked about')
+
+  # The call is deleted, so there is nothing left to describe.  The server
+  # says as much by answering with no signature at all.
+  setline(1, '    ')
+  cursor(1, 4)
+  doautocmd TextChangedI
+  assert_true(t.WaitFor(() => popup_list()->empty()),
+	      'the signature should go with the call')
+  assert_equal(3, len(t.Sent('textDocument/signatureHelp')))
+enddef
+
 def g:Test_inlay_hints_are_put_in_the_window()
   g:lsp_client_config.inlay_hint = true
   defer execute('unlet g:lsp_client_config.inlay_hint')
