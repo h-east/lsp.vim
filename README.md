@@ -36,13 +36,31 @@ Describe the servers to use in `g:lsp_servers`:
 g:lsp_servers = [{
   name: 'clangd',
   filetypes: ['c', 'cpp'],
-  cmd: ['clangd', '--background-index', '--clang-tidy'],
+  cmd: ['clangd', '--background-index', '--clang-tidy',
+	'--header-insertion=never'],
   rootPatterns: ['compile_commands.json', '.git'],
+}, {
+  name: 'pylsp',
+  filetypes: ['python'],
+  cmd: ['pylsp'],
+  rootPatterns: ['pyproject.toml', '.git'],
 }]
 ```
 
 A buffer is connected to the server for its `'filetype'` when it is opened.
 The server is started once per workspace root.
+
+## Servers it has been used with
+
+- clangd 18.1.3, for C and C++
+- pylsp 1.15.0, for Python
+
+Only what a server says it offers is asked for, and the two differ enough to
+be worth naming.  clangd answers a type hierarchy, semantic tokens and a
+formatting request for a range, and offers no code lens; its call hierarchy
+answers who calls a function, while `callHierarchy/outgoingCalls` comes back
+as an unknown method.  pylsp offers a code lens, and offers no workspace
+symbol search, no inlay hints and no call hierarchy.
 
 ## What it does
 
@@ -57,7 +75,8 @@ The server is started once per workspace root.
 - Every mention of a symbol, the symbols in a file, and a workspace-wide
   symbol search
 - Who calls a function and what it calls
-- Rename across files, whole-buffer formatting, and code actions from a menu
+- Rename across files, formatting a buffer or a range, and code actions from
+  a menu
 - Incremental document synchronisation with `listener_add()`
 - What the server reports about itself: messages, logs, and what it is busy
   with
@@ -86,7 +105,7 @@ The server is started once per workspace root.
 |  | `:LspDiag` | The diagnostics, into the location list |
 | Changing | `:LspCodeAction` | Offer what the server can do here |
 |  | `:LspRename [{name}]` | Rename the symbol everywhere |
-|  | `:LspFormat` | Format this buffer, or `:{range}LspFormat` for part of it |
+|  | `:LspFormat` | Format this buffer, or a range of it |
 | Display | `:LspInlayHint` | Turn the inlay hints on or off |
 |  | `:LspFolding` | Turn the folds from the server on or off |
 
