@@ -30,10 +30,10 @@ packadd! lsp.vim
 
 ## Configuration
 
-Describe the servers to use in `g:lsp_servers`:
+Describe the servers to use in `g:lsp_server_list`:
 
 ```vim
-g:lsp_servers = [{
+g:lsp_server_list = [{
   name: 'clangd',
   filetypes: ['c', 'cpp'],
   cmd: ['clangd', '--background-index', '--clang-tidy',
@@ -47,8 +47,19 @@ g:lsp_servers = [{
 }]
 ```
 
+What the client itself does goes in `g:lsp_client_config`, one entry per
+setting:
+
+```vim
+g:lsp_client_config = {
+  highlight_delay: 150,
+  inlay_hint: true,
+}
+```
+
 A buffer is connected to the server for its `'filetype'` when it is opened.
-The server is started once per workspace root.
+The server is started once per workspace root.  `:help lsp-configuration`
+lists every key.
 
 ## Servers it has been used with
 

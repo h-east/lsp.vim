@@ -35,7 +35,7 @@ load on its own, and add this to your |vimrc|: >vim
 
 	packadd! lsp.vim
 <
-Either way, describe the servers to use in |g:lsp_servers|.
+Either way, describe the servers to use in |g:lsp_server_list|.
 
 Vim frames the protocol messages and matches replies to requests itself, see
 |language-server-protocol|, so what is left to the plugin is the conversation
@@ -61,8 +61,8 @@ separately, none is shipped with Vim.
 ==============================================================================
 3. Configuration					*lsp-configuration*
 
-							*g:lsp_servers*
-g:lsp_servers
+						       *g:lsp_server_list*
+g:lsp_server_list
 		A List of Dictionaries, one per server.  Each entry holds:
 
 		name		Name shown by |:LspStatus|.
@@ -85,7 +85,7 @@ g:lsp_servers
 		Example: >vim
 
 			packadd! lsp.vim
-			let g:lsp_servers = [
+			let g:lsp_server_list = [
 			      \ #{name: 'clangd',
 			      \   filetypes: ['c', 'cpp'],
 			      \   cmd: ['clangd', '--background-index'],
@@ -96,65 +96,73 @@ g:lsp_servers
 		One server is started per workspace root rather than per
 		buffer, so buffers from the same project share a server.
 
-							*g:lsp_set_omnifunc*
-g:lsp_set_omnifunc
-		When true, 'omnifunc' is set in a buffer whose server offers
-		completion.  Set this to |v:false| to keep whatever the
-		'filetype' plugin chose.
+						     *g:lsp_client_config*
+g:lsp_client_config
+		A Dictionary holding what the client itself does.  A key that
+		is not there is what it says below.
 
-		Default: |v:true|
+		omnifunc	When true, 'omnifunc' is set in a buffer whose
+				server offers completion.  Set this to
+				|v:false| to keep whatever the 'filetype'
+				plugin chose.
+				Default: |v:true|
 
-						*g:lsp_completion_timeout*
-g:lsp_completion_timeout
-		How long to wait for a reply to a completion request, in
-		milliseconds.  See |lsp-completion| for why there is a wait
-		at all.  A server that has not finished reading the file yet
-		takes noticeably longer than one that has, so this needs room
-		above what a warmed up server answers in.
+		completion_timeout
+				How long to wait for a reply to a completion
+				request, in milliseconds.  See
+				|lsp-completion| for why there is a wait at
+				all.  A server that has not finished reading
+				the file yet takes noticeably longer than one
+				that has, so this needs room above what a
+				warmed up server answers in.
+				Default: 2000
 
-		Default: 2000
+		document_highlight
+				When true, the other places the symbol under
+				the cursor is used are marked once the cursor
+				comes to rest.  See |lsp-highlight|.
+				Default: |v:true|
 
-							*g:lsp_folding*
-g:lsp_folding
-		When true, the folds are the ones the server works out from
-		the syntax.  Off by default: this takes over 'foldmethod' and
-		'foldexpr', which are likely set to something already.  See
-		|lsp-folding|.
+		highlight_delay	How long the cursor has to stand still
+				before that happens, in milliseconds.
+				Default: 300
 
-		Default: |v:false|
+		signature_help	When true, the signature of the call being
+				typed is shown on its own.  Set this to
+				|v:false| to only ask for it with
+				|:LspSignature|.  See |lsp-signature|.
+				Default: |v:true|
 
-							*g:lsp_code_lens*
-g:lsp_code_lens
-		When true, what the server has to say about a line is shown
-		above it, such as how often something is used or what can be
-		run.  Off by default: this puts text on screen that the file
-		does not hold.  See |lsp-code-lens|.
+		inlay_hint	When true, the names and types a server fills
+				in are shown in the window.  Off by default:
+				this puts text on screen that the file does
+				not hold.  See |lsp-inlay-hint|.
+				Default: |v:false|
 
-		Default: |v:false|
+		code_lens	When true, what the server has to say about a
+				line is shown above it, such as how often
+				something is used or what can be run.  Off by
+				default, for the same reason.  See
+				|lsp-code-lens|.
+				Default: |v:false|
 
-							*g:lsp_inlay_hint*
-g:lsp_inlay_hint
-		When true, the names and types a server fills in are shown in
-		the window.  Off by default: this puts text on screen that
-		the file does not hold.  See |lsp-inlay-hint|.
+		folding		When true, the folds are the ones the server
+				works out from the syntax.  Off by default:
+				this takes over 'foldmethod' and 'foldexpr',
+				which are likely set to something already.
+				See |lsp-folding|.
+				Default: |v:false|
 
-		Default: |v:false|
+		Example: >vim
 
-						  *g:lsp_document_highlight*
-g:lsp_document_highlight
-		When true, the other places the symbol under the cursor is
-		used are marked once the cursor comes to rest.  How long that
-		takes is 'updatetime'.  See |lsp-highlight|.
-
-		Default: |v:true|
-
-							*g:lsp_signature_help*
-g:lsp_signature_help
-		When true, the signature of the call being typed is shown on
-		its own.  Set this to |v:false| to only ask for it with
-		|:LspSignature|.  See |lsp-signature|.
-
-		Default: |v:true|
+			let g:lsp_client_config = #{
+			      \ highlight_delay: 150,
+			      \ inlay_hint: v:true,
+			      \ }
+<
+		|:LspInlayHint|, |:LspCodeLens| and |:LspFolding| write into
+		this Dictionary, so what they turn on stays on for the rest
+		of the session.
 
 ==============================================================================
 4. Commands							*lsp-commands*
@@ -321,13 +329,14 @@ When the server offers completion, 'omnifunc' is set to "lsp#OmniFunc" in the
 buffers it handles, so |i_CTRL-X_CTRL-O| asks the server.  A 'filetype' plugin
 has usually put a function working from tags there; the server knows more, so
 it takes over, and the old value is restored when the buffer is detached.  Set
-|g:lsp_set_omnifunc| to |v:false| to keep the filetype plugin's choice.
+"omnifunc" in |g:lsp_client_config| to |v:false| to keep what the 'filetype'
+plugin chose.
 
 Unlike the other requests this one waits for its answer, because a completion
-function has to return the matches itself.  |g:lsp_completion_timeout| bounds
-how long a keystroke can block that way.  When the time runs out a message
-says so and no matches are offered; raise the option if a server needs longer
-than that while it is still reading the file.
+function has to return the matches itself.  "completion_timeout" bounds how
+long a keystroke can block that way.  When the time runs out a message says so
+and no matches are offered; raise it if a server needs longer than that while
+it is still reading the file.
 
 The kind of an item is shown as the single letter |complete-items| asks for.
 What a server marks as a snippet is offered under its label: the placeholders
@@ -397,7 +406,7 @@ appears in a popup next to the cursor with the parameter being filled in
 highlighted.  The server says which characters start this, "(" and "," for a
 C server; the closing paren ends the call and takes the popup with it, as does
 leaving Insert mode.  |:LspSignature| asks at any other moment, and setting
-|g:lsp_signature_help| to |v:false| leaves the asking to that command alone.
+"signature_help" to |v:false| leaves the asking to that command alone.
 
 This works while the completion menu is up as well, which is where
 'autocomplete' puts one on every keystroke.  The menu is drawn over popups
@@ -415,10 +424,11 @@ it expands to, so a call of a macro wrapping a function shows the function.
 ==============================================================================
 8. Symbol highlight					*lsp-highlight*
 
-Once the cursor has rested on a symbol for 'updatetime', the server is asked
-where else that symbol is used in the buffer, and those places are marked.
-Moving the cursor takes the marks away again.  Set |g:lsp_document_highlight|
-to |v:false| to leave the buffer alone.
+Once the cursor has stood still on a symbol for as long as "highlight_delay"
+says, the server is asked where else that symbol is used in the buffer, and
+those places are marked.  Moving the cursor takes the marks away again.  Set
+"document_highlight" in |g:lsp_client_config| to |v:false| to leave the buffer
+alone.
 
 Somewhere the symbol is written to is marked differently from somewhere it is
 only read, when the server says which is which.  These are the groups, each
@@ -434,13 +444,13 @@ linked to an existing one and free to be given a look of its own with
 
 A server can name what the file leaves unsaid: the parameter an argument is
 being passed as, and the type of something declared without one.  Set
-|g:lsp_inlay_hint| to |v:true| to have those shown as |virtual-text|, which is
-text in the window that the buffer does not hold: >vim
+"inlay_hint" in |g:lsp_client_config| to |v:true| to have those shown as
+|virtual-text|, that is text in the window the buffer does not hold: >vim
 
-	let g:lsp_inlay_hint = v:true
+	let g:lsp_client_config = #{inlay_hint: v:true}
 <
 Only the part of the file on screen is asked about, and again whenever the
-buffer changes or the cursor comes to rest.
+buffer changes or the window scrolls.
 
 |:LspInlayHint| turns them on and off without leaving Vim, which is the way
 to have a look at them and then be rid of them again.
@@ -455,8 +465,8 @@ than the file, and free to be given a look of their own with |:highlight|:
 10. Folding						*lsp-folding*
 
 A server knows where a function or a comment begins and ends, which is more
-than 'foldmethod' set to "indent" or "syntax" can work out.  Set
-|g:lsp_folding| to |v:true| to fold by what it says, or turn it on for a
+than 'foldmethod' set to "indent" or "syntax" can work out.  Set "folding" in
+|g:lsp_client_config| to |v:true| to fold by what it says, or turn it on for a
 while with |:LspFolding|.
 
 Doing so sets 'foldmethod' to "expr" and 'foldexpr' to a function of this
@@ -476,10 +486,10 @@ bracket, for one, so that line stays outside the fold.
 
 A server can say something about a line without being asked about that line:
 how many places use a function, whether a test can be run from here.  Set
-|g:lsp_code_lens| to |v:true| to have those shown above the line they belong
-to, as |virtual-text|: >vim
+"code_lens" in |g:lsp_client_config| to |v:true| to have those shown above the
+line they belong to, as |virtual-text|: >vim
 
-	let g:lsp_code_lens = v:true
+	let g:lsp_client_config = #{code_lens: v:true}
 <
 The whole file is asked about, since the protocol has no way to ask about
 part of one, and again whenever the buffer changes.  |:LspCodeLens| turns them

@@ -34,6 +34,29 @@ const MENU_OPTIONS = {
   maxwidth: 78,
 }
 
+# What can be asked for in g:lsp_client_config, and what it is when it is not.
+const DEFAULTS = {
+  omnifunc: true,
+  completion_timeout: 2000,
+  document_highlight: true,
+  highlight_delay: 300,
+  signature_help: true,
+  inlay_hint: false,
+  code_lens: false,
+  folding: false,
+}
+
+def Setting(name: string): any
+  return get(g:, 'lsp_client_config', {})->get(name, DEFAULTS[name])
+enddef
+
+def SetSetting(name: string, value: any)
+  if !exists('g:lsp_client_config')
+    g:lsp_client_config = {}
+  endif
+  g:lsp_client_config[name] = value
+enddef
+
 # Keyed by "<name>@<root>": one server per workspace, not one per buffer.
 var clients: dict<dict<any>> = {}
 
@@ -44,7 +67,7 @@ def ClientKey(name: string, root: string): string
 enddef
 
 def ServerFor(ft: string): dict<any>
-  for config in get(g:, 'lsp_servers', [])
+  for config in get(g:, 'lsp_server_list', [])
     if index(config->get('filetypes', []), ft) >= 0
       return config
     endif
@@ -66,7 +89,7 @@ enddef
 # back when the buffer is detached.
 def SetBufferOptions(cl: dict<any>, bufnr: number)
   if !cl.capabilities->has_key('completionProvider')
-	|| !get(g:, 'lsp_set_omnifunc', true)
+	|| !Setting('omnifunc')
     return
   endif
   setbufvar(bufnr, 'lsp_omnifunc_save', getbufvar(bufnr, '&omnifunc'))
@@ -271,7 +294,7 @@ enddef
 
 # Per buffer, and only once a buffer really has a server: watching every
 # buffer would pull this script in even when no server is ever used.
-var leaving_hooked = false
+var global_hooked = false
 
 def HookBuffer()
   b:lsp_listener = listener_add(OnChange, bufnr('%'), {text: true})
@@ -283,19 +306,23 @@ def HookBuffer()
     autocmd CompleteDone <buffer> OnCompleteDone()
     autocmd CursorMoved <buffer> diag.EchoAtCursor()
     autocmd CursorMoved <buffer> hl.Clear(bufnr('%'))
-    autocmd CursorHold <buffer> HighlightSymbol()
-    autocmd CursorHold,TextChanged,BufEnter <buffer> InlayHints()
+    autocmd CursorMoved <buffer> HighlightLater()
+    autocmd InsertEnter <buffer> StopHighlight()
+    autocmd TextChanged,BufEnter <buffer> InlayHints()
     autocmd TextChanged,BufEnter <buffer> CodeLenses()
     autocmd TextChanged,BufEnter <buffer> FoldingRanges()
     autocmd TextChangedI,TextChangedP <buffer> OnTextChanged()
     autocmd InsertLeave <buffer> CloseSignature()
   augroup END
-  if !leaving_hooked
-    augroup lsp_leave
+  if !global_hooked
+    # WinScrolled matches on the window ID, so it cannot be per buffer.  Both
+    # of these do nothing until there is a client to ask.
+    augroup lsp_global
       autocmd!
       autocmd VimLeavePre * Stop()
+      autocmd WinScrolled * InlayLater()
     augroup END
-    leaving_hooked = true
+    global_hooked = true
   endif
 enddef
 
@@ -343,6 +370,7 @@ export def Detach(bufnr: number = bufnr('%'))
   DidClose(bufnr)
   diag.Clear(bufnr)
   hl.Clear(bufnr)
+  StopHighlight()
   inlay.Clear(bufnr)
   lens.Clear(bufnr)
   UnsetFolding(bufnr)
@@ -685,7 +713,7 @@ enddef
 # C server.  A closing paren ends the call and takes the popup with it.
 # TextChangedP is there because this has to work while the menu is up.
 def OnTextChanged()
-  if !get(g:, 'lsp_signature_help', true)
+  if !Setting('signature_help')
     return
   endif
   var cl = BufClient(bufnr('%'))
@@ -1061,7 +1089,7 @@ enddef
 # Only the part of the file on screen.  Off by default: this puts text in the
 # window that the file does not hold.
 def InlayHints()
-  if !get(g:, 'lsp_inlay_hint', false)
+  if !Setting('inlay_hint')
     return
   endif
   var cl = BufClient(bufnr('%'))
@@ -1084,6 +1112,25 @@ def InlayHints()
     endif
     inlay.Update(bufnr, type(result) == v:t_list ? result : [])
   })
+enddef
+
+# Once scrolling has come to rest.  Holding down CTRL-E fires WinScrolled
+# every few milliseconds, and the part on screen is only worth asking about
+# when it stops moving.  Hints are added above lines that are already drawn,
+# so a short wait is not felt.
+const INLAY_DELAY = 100
+
+var inlay_timer = -1
+
+def InlayLater()
+  if inlay_timer != -1
+    timer_stop(inlay_timer)
+    inlay_timer = -1
+  endif
+  if !Setting('inlay_hint')
+    return
+  endif
+  inlay_timer = timer_start(INLAY_DELAY, (_) => InlayHints())
 enddef
 
 # 'foldmethod' and 'foldexpr' are likely set to something already, so what was
@@ -1115,7 +1162,7 @@ def UnsetFolding(bufnr: number)
 enddef
 
 def FoldingRanges()
-  if !get(g:, 'lsp_folding', false)
+  if !Setting('folding')
     return
   endif
   var cl = BufClient(bufnr('%'))
@@ -1138,15 +1185,16 @@ def FoldingRanges()
 enddef
 
 export def ToggleFolding()
-  g:lsp_folding = !get(g:, 'lsp_folding', false)
-  if g:lsp_folding
+  var on = !Setting('folding')
+  SetSetting('folding', on)
+  if on
     FoldingRanges()
   else
     for info in getbufinfo({bufloaded: 1})
       UnsetFolding(info.bufnr)
     endfor
   endif
-  echo 'lsp: folding ' .. (g:lsp_folding ? 'on' : 'off')
+  echo 'lsp: folding ' .. (on ? 'on' : 'off')
 enddef
 
 export def FoldExpr(lnum: number): string
@@ -1154,8 +1202,9 @@ export def FoldExpr(lnum: number): string
 enddef
 
 export def ToggleInlayHints()
-  g:lsp_inlay_hint = !get(g:, 'lsp_inlay_hint', false)
-  if g:lsp_inlay_hint
+  var on = !Setting('inlay_hint')
+  SetSetting('inlay_hint', on)
+  if on
     InlayHints()
   else
     # Every buffer, not just this one: they were put there while it was on.
@@ -1163,13 +1212,13 @@ export def ToggleInlayHints()
       inlay.Clear(info.bufnr)
     endfor
   endif
-  echo 'lsp: inlay hints ' .. (g:lsp_inlay_hint ? 'on' : 'off')
+  echo 'lsp: inlay hints ' .. (on ? 'on' : 'off')
 enddef
 
 # What the server has to say about a line, shown above it.  Off by default:
 # this puts text in the window that the file does not hold.
 def CodeLenses()
-  if !get(g:, 'lsp_code_lens', false)
+  if !Setting('code_lens')
     return
   endif
   var cl = BufClient(bufnr('%'))
@@ -1188,8 +1237,9 @@ def CodeLenses()
 enddef
 
 export def ToggleCodeLens()
-  g:lsp_code_lens = !get(g:, 'lsp_code_lens', false)
-  if g:lsp_code_lens
+  var on = !Setting('code_lens')
+  SetSetting('code_lens', on)
+  if on
     CodeLenses()
   else
     # Every buffer, not just this one: they were put there while it was on.
@@ -1197,7 +1247,7 @@ export def ToggleCodeLens()
       lens.Clear(info.bufnr)
     endfor
   endif
-  echo 'lsp: code lens ' .. (g:lsp_code_lens ? 'on' : 'off')
+  echo 'lsp: code lens ' .. (on ? 'on' : 'off')
 enddef
 
 # A lens carries the command it stands for, so running it is running that.
@@ -1226,9 +1276,29 @@ export def RunCodeLens()
 		    l->get('command', {})->get('title', '')), options)
 enddef
 
-# Once the cursor has come to rest, which takes 'updatetime'.
+# Once the cursor has come to rest.  A timer of this plugin decides when that
+# is, rather than 'updatetime': that one also drives the swap file, so it is
+# not free to be set to what suits marking a symbol.
+var highlight_timer = -1
+
+def StopHighlight()
+  if highlight_timer != -1
+    timer_stop(highlight_timer)
+    highlight_timer = -1
+  endif
+enddef
+
+def HighlightLater()
+  StopHighlight()
+  if !Setting('document_highlight')
+    return
+  endif
+  highlight_timer = timer_start(Setting('highlight_delay'),
+				(_) => HighlightSymbol())
+enddef
+
 def HighlightSymbol()
-  if !get(g:, 'lsp_document_highlight', true)
+  if !Setting('document_highlight')
     return
   endif
   var cl = BufClient(bufnr('%'))
@@ -1579,7 +1649,7 @@ export def OmniFunc(findstart: number, base: string): any
   endif
 
   listener_flush(bufnr('%'))
-  var timeout = get(g:, 'lsp_completion_timeout', 2000)
+  var timeout = Setting('completion_timeout')
   var result = lspclient.RequestSync(cl, 'textDocument/completion',
 					   CursorParams(), timeout)
   var items: list<any> = []

@@ -432,8 +432,9 @@ def g:Test_the_symbol_under_the_cursor_is_marked()
     replies: {'textDocument/documentHighlight': MARKS},
   }, ['int one;', 'int two;', 'one = 1;']))
 
+  # The marks follow a timer, so this waits for it as well as for the reply.
   cursor(1, 5)
-  doautocmd CursorHold
+  doautocmd CursorMoved
   assert_true(t.WaitFor(() =>
 	      len(prop_list(1)) == 1 && len(prop_list(3)) == 1),
 	      'both mentions should be marked')
@@ -453,8 +454,8 @@ def g:Test_the_symbol_under_the_cursor_is_marked()
 enddef
 
 def g:Test_the_marks_are_left_alone_when_turned_off()
-  g:lsp_document_highlight = false
-  defer execute('unlet g:lsp_document_highlight')
+  g:lsp_client_config.document_highlight = false
+  defer execute('unlet g:lsp_client_config.document_highlight')
   assert_true(t.StartServer({
     capabilities: Offering({documentHighlightProvider: true}),
     replies: {'textDocument/documentHighlight': [
@@ -463,16 +464,16 @@ def g:Test_the_marks_are_left_alone_when_turned_off()
   }, ['int one;']))
 
   cursor(1, 5)
-  doautocmd CursorHold
-  sleep 100m
+  doautocmd CursorMoved
+  sleep 500m
   assert_true(t.Sent('textDocument/documentHighlight')->empty(),
 	      'nothing should be asked for')
   assert_equal([], prop_list(1))
 enddef
 
 def g:Test_a_code_lens_sits_above_its_line()
-  g:lsp_code_lens = true
-  defer execute('unlet g:lsp_code_lens')
+  g:lsp_client_config.code_lens = true
+  defer execute('unlet g:lsp_client_config.code_lens')
   const LENSES = [
     {range: {start: {line: 1, character: 4}, end: {line: 1, character: 10}},
      command: {title: '2 uses', command: 'probe.say', arguments: ['one']}},
@@ -507,8 +508,8 @@ def g:Test_a_code_lens_sits_above_its_line()
 enddef
 
 def g:Test_inlay_hints_are_put_in_the_window()
-  g:lsp_inlay_hint = true
-  defer execute('unlet g:lsp_inlay_hint')
+  g:lsp_client_config.inlay_hint = true
+  defer execute('unlet g:lsp_client_config.inlay_hint')
   # A parameter name before the argument, and a type after the name.
   const HINTS = [
     {position: {line: 0, character: 8}, label: 'count:', kind: 2,
@@ -520,7 +521,7 @@ def g:Test_inlay_hints_are_put_in_the_window()
     replies: {'textDocument/inlayHint': HINTS},
   }, ['    f(10);', 'var x = 1;']))
 
-  doautocmd CursorHold
+  doautocmd WinScrolled
   assert_true(t.WaitFor(() => !prop_list(1)->empty()),
 	      'the hint should be shown')
 
@@ -543,15 +544,15 @@ def g:Test_inlay_hints_stay_away_unless_asked_for()
       {position: {line: 0, character: 8}, label: 'count:', kind: 2}]},
   }, ['    f(10);']))
 
-  doautocmd CursorHold
-  sleep 100m
+  doautocmd WinScrolled
+  sleep 200m
   assert_true(t.Sent('textDocument/inlayHint')->empty(),
 	      'nothing should be asked for while the option is off')
   assert_equal([], prop_list(1))
 enddef
 
 def g:Test_inlay_hints_can_be_turned_on_and_off()
-  defer execute('unlet! g:lsp_inlay_hint')
+  defer execute('unlet! g:lsp_client_config.inlay_hint')
   assert_true(t.StartServer({
     capabilities: Offering({inlayHintProvider: true}),
     replies: {'textDocument/inlayHint': [
@@ -564,15 +565,15 @@ def g:Test_inlay_hints_can_be_turned_on_and_off()
   LspInlayHint
   assert_true(t.WaitFor(() => !prop_list(1)->empty()),
 	      'the hints should appear')
-  assert_true(g:lsp_inlay_hint)
+  assert_true(g:lsp_client_config.inlay_hint)
 
   LspInlayHint
   assert_equal([], prop_list(1), 'the hints should be taken away')
-  assert_false(g:lsp_inlay_hint)
+  assert_false(g:lsp_client_config.inlay_hint)
 enddef
 
 def g:Test_folds_come_from_the_server()
-  defer execute('unlet! g:lsp_folding')
+  defer execute('unlet! g:lsp_client_config.folding')
   const RANGES = [
     {startLine: 0, endLine: 4},
     {startLine: 1, endLine: 2},
@@ -595,7 +596,7 @@ def g:Test_folds_come_from_the_server()
 
   LspFolding
   assert_equal('manual', &foldmethod, 'what was there should come back')
-  assert_false(g:lsp_folding)
+  assert_false(g:lsp_client_config.folding)
 enddef
 
 def g:Test_who_calls_this()

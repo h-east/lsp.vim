@@ -6,7 +6,7 @@ vim9script
 #
 # Install it with a plugin manager (Plug 'h-east/lsp.vim') or as an optional
 # package loaded with "packadd! lsp.vim", and describe the servers to use in
-# g:lsp_servers.  See |lsp.txt|.
+# g:lsp_server_list.  See |lsp.txt|.
 
 # Patch 9.2.970 is what lets listener_add() ask for the text of a change,
 # which is how the buffer is kept in step with the server.
@@ -23,8 +23,11 @@ endif
 
 import autoload '../autoload/lsp.vim'
 
-if !exists('g:lsp_servers')
-  g:lsp_servers = []
+if !exists('g:lsp_server_list')
+  g:lsp_server_list = []
+endif
+if !exists('g:lsp_client_config')
+  g:lsp_client_config = {}
 endif
 
 command! -bar LspStart      lsp.Attach()
@@ -56,7 +59,7 @@ command! -bar LspLog        lsp.Log()
 # Kept out of the autoload script, because reaching that script is what this
 # decides: a file nothing is configured for leaves the plugin asleep.
 def HasServer(): bool
-  for config in get(g:, 'lsp_servers', [])
+  for config in get(g:, 'lsp_server_list', [])
     if type(config) == v:t_dict
 	  && index(config->get('filetypes', []), &filetype) >= 0
       return true

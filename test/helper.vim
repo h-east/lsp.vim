@@ -33,7 +33,7 @@ export def StartServer(scenario: dict<any>, lines: list<string>): bool
   delete(TRACE)
   $LSP_SCENARIO = SCENARIO
   $LSP_TRACE = TRACE
-  g:lsp_servers = [{
+  g:lsp_server_list = [{
     name: 'fake',
     filetypes: ['c'],
     cmd: ['python3', HERE .. '/fakeserver.py'],
