@@ -130,6 +130,49 @@ symbol search, no inlay hints and no call hierarchy.
 
 See `:help lsp.txt` for the options and the details.
 
+## TODO
+
+What a server can do that this client cannot ask for yet.  The ones that
+would be felt first:
+
+- [ ] `textDocument/semanticTokens/full`, `/range` and `/full/delta`, the
+      highlighting a server works out from what it parsed
+- [ ] `textDocument/diagnostic`, the pull kind; only the pushed
+      `publishDiagnostics` is read, so a server offering nothing else
+      reports nothing at all
+- [ ] `textDocument/prepareRename`, to turn a rename down before it is sent
+      and to start from the name the server names
+- [ ] Dynamic registration: `client/registerCapability` is answered without
+      being read, and `workspace/didChangeWatchedFiles` never sent, so a
+      change made outside Vim goes unnoticed
+- [ ] Snippets, `insertTextFormat` 2; the label is used as it stands
+
+Worth having:
+
+- [ ] `codeAction/resolve`, `codeLens/resolve`, `inlayHint/resolve` and
+      `workspaceSymbol/resolve`; only `completionItem/resolve` is asked for
+- [ ] `window/showMessageRequest` and `window/showDocument`, both turned
+      down as unsupported
+- [ ] `textDocument/willSaveWaitUntil`, which is where a server formats or
+      sorts the includes on the way to disk
+- [ ] The file operations, `willRenameFiles` and the rest, so a file being
+      renamed takes what refers to it along
+- [ ] The refresh requests for code lenses, inlay hints, semantic tokens
+      and diagnostics
+
+Smaller:
+
+- [ ] `textDocument/documentLink` and its resolve
+- [ ] `textDocument/selectionRange`
+- [ ] `textDocument/linkedEditingRange`
+- [ ] `textDocument/onTypeFormatting`
+- [ ] `textDocument/documentColor` and `colorPresentation`
+- [ ] `textDocument/inlineValue`, `moniker` and `inlineCompletion`
+- [ ] More than one workspace folder for a server
+- [ ] A `positionEncoding` other than UTF-16
+- [ ] The completion `context`, and asking again for a list that came back
+      incomplete
+
 ## Tests
 
 ```
