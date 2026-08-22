@@ -57,9 +57,11 @@ g:lsp_client_config = {
 }
 ```
 
+Every key that can go in there, and what it is when it is left out, is
+listed under `:help lsp-configuration`.
+
 A buffer is connected to the server for its `'filetype'` when it is opened.
-The server is started once per workspace root.  `:help lsp-configuration`
-lists every key.
+The server is started once per workspace root.
 
 ## Servers it has been used with
 
