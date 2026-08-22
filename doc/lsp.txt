@@ -29,10 +29,10 @@ Install it with a plugin manager, with vim-plug for instance: >vim
 
 	Plug 'h-east/lsp.vim'
 <
-Or put it under a |packages| directory as "pack/*/opt/lsp", which does not
+Or put it under a |packages| directory as "pack/*/opt/lsp.vim", which does not
 load on its own, and add this to your |vimrc|: >vim
 
-	packadd! lsp
+	packadd! lsp.vim
 <
 Either way, describe the servers to use in |g:lsp_servers|.
 
@@ -83,7 +83,7 @@ g:lsp_servers
 
 		Example: >vim
 
-			packadd! lsp
+			packadd! lsp.vim
 			let g:lsp_servers = [
 			      \ #{name: 'clangd',
 			      \   filetypes: ['c', 'cpp'],

@@ -21,11 +21,11 @@ With a plugin manager, vim-plug for instance:
 Plug 'h-east/lsp.vim'
 ```
 
-Or as an optional package, put it under `pack/*/opt/lsp` and load it from your
-vimrc:
+Or as an optional package, put it under `pack/*/opt/lsp.vim` and load it from
+your vimrc:
 
 ```vim
-packadd! lsp
+packadd! lsp.vim
 ```
 
 ## Configuration

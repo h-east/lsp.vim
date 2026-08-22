@@ -5,7 +5,7 @@ vim9script
 # Latest Change: 2026 Aug 21
 #
 # Install it with a plugin manager (Plug 'h-east/lsp.vim') or as an optional
-# package loaded with "packadd! lsp", and describe the servers to use in
+# package loaded with "packadd! lsp.vim", and describe the servers to use in
 # g:lsp_servers.  See |lsp.txt|.
 
 # Patch 9.2.970 is what lets listener_add() ask for the text of a change,
