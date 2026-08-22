@@ -861,23 +861,37 @@ def ApplyTextEdits(bufnr: number, edits: list<any>)
   endif
 enddef
 
-export def Format()
+export def Format(first: number, last: number)
   var cl = ReadyClient()
   if cl->empty()
     return
   endif
-  if !cl.capabilities->has_key('documentFormattingProvider')
-    util.WarningMsg('the server does not offer formatting')
+  var bufnr = bufnr('%')
+  # Asking about every line is what the whole buffer request is for; a server
+  # may offer only one of the two.
+  var whole = first <= 1 && last >= BufLineCount(bufnr)
+  var provider = whole ? 'documentFormattingProvider'
+		       : 'documentRangeFormattingProvider'
+  if !cl.capabilities->has_key(provider)
+    util.WarningMsg(whole ? 'the server does not offer formatting'
+			  : 'the server does not offer formatting a range')
     return
   endif
-  var bufnr = bufnr('%')
   # The reply describes the buffer as it was asked about.
   var tick = getbufvar(bufnr, 'changedtick')
-  var params = {
+  var params: dict<any> = {
     textDocument: {uri: util.PathToUri(bufname(bufnr))},
     options: {tabSize: &tabstop, insertSpaces: &expandtab ? true : false},
   }
-  lspclient.Request(cl, 'textDocument/formatting', params, (result: any) => {
+  if !whole
+    params.range = {
+      start: util.PosToLsp(bufnr, first, 1),
+      end: util.PosToLsp(bufnr, last, getline(last)->strlen() + 1),
+    }
+  endif
+  var method = whole ? 'textDocument/formatting'
+		     : 'textDocument/rangeFormatting'
+  lspclient.Request(cl, method, params, (result: any) => {
     if type(result) != v:t_list || result->empty()
       util.WarningMsg('nothing to format')
       return

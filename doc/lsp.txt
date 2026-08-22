@@ -260,10 +260,17 @@ Changing the text ~
 		since that is not supported.  The same goes for changes a
 		server sends on its own.
 							*:LspFormat*
-:LspFormat	Ask the server to format the current buffer and apply what it
-		answers.  The answer describes the buffer as it was when the
-		question went out, so nothing is applied if the buffer moved
-		on in the meantime.  A single |undo| takes all of it back.
+:LspFormat
+:{range}LspFormat
+		Ask the server to format the current buffer, or the lines in
+		{range}, and apply what it answers.  The answer describes the
+		buffer as it was when the question went out, so nothing is
+		applied if the buffer moved on in the meantime.  A single
+		|undo| takes all of it back.
+
+		A server may offer to format a whole buffer without offering
+		to format part of one, or the other way around, so one of the
+		two forms can work while the other says it is not on offer.
 
 What is shown ~
 							*:LspFolding*

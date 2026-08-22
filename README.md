@@ -86,7 +86,7 @@ The server is started once per workspace root.
 |  | `:LspDiag` | The diagnostics, into the location list |
 | Changing | `:LspCodeAction` | Offer what the server can do here |
 |  | `:LspRename [{name}]` | Rename the symbol everywhere |
-|  | `:LspFormat` | Format this buffer |
+|  | `:LspFormat` | Format this buffer, or `:{range}LspFormat` for part of it |
 | Display | `:LspInlayHint` | Turn the inlay hints on or off |
 |  | `:LspFolding` | Turn the folds from the server on or off |
 

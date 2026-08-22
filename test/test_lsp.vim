@@ -3,6 +3,11 @@ vim9script
 
 import './helper.vim' as t
 
+# The message history holds every file that was opened as well.
+def LastMessage(): string
+  return split(execute('messages'), "\n")->get(-1, '')
+enddef
+
 # Document sync is all a server has to offer for a buffer to be handed over.
 const SYNC: dict<any> = {textDocumentSync: 2}
 
@@ -186,6 +191,34 @@ def g:Test_format_replaces_the_buffer_in_one_undo()
   undo
   assert_equal('int  main(void)', getline(1))
   assert_equal('  return 0;', getline(3))
+enddef
+
+def g:Test_format_asks_about_the_range_it_was_given()
+  var edit = {
+    newText: '    return 0;',
+    range: {start: {line: 2, character: 0}, end: {line: 2, character: 11}},
+  }
+  assert_true(t.StartServer({
+    capabilities: Offering({documentRangeFormattingProvider: true}),
+    replies: {'textDocument/rangeFormatting': [edit]},
+  }, ['int  main(void)', '{', '  return 0;', '}']))
+
+  :2,3LspFormat
+  assert_true(t.WaitFor(() => getline(3) ==# '    return 0;'),
+	      'the range should be formatted')
+  # The first line is outside the range, so it is left as it is.
+  assert_equal('int  main(void)', getline(1))
+
+  var asked = t.Sent('textDocument/rangeFormatting')
+  assert_equal(1, len(asked))
+  assert_equal({line: 1, character: 0}, asked[0].params.range.start)
+  assert_equal({line: 2, character: 11}, asked[0].params.range.end)
+
+  # This server formats a range and nothing else, so the whole buffer is not
+  # on offer.
+  LspFormat
+  assert_match('does not offer formatting', LastMessage())
+  assert_true(t.Sent('textDocument/formatting')->empty())
 enddef
 
 def g:Test_an_edit_wider_than_the_word()
