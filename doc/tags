@@ -17,6 +17,8 @@
 :LspStart	lsp.txt	/*:LspStart*
 :LspStatus	lsp.txt	/*:LspStatus*
 :LspStop	lsp.txt	/*:LspStop*
+:LspSubTypes	lsp.txt	/*:LspSubTypes*
+:LspSuperTypes	lsp.txt	/*:LspSuperTypes*
 :LspSymbol	lsp.txt	/*:LspSymbol*
 :LspTypeDefinition	lsp.txt	/*:LspTypeDefinition*
 g:lsp_completion_timeout	lsp.txt	/*g:lsp_completion_timeout*

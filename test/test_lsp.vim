@@ -596,6 +596,38 @@ def g:Test_what_this_calls()
   cclose
 enddef
 
+def g:Test_what_a_type_is_derived_from()
+  const ITEM = {name: 'Derived', kind: 23, uri: 'file://' .. t.SRC,
+		range: {start: {line: 2, character: 0},
+			end: {line: 2, character: 7}},
+		selectionRange: {start: {line: 2, character: 7},
+				 end: {line: 2, character: 14}}}
+  const SUPER = [{name: 'Middle', kind: 23, uri: 'file://' .. t.SRC,
+		  range: {start: {line: 1, character: 0},
+			  end: {line: 1, character: 40}},
+		  selectionRange: {start: {line: 1, character: 7},
+				   end: {line: 1, character: 13}}}]
+  assert_true(t.StartServer({
+    capabilities: Offering({typeHierarchyProvider: true}),
+    replies: {'textDocument/prepareTypeHierarchy': [ITEM],
+	      'typeHierarchy/supertypes': SUPER},
+  }, ['struct Base {};', 'struct Middle : Base {};',
+      'struct Derived : Middle {};']))
+
+  cursor(3, 8)
+  LspSuperTypes
+  assert_true(t.WaitFor(() => len(getqflist()) == 1),
+	      'the type above should be listed')
+  var item = getqflist()[0]
+  # The name is where one wants to land, not the start of the line.
+  assert_equal([2, 8, '[Struct] Middle'], [item.lnum, item.col, item.text])
+  cclose
+
+  # What was asked about is what prepare answered with.
+  var sent = t.Sent('typeHierarchy/supertypes')[0].params
+  assert_equal('Derived', sent.item.name)
+enddef
+
 def g:Test_a_part_the_server_turns_down()
   # A server can offer something and still turn down a part of it, as clangd
   # does with outgoing calls.  That should not read like a fault here.

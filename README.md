@@ -74,7 +74,8 @@ symbol search, no inlay hints and no call hierarchy.
 - Hover, and jumps to a definition, declaration, type or implementation
 - Every mention of a symbol, the symbols in a file, and a workspace-wide
   symbol search
-- Who calls a function and what it calls
+- Who calls a function and what it calls, and what a type is derived
+  from or gives rise to
 - Rename across files, formatting a buffer or a range, and code actions from
   a menu
 - Incremental document synchronisation with `listener_add()`
@@ -100,6 +101,8 @@ symbol search, no inlay hints and no call hierarchy.
 | Lists | `:LspReferences` | Every mention, into the quickfix list |
 |  | `:LspIncomingCalls` | Who calls the function under the cursor |
 |  | `:LspOutgoingCalls` | What the function under the cursor calls |
+|  | `:LspSuperTypes` | The types this one is derived from |
+|  | `:LspSubTypes` | The types derived from this one |
 |  | `:LspOutline` | The symbols in this buffer, into the location list |
 |  | `:LspSymbol {query}` | Search the workspace for symbols |
 |  | `:LspDiag` | The diagnostics, into the location list |

@@ -1350,6 +1350,65 @@ export def OutgoingCalls()
   CallHierarchy(false)
 enddef
 
+# An item names a type and says where it is written; the name is the place
+# worth going to.
+def TypeLocations(types: any): list<dict<any>>
+  var locs: list<dict<any>> = []
+  for item in (type(types) == v:t_list ? types : [])
+    if type(item) != v:t_dict
+      continue
+    endif
+    var range = item->get('selectionRange', item->get('range', {}))
+    if type(range) == v:t_dict && !range->empty()
+      locs->add({uri: item->get('uri', ''), range: range,
+		 text: SymbolText(item)})
+    endif
+  endfor
+  return locs
+enddef
+
+# One step at a time: what comes back are the types directly above or below
+# the one asked about, so a further step means asking again from there.
+def TypeHierarchy(up: bool)
+  var cl = ReadyClient()
+  if cl->empty()
+    return
+  endif
+  if !cl.capabilities->has_key('typeHierarchyProvider')
+    util.WarningMsg('the server does not offer a type hierarchy')
+    return
+  endif
+  lspclient.Request(cl, 'textDocument/prepareTypeHierarchy', CursorParams(),
+      (result: any) => {
+    var items = type(result) == v:t_list ? result : []
+    if items->empty() || type(items[0]) != v:t_dict
+      util.WarningMsg('there is no type hierarchy here')
+      return
+    endif
+    var what = up ? 'supertypes' : 'subtypes'
+    lspclient.Request(cl, 'typeHierarchy/' .. what, {item: items[0]},
+		      (types: any) => {
+      var qf = LocationItems(TypeLocations(types))
+      if qf->empty()
+	util.WarningMsg(up ? 'nothing is above this one'
+			   : 'nothing is below this one')
+	return
+      endif
+      setqflist([], ' ', {title: 'LSP ' .. what .. ': '
+			  .. items[0]->get('name', ''), items: qf})
+      copen
+    })
+  })
+enddef
+
+export def SuperTypes()
+  TypeHierarchy(true)
+enddef
+
+export def SubTypes()
+  TypeHierarchy(false)
+enddef
+
 export def Symbol(query: string)
   var cl = ReadyClient()
   if cl->empty()

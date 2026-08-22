@@ -221,6 +221,16 @@ Filling a list ~
 		since that is where the calls are written, and each is named
 		after the function being called.
 
+						       *:LspSuperTypes*
+:LspSuperTypes	Put the types the one under the cursor is derived from into the
+		|quickfix| list and open it.  Only the ones it names itself
+		are listed: to go further up, put the cursor on one of them
+		and ask again.
+
+						       *:LspSubTypes*
+:LspSubTypes	Like |:LspSuperTypes|, downwards: the types derived from the
+		one under the cursor.
+
 							*:LspOutline*
 :LspOutline	Put the symbols in the current buffer into its location list
 		and open it.  A symbol inside another, a field of a struct
