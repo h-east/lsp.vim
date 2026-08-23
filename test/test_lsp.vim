@@ -268,6 +268,48 @@ def g:Test_the_server_puts_the_file_right_on_the_way_to_disk()
   assert_equal(1, t.Sent('textDocument/willSave')[0].params.reason)
 enddef
 
+def g:Test_renaming_a_file_takes_what_refers_to_it_along()
+  const OTHER = t.SRC->substitute('\.c$', '_moved.c', '')
+  defer delete(OTHER)
+  const FILE_OPS = {fileOperations: {
+    willRename: {filters: [{pattern: {glob: '**/*.c', matches: 'file'}}]},
+    didRename: {filters: [{pattern: {glob: '**/*.c', matches: 'file'}}]},
+  }}
+  assert_true(t.StartServer({
+    capabilities: extend(Offering({}), {workspace: FILE_OPS}),
+    replies: {'workspace/willRenameFiles': {changes: {['file://' .. t.SRC]: [{
+      newText: '// moved',
+      range: {start: {line: 0, character: 0}, end: {line: 0, character: 8}},
+    }]}}},
+  }, ['int one;', 'int two;']))
+
+  execute 'LspRenameFile ' .. fnameescape(OTHER)
+
+  # What the server said had to change is in before the file moves.
+  assert_equal('// moved', getline(1))
+  assert_match('_moved\.c$', bufname('%'), 'the buffer should follow')
+  assert_true(filereadable(OTHER), 'the file should be there under its new name')
+  assert_false(filereadable(t.SRC), 'and gone from the old one')
+
+  assert_true(t.WaitFor(() => !t.Sent('workspace/didRenameFiles')->empty()),
+	      'the server should be told it moved')
+  var told = t.Sent('workspace/didRenameFiles')[0].params.files[0]
+  assert_match('Xsrc\.c$', told.oldUri)
+  assert_match('_moved\.c$', told.newUri)
+enddef
+
+def g:Test_a_file_that_is_there_is_not_written_over()
+  const OTHER = t.SRC->substitute('\.c$', '_taken.c', '')
+  writefile(['do not lose me'], OTHER)
+  defer delete(OTHER)
+  assert_true(t.StartServer({capabilities: SYNC}, ['int one;']))
+
+  execute 'LspRenameFile ' .. fnameescape(OTHER)
+  assert_equal(['do not lose me'], readfile(OTHER), 'it should be untouched')
+  assert_true(filereadable(t.SRC), 'and the file should not have moved')
+  assert_match('Xsrc\.c$', bufname('%'))
+enddef
+
 def g:Test_a_log_message_is_kept_for_LspLog()
   assert_true(t.StartServer({
     capabilities: SYNC,

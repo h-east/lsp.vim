@@ -2453,13 +2453,147 @@ enddef
 # change from a file coming into being.
 var write_existed = false
 
+# A server may want a say in what happens to a file as a whole: what refers
+# to it has to be put right when it is renamed, and a new file may want
+# something in it before it is written.  Which files it cares about is what
+# the filters say.
+def FileOpFilters(cl: dict<any>, op: string): list<any>
+  var space = cl.capabilities->get('workspace', {})
+  if type(space) != v:t_dict
+    return []
+  endif
+  var ops = space->get('fileOperations', {})
+  if type(ops) != v:t_dict
+    return []
+  endif
+  var options = ops->get(op, {})
+  return type(options) == v:t_dict ? options->get('filters', []) : []
+enddef
+
+def WantsFileOp(cl: dict<any>, op: string, path: string): bool
+  for filter in FileOpFilters(cl, op)
+    if type(filter) != v:t_dict
+      continue
+    endif
+    var pattern = filter->get('pattern', {})
+    if type(pattern) != v:t_dict
+	  || pattern->get('matches', 'file') !=# 'file'
+      continue
+    endif
+    var glob = pattern->get('glob', '')
+    if type(glob) != v:t_string || glob->empty()
+      continue
+    endif
+    # Written against the root it was registered under, so the name is tried
+    # both ways, the same as a watcher's pattern is.
+    var pat = glob2regpat(glob)
+    if path =~# pat
+      return true
+    endif
+    var base = cl.root .. '/'
+    if strpart(path, 0, strlen(base)) ==# base
+	  && strpart(path, strlen(base)) =~# pat
+      return true
+    endif
+  endfor
+  return false
+enddef
+
+# How long the file waits for the server to say what else has to change.
+const FILE_OP_TIMEOUT = 1000
+
+def FileOpEdits(cl: dict<any>, method: string, files: list<any>)
+  var edit = lspclient.RequestSync(cl, method, {files: files},
+				   FILE_OP_TIMEOUT)
+  if type(edit) == v:t_dict && !edit->empty()
+    ApplyWorkspaceEdit(edit)
+  endif
+enddef
+
 def BeforeWrite(path: string)
   write_existed = filereadable(path)
+  if write_existed
+    return
+  endif
+  var full = fnamemodify(path, ':p')
+  for cl in clients->values()
+    if cl.running && cl.initialized && WantsFileOp(cl, 'willCreate', full)
+      FileOpEdits(cl, 'workspace/willCreateFiles',
+		  [{uri: util.PathToUri(full)}])
+    endif
+  endfor
 enddef
 
 def AfterWrite(path: string)
+  var full = fnamemodify(path, ':p')
+  if !write_existed
+    for cl in clients->values()
+      if cl.running && cl.initialized && WantsFileOp(cl, 'didCreate', full)
+	lspclient.Notify(cl, 'workspace/didCreateFiles',
+			 {files: [{uri: util.PathToUri(full)}]})
+      endif
+    endfor
+  endif
   FileChanged(path, write_existed ? WATCH_CHANGE : WATCH_CREATE,
 	      write_existed ? FILE_CHANGED : FILE_CREATED)
+enddef
+
+# Renaming a file is not something Vim does on its own, so it is a command of
+# its own; the point of it is what the server changes elsewhere.
+export def RenameFile(newname: string)
+  var bufnr = bufnr('%')
+  var old = expand('%:p')
+  if old->empty() || &buftype != ''
+    util.WarningMsg('this buffer is not a file')
+    return
+  endif
+  var name = newname
+  if name->empty()
+    name = input('lsp: rename the file to: ', old, 'file')
+    if name->empty()
+      return
+    endif
+  endif
+  var new = fnamemodify(name, ':p')
+  if new ==# old
+    return
+  endif
+  if filereadable(new)
+    util.WarningMsg(new .. ' is there already')
+    return
+  endif
+
+  var cl = BufClient(bufnr)
+  var files = [{oldUri: util.PathToUri(old), newUri: util.PathToUri(new)}]
+  var told = !cl->empty() && cl.initialized
+  if told && WantsFileOp(cl, 'willRename', old)
+    # What refers to the file is put right while it is still where the
+    # server last saw it.
+    FileOpEdits(cl, 'workspace/willRenameFiles', files)
+  endif
+  if told
+    Detach(bufnr)
+  endif
+  # No "!": what it would override is what stops a file that is there from
+  # being written over, which is the whole of the protection here.
+  try
+    execute 'saveas ' .. fnameescape(new)
+  catch
+    util.ErrorMsg(v:exception->substitute('^Vim(\a\+):', '', ''))
+    if told
+      Attach()
+    endif
+    return
+  endtry
+  if delete(old) != 0
+    util.WarningMsg('could not remove ' .. old)
+  endif
+  if told
+    Attach()
+    if WantsFileOp(cl, 'didRename', new)
+      lspclient.Notify(cl, 'workspace/didRenameFiles', {files: files})
+    endif
+  endif
 enddef
 
 # A server may report on its own with "textDocument/publishDiagnostics", or

@@ -177,6 +177,16 @@ def ClientCapabilities(): dict<any>
       # A server that works a change out on its side hands it over this way,
       # which is how an action it runs itself comes back.
       applyEdit: true,
+      fileOperations: {
+	dynamicRegistration: false,
+	willCreate: true,
+	didCreate: true,
+	willRename: true,
+	didRename: true,
+	# Nothing here removes a file, so a server would never hear of one.
+	willDelete: false,
+	didDelete: false,
+      },
       didChangeWatchedFiles: {
 	# The only thing a server is asked to register at run time; the rest
 	# of this dictionary says what it can count on from the start.

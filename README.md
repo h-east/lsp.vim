@@ -143,6 +143,7 @@ than the source as well.
 |  | `:LspDiag` | The diagnostics, into the location list |
 | Changing | `:LspCodeAction` | Offer what the server can do here |
 |  | `:LspRename [{name}]` | Rename the symbol everywhere |
+|  | `:LspRenameFile [{name}]` | Rename this file, imports and all |
 |  | `:LspFormat` | Format this buffer, or a range of it |
 | Display | `:LspInlayHint` | Turn the inlay hints on or off |
 |  | `:LspInlayHintInfo` | What the server says about the hint here |
@@ -177,8 +178,8 @@ Worth having:
       `:LspInlayHintApply` to act on a hint
 - [x] `window/showMessageRequest` and `window/showDocument`
 - [x] `textDocument/willSave` and `textDocument/willSaveWaitUntil`
-- [ ] The file operations, `willRenameFiles` and the rest, so a file being
-      renamed takes what refers to it along
+- [x] The file operations, with `:LspRenameFile`; nothing here deletes a
+      file, so `willDeleteFiles` and `didDeleteFiles` are declared off
 - [ ] The refresh requests for code lenses, inlay hints, semantic tokens
       and diagnostics
 

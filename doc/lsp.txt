@@ -317,6 +317,18 @@ Changing the text ~
 		An action may arrive without the change it stands for, so
 		that the server works one out only for what is picked.
 		Picking it is what asks for the rest.
+						    *:LspRenameFile*
+:LspRenameFile [{name}]
+		Rename the file in the current buffer to {name}, asking for
+		it when there is no argument.  The point of doing it this way
+		rather than by hand is what the server changes elsewhere: the
+		includes and imports that name the file are put right first,
+		and the server is told where the file went afterwards.
+
+		Only a server that says which files it wants to hear about is
+		asked.  Nothing here removes a file, so a server is never told
+		about that.
+
 							*:LspRename*
 :LspRename [{name}]
 		Rename the symbol under the cursor to {name} everywhere the

@@ -17,6 +17,7 @@
 :LspOutline	lsp.txt	/*:LspOutline*
 :LspReferences	lsp.txt	/*:LspReferences*
 :LspRename	lsp.txt	/*:LspRename*
+:LspRenameFile	lsp.txt	/*:LspRenameFile*
 :LspSemanticTokens	lsp.txt	/*:LspSemanticTokens*
 :LspSignature	lsp.txt	/*:LspSignature*
 :LspStart	lsp.txt	/*:LspStart*
