@@ -167,8 +167,9 @@ would be felt first:
 
 Worth having:
 
-- [ ] `codeAction/resolve`, `codeLens/resolve`, `inlayHint/resolve` and
-      `workspaceSymbol/resolve`; only `completionItem/resolve` is asked for
+- [x] `codeAction/resolve`, `codeLens/resolve` and `workspaceSymbol/resolve`
+- [ ] What an inlay hint carries besides its label, a tooltip or the edits
+      that go with taking it, which is what `inlayHint/resolve` fills in
 - [ ] `window/showMessageRequest` and `window/showDocument`, both turned
       down as unsupported
 - [ ] `textDocument/willSaveWaitUntil`, which is where a server formats or

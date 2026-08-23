@@ -268,6 +268,11 @@ Filling a list ~
 		into the |quickfix| list and open it.  What counts as a match
 		is up to the server.  An entry names the kind of symbol and
 		what it is called rather than showing the line it sits on.
+
+		A server may answer with the file a symbol is in but not
+		the place in it, to save working that out for symbols
+		nobody looks at.  Those are asked about again before the
+		list is put together.
 							*:LspDiag*
 :LspDiag	Put the diagnostics for the current buffer into its location
 		list and open it.  See |lsp-diagnostics|.
@@ -284,6 +289,10 @@ Changing the text ~
 		comes back is mostly fixes for them.  An action the server
 		would rather carry out itself is handed back to it, and the
 		changes it works out arrive the same way a rename's do.
+
+		An action may arrive without the change it stands for, so
+		that the server works one out only for what is picked.
+		Picking it is what asks for the rest.
 							*:LspRename*
 :LspRename [{name}]
 		Rename the symbol under the cursor to {name} everywhere the
@@ -547,6 +556,10 @@ line they belong to, as |virtual-text|: >vim
 The whole file is asked about, since the protocol has no way to ask about
 part of one, and again whenever the buffer changes.  |:LspCodeLens| turns them
 on and off without leaving Vim.
+
+A lens may arrive as a place in the file and nothing more, with what it says
+worked out only when it is asked for; that is asked for as soon as the lenses
+are in, since a lens with nothing to say has nothing to show either.
 
 A lens carries a command the server runs on its side, so it is worth acting
 on rather than only reading.  |:LspCodeLensRun| runs the one above the

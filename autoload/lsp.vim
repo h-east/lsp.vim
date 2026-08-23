@@ -1106,7 +1106,18 @@ def ActionTitle(action: dict<any>): string
   return action->get('title', action->get('command', ''))
 enddef
 
-def RunAction(cl: dict<any>, action: dict<any>)
+# Whether the server fills the rest of an item in when it is handed back.
+# A code action says so with "resolveSupport", the others with a flag.
+def Resolves(cl: dict<any>, provider: string): bool
+  var options = cl.capabilities->get(provider, {})
+  if type(options) != v:t_dict
+    return false
+  endif
+  return options->get('resolveProvider', false)
+	  || type(options->get('resolveSupport', 0)) == v:t_dict
+enddef
+
+def DoAction(cl: dict<any>, action: dict<any>)
   if action->has_key('edit')
     var done = ApplyWorkspaceEdit(action.edit)
     if done > 0
@@ -1132,6 +1143,21 @@ def RunAction(cl: dict<any>, action: dict<any>)
 		       : action->get('arguments', []),
   }, (_) => {
   })
+enddef
+
+# An action may be handed over without the edit it stands for, to save the
+# server working out an edit for something that is never picked.  Asking for
+# the rest of it is what "codeAction/resolve" is for; a bare Command has
+# nothing to fill in.
+def RunAction(cl: dict<any>, action: dict<any>)
+  if type(action->get('command', {})) == v:t_string
+	|| action->has_key('edit') || !Resolves(cl, 'codeActionProvider')
+    DoAction(cl, action)
+    return
+  endif
+  lspclient.Request(cl, 'codeAction/resolve', action, (result: any) =>
+      DoAction(cl, type(result) == v:t_dict && !result->empty()
+						      ? result : action))
 enddef
 
 export def CodeAction(first: number, last: number)
@@ -1431,7 +1457,35 @@ def CodeLenses()
     if bufnr != bufnr('%')
       return
     endif
-    lens.Update(bufnr, type(result) == v:t_list ? result : [])
+    var lenses = type(result) == v:t_list ? result : []
+    lens.Update(bufnr, lenses)
+
+    # A lens may arrive without the command it stands for, which is both what
+    # it says and what it runs, so the rest of it is asked for.
+    if !Resolves(cl, 'codeLensProvider')
+      return
+    endif
+    var left = 0
+    for item in lenses
+      if type(item) == v:t_dict && !item->has_key('command')
+	left += 1
+      endif
+    endfor
+    for i in range(len(lenses))
+      if type(lenses[i]) != v:t_dict || lenses[i]->has_key('command')
+	continue
+      endif
+      var at = i
+      lspclient.Request(cl, 'codeLens/resolve', lenses[at], (full: any) => {
+	if type(full) == v:t_dict && full->has_key('command')
+	  lenses[at] = full
+	endif
+	left -= 1
+	if left == 0 && bufexists(bufnr)
+	  lens.Update(bufnr, lenses)
+	endif
+      })
+    endfor
   })
 enddef
 
@@ -1742,6 +1796,25 @@ export def SubTypes()
   TypeHierarchy(false)
 enddef
 
+def NeedsRange(sym: any): bool
+  if type(sym) != v:t_dict
+    return false
+  endif
+  var loc = sym->get('location', {})
+  return type(loc) == v:t_dict && type(loc->get('range', 0)) != v:t_dict
+enddef
+
+def ShowSymbols(query: string, syms: list<any>)
+  var items = LocationItems(syms->mapnew((_, s) =>
+			extend(SymbolLocation(s), {text: SymbolText(s)})))
+  if items->empty()
+    util.WarningMsg('no symbol matches ' .. query)
+    return
+  endif
+  setqflist([], ' ', {title: 'LSP symbols: ' .. query, items: items})
+  copen
+enddef
+
 export def Symbol(query: string)
   var cl = ReadyClient()
   if cl->empty()
@@ -1758,14 +1831,38 @@ export def Symbol(query: string)
   endif
   lspclient.Request(cl, 'workspace/symbol', {query: query}, (result: any) => {
     var syms = type(result) == v:t_list ? result : []
-    var items = LocationItems(syms->mapnew((_, s) =>
-			  extend(SymbolLocation(s), {text: SymbolText(s)})))
-    if items->empty()
-      util.WarningMsg('no symbol matches ' .. query)
+
+    # A symbol may arrive with the file it is in but not the place in it, so
+    # that the server only works that out for what is looked at.  Without the
+    # range there is nowhere to jump to, so the rest of it is asked for.
+    var left = 0
+    if Resolves(cl, 'workspaceSymbolProvider')
+      for sym in syms
+	if NeedsRange(sym)
+	  left += 1
+	endif
+      endfor
+    endif
+    if left == 0
+      ShowSymbols(query, syms)
       return
     endif
-    setqflist([], ' ', {title: 'LSP symbols: ' .. query, items: items})
-    copen
+    for i in range(len(syms))
+      if !NeedsRange(syms[i])
+	continue
+      endif
+      var at = i
+      lspclient.Request(cl, 'workspaceSymbol/resolve', syms[at],
+	  (full: any) => {
+	if type(full) == v:t_dict && !NeedsRange(full)
+	  syms[at] = full
+	endif
+	left -= 1
+	if left == 0
+	  ShowSymbols(query, syms)
+	endif
+      })
+    endfor
   })
 enddef
 

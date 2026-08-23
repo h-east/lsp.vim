@@ -441,6 +441,32 @@ def g:Test_the_server_hands_over_an_edit()
   assert_equal('int two;', getline(2))
 enddef
 
+def g:Test_the_rest_of_a_code_action_is_asked_for()
+  const EDIT = {
+    newText: 'ONE',
+    range: {start: {line: 0, character: 4}, end: {line: 0, character: 7}},
+  }
+  assert_true(t.StartServer({
+    capabilities: Offering({codeActionProvider:
+			{resolveSupport: {properties: ['edit']}}}),
+    replies: {
+      # No edit, only what it would be worked out from.
+      'textDocument/codeAction': [{title: 'rename it', data: 'the rest'}],
+      'codeAction/resolve': {title: 'rename it',
+			     edit: {changes: {['file://' .. t.SRC]: [EDIT]}}},
+    },
+  }, ['int one;', 'int two;']))
+
+  LspCodeAction
+  assert_true(t.WaitFor(() => !popup_list()->empty()), 'a menu should be up')
+  feedkeys("\<CR>", 'tx')
+
+  assert_true(t.WaitFor(() => getline(1) ==# 'int ONE;'),
+	      'the edit that was asked for should be applied')
+  assert_equal('the rest', t.Sent('codeAction/resolve')[0].params.data,
+	       'the action goes back as it came')
+enddef
+
 def g:Test_a_request_named_with_a_string()
   # Vim answers a request of its own accord only when the id is a number, and
   # a server is free to name one with a string.
@@ -637,6 +663,56 @@ def g:Test_a_code_lens_sits_above_its_line()
   # Turning them off takes the text out of the window.
   LspCodeLens
   assert_equal([], prop_list(2))
+enddef
+
+def g:Test_the_rest_of_a_code_lens_is_asked_for()
+  g:lsp_client_config.code_lens = true
+  defer execute('unlet g:lsp_client_config.code_lens')
+  const RANGE = {start: {line: 1, character: 4},
+		 end: {line: 1, character: 10}}
+  assert_true(t.StartServer({
+    capabilities: Offering({codeLensProvider: {resolveProvider: true}}),
+    replies: {
+      # A place in the file and nothing to say about it yet.
+      'textDocument/codeLens': [{range: RANGE, data: 'the rest'}],
+      'codeLens/resolve': {range: RANGE,
+			   command: {title: '2 uses', command: 'probe.say'}},
+    },
+  }, ['int main(void)', '    int one;']))
+
+  doautocmd BufEnter
+  assert_true(t.WaitFor(() => !prop_list(2)->empty()),
+	      'what was asked for should be shown')
+  assert_equal('    2 uses', prop_list(2)[0].text)
+  assert_equal('the rest', t.Sent('codeLens/resolve')[0].params.data,
+	       'the lens goes back as it came')
+enddef
+
+def g:Test_the_place_of_a_workspace_symbol_is_asked_for()
+  assert_true(t.StartServer({
+    capabilities: Offering({workspaceSymbolProvider: {resolveProvider: true}}),
+    replies: {
+      # The file it is in, but not where in it.
+      'workspace/symbol': [{name: 'two', kind: 13, data: 'the rest',
+			    location: {uri: 'file://' .. t.SRC}}],
+      'workspaceSymbol/resolve': {
+	name: 'two', kind: 13,
+	location: {uri: 'file://' .. t.SRC,
+		   range: {start: {line: 1, character: 4},
+			   end: {line: 1, character: 7}}},
+      },
+    },
+  }, ['int one;', 'int two;']))
+
+  LspSymbol two
+  assert_true(t.WaitFor(() => !getqflist()->empty()),
+	      'the symbol should be listed')
+  var items = getqflist()
+  assert_equal([2, 5], [items[0].lnum, items[0].col],
+	       'the place that was asked for')
+  assert_equal('the rest', t.Sent('workspaceSymbol/resolve')[0].params.data,
+	       'the symbol goes back as it came')
+  cclose
 enddef
 
 def g:Test_the_signature_goes_with_the_call_it_describes()

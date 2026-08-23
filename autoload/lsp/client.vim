@@ -108,6 +108,10 @@ def ClientCapabilities(): dict<any>
       },
       codeAction: {
 	dynamicRegistration: false,
+	# A server may hand over an action without the edit it stands for and
+	# fill that in only for the one that is picked.
+	dataSupport: true,
+	resolveSupport: {properties: ['edit']},
 	# Without this a server answers with Commands, which it has to be asked
 	# to run; a CodeAction carries the edit itself.  The empty string is
 	# what lets a kind this client never heard of come through.
@@ -159,6 +163,11 @@ def ClientCapabilities(): dict<any>
     },
     workspace: {
       workspaceFolders: false,
+      symbol: {
+	dynamicRegistration: false,
+	# A symbol may come with the file it is in but not the place in it.
+	resolveSupport: {properties: ['location.range']},
+      },
       # A server that works a change out on its side hands it over this way,
       # which is how an action it runs itself comes back.
       applyEdit: true,
