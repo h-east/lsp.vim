@@ -121,11 +121,9 @@ as an unknown method.  pylsp offers a code lens, and offers no workspace
 symbol search, no inlay hints and no call hierarchy.  gopls offers a code
 lens, inlay hints and semantic tokens, and neither a type hierarchy nor a
 formatting request for a range; it is the only one of the three that asks at
-run time to be told about files it is not being sent.
-
-gopls wants the Go toolchain on the path.  Without it, it still starts and
-answers, but with much less: it watches only `go.mod` and `go.work` rather
-than the source as well.
+run time to be told about files it is not being sent.  gopls and pylsp take
+more than one workspace folder, clangd says nothing of it and so gets a
+process per root.
 
 ## What it does
 
