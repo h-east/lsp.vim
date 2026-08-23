@@ -287,7 +287,13 @@ Changing the text ~
 :LspRename [{name}]
 		Rename the symbol under the cursor to {name} everywhere the
 		server knows of it.  Without an argument the new name is
-		asked for, starting from the word under the cursor.
+		asked for, starting from the name the server gives.
+
+		A server that offers it is asked first whether there is
+		anything to rename where the cursor is.  Where there is not,
+		it says so and nothing is sent.  It is also what names the
+		text to start from, which is worth more than the word under
+		the cursor where 'iskeyword' and the language disagree.
 
 		A file that was not open is loaded so it can be changed.
 		Nothing is written: |:wall| is what makes it stick, and an

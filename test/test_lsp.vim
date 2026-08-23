@@ -173,6 +173,47 @@ def g:Test_rename_changes_what_the_server_says()
   assert_equal('int two;', getline(2))
 enddef
 
+def g:Test_a_rename_is_turned_down_before_it_is_sent()
+  assert_true(t.StartServer({
+    capabilities: Offering({renameProvider: {prepareProvider: true}}),
+    # Nothing at all: there is no name at the cursor to rename.
+    replies: {'textDocument/prepareRename': v:null},
+  }, ['int one;']))
+
+  cursor(1, 4)
+  LspRename ONE
+  assert_true(t.WaitFor(() =>
+		    !t.Sent('textDocument/prepareRename')->empty()),
+	      'the server should be asked first')
+  assert_true(t.WaitFor(() => LastMessage() =~# 'no name to rename'),
+	      'the answer should be passed on')
+  assert_equal([], t.Sent('textDocument/rename'),
+	       'a rename the server turned down should not be sent')
+  assert_equal('int one;', getline(1))
+enddef
+
+def g:Test_the_rename_goes_ahead_once_the_server_allows_it()
+  var edit = {
+    newText: 'ONE',
+    range: {start: {line: 0, character: 4}, end: {line: 0, character: 7}},
+  }
+  assert_true(t.StartServer({
+    capabilities: Offering({renameProvider: {prepareProvider: true}}),
+    replies: {
+      # A bare range, which is what a server answers with when the name is
+      # the text it covers.
+      'textDocument/prepareRename': {start: {line: 0, character: 4},
+				     end: {line: 0, character: 7}},
+      'textDocument/rename': {changes: {['file://' .. t.SRC]: [edit]}},
+    },
+  }, ['int one;']))
+
+  cursor(1, 5)
+  LspRename ONE
+  assert_true(t.WaitFor(() => getline(1) ==# 'int ONE;'),
+	      'the name should be replaced')
+enddef
+
 def g:Test_format_replaces_the_buffer_in_one_undo()
   var edit = {
     newText: "int main(void)\n{\n    return 0;\n}",

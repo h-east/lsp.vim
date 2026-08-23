@@ -121,6 +121,12 @@ def ClientCapabilities(): dict<any>
 	  },
 	},
       },
+      rename: {
+	dynamicRegistration: false,
+	# Ask before renaming: it says whether there is anything to rename
+	# here, and what the name to start from is.
+	prepareSupport: true,
+      },
       publishDiagnostics: {
 	relatedInformation: true,
       },

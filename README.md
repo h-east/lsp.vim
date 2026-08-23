@@ -143,7 +143,7 @@ would be felt first:
       highlighting a server works out from what it parsed
 - [x] The token modifiers, `readonly` and `deprecated` among them
 - [x] `textDocument/diagnostic`, the pull kind
-- [ ] `textDocument/prepareRename`, to turn a rename down before it is sent
+- [x] `textDocument/prepareRename`, to turn a rename down before it is sent
       and to start from the name the server names
 - [ ] Dynamic registration: `client/registerCapability` is answered without
       being read, and `workspace/didChangeWatchedFiles` never sent, so a

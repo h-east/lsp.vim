@@ -1010,23 +1010,43 @@ def ApplyWorkspaceEdit(edit: dict<any>): number
   return done
 enddef
 
-export def Rename(newname: string)
-  var cl = ReadyClient()
-  if cl->empty()
-    return
+# The text a range covers, for a range that stays on one line, which is what
+# a name is.
+def TextInRange(bufnr: number, range: dict<any>): string
+  var [lnum, col] = util.PosFromLsp(bufnr, range->get('start', {}))
+  var [end_lnum, end_col] = util.PosFromLsp(bufnr, range->get('end', {}))
+  if lnum != end_lnum || end_col <= col
+    return ''
   endif
-  if !cl.capabilities->has_key('renameProvider')
-    util.WarningMsg('the server does not offer rename')
-    return
+  return getbufline(bufnr, lnum)->get(0, '')->strpart(col - 1, end_col - col)
+enddef
+
+# What a "prepareRename" answer says the name is: a placeholder of its own, or
+# the range it covers, or nothing at all, which means work it out here.
+def Placeholder(result: any): string
+  if type(result) != v:t_dict
+    return ''
   endif
+  var placeholder = result->get('placeholder', '')
+  if type(placeholder) == v:t_string && !placeholder->empty()
+    return placeholder
+  endif
+  var range = result->get('range', result)
+  if type(range) == v:t_dict && range->has_key('start')
+    return TextInRange(bufnr('%'), range)
+  endif
+  return ''
+enddef
+
+def AskAndRename(cl: dict<any>, newname: string, placeholder: string,
+						      params: dict<any>)
   var name = newname
   if name->empty()
-    name = input('lsp: new name: ', expand('<cword>'))
+    name = input('lsp: new name: ', placeholder)
     if name->empty()
       return
     endif
   endif
-  var params = CursorParams()
   params.newName = name
   lspclient.Request(cl, 'textDocument/rename', params, (result: any) => {
     if type(result) != v:t_dict || result->empty()
@@ -1039,6 +1059,40 @@ export def Rename(newname: string)
 					  name, done, done == 1 ? '' : 's')
     endif
   })
+enddef
+
+# A server that offers "prepareProvider" is asked first.  It answers with
+# nothing where there is no name to rename, which is how a rename is turned
+# down before it is sent, and it names the text to start from, which reaches
+# further than |<cword>| does where 'iskeyword' and the language disagree.
+export def Rename(newname: string)
+  var cl = ReadyClient()
+  if cl->empty()
+    return
+  endif
+  if !cl.capabilities->has_key('renameProvider')
+    util.WarningMsg('the server does not offer rename')
+    return
+  endif
+  # Where the cursor is now is what the rename is about, whatever it does
+  # while the server is being asked.
+  var params = CursorParams()
+  var provider = cl.capabilities.renameProvider
+  if type(provider) != v:t_dict || !provider->get('prepareProvider', false)
+    AskAndRename(cl, newname, expand('<cword>'), params)
+    return
+  endif
+  lspclient.Request(cl, 'textDocument/prepareRename', params->copy(),
+      (result: any) => {
+	if result == v:null
+	  util.WarningMsg('there is no name to rename here')
+	  return
+	endif
+	var placeholder = Placeholder(result)
+	AskAndRename(cl, newname,
+		     placeholder->empty() ? expand('<cword>') : placeholder,
+		     params)
+      })
 enddef
 
 # A reply holds Commands, CodeActions, or a mix.  A Command is run by the
