@@ -361,16 +361,31 @@ it is still reading the file.
 
 The kind of an item is shown as the single letter |complete-items| asks for.
 
+							*lsp-snippet*
 An item may be a snippet, which is text with tab stops in it: "$1", "${2:a
-name}", and "$0" for where the cursor is meant to end up.  Taking one puts the
-text in with the stops taken out and what they stand for left where it is, so
-"printf(${1:const char *format})" comes out as "printf(const char *format)".
-The cursor is left on "$0" if the snippet has one and on the first stop
-otherwise, ready for it to be typed over.  A snippet reaching over more than
-one line is put in whole.
+name}", and "$0" for where the cursor ends up last of all.  Taking one puts
+the text in with the stops taken out and what they stand for left where it is,
+so "printf(${1:const char *format})" comes out as "printf(const char
+*format)", with the cursor on the first stop.  A snippet reaching over more
+than one line is put in whole.
 
-There is nothing here to step from one stop to the next with; a snippet is put
-in and then it is ordinary text.
+Stepping from one stop to the next is not bound to anything; these are there
+to bind: >vim
+
+	imap <F5> <Plug>(lsp-snippet-next)
+	smap <F5> <Plug>(lsp-snippet-next)
+	imap <F6> <Plug>(lsp-snippet-prev)
+	smap <F6> <Plug>(lsp-snippet-prev)
+<
+What a stop stands for is selected in |Select-mode|, so what is typed next
+replaces it; a stop that stands for nothing is only gone to.  The Select mode
+mappings are what lets the same key step on from a stop that is selected.
+The stops are marked with |text-properties| and so keep up with what is typed
+around them, but one that has been typed over goes with the text it stood
+for: what is left to step through is what has not been filled in yet.
+
+Two stops written under the same number are stepped through one after the
+other; they are not tied to one another.
 
 A server is allowed to leave the documentation of an item out and hand it over
 only for the item that is actually looked at.  That answer arrives long after

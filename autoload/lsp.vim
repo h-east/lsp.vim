@@ -383,6 +383,7 @@ export def Detach(bufnr: number = bufnr('%'))
   DidClose(bufnr)
   diag.Clear(bufnr)
   ForgetDiagnosticId(bufnr)
+  ClearSnippet(bufnr)
   hl.Clear(bufnr)
   StopHighlight()
   inlay.Clear(bufnr)
@@ -1796,16 +1797,13 @@ enddef
 const STOP_PAT = '\\[$}\\]\|\${\d\+:[^}]*}\|\${\d\+|[^|]*|}\|\${\d\+}\|\$\d\+'
 
 # A snippet is text with tab stops in it: "$1", "${2:a name}" and "$0", where
-# the cursor is meant to end up.  There is nothing here to step through the
-# stops with, so what a stop stands for is put in as it is and the cursor
-# goes to the first of them, ready for it to be typed over.  Returns the text
-# and how far into it the cursor goes.
+# the cursor ends up last of all.  What a stop stands for is put in as it is,
+# ready to be typed over.  Returns the text and the stops in the order they
+# are stepped through, each one saying where in the text it is and how long.
 def ExpandSnippet(snippet: string): list<any>
   var out = ''
   var at = 0
-  var last = -1
-  var first = -1
-  var first_nr = 0
+  var stops: list<dict<number>> = []
   while true
     var [found, from, to] = matchstrpos(snippet, STOP_PAT, at)
     if from < 0
@@ -1818,23 +1816,21 @@ def ExpandSnippet(snippet: string): list<any>
       out ..= found[1]
       continue
     endif
-    var nr = str2nr(matchstr(found, '\d\+'))
-    if nr == 0
-      last = strlen(out)
-    elseif first < 0 || nr < first_nr
-      first = strlen(out)
-      first_nr = nr
-    endif
+    var start = strlen(out)
     if found =~# '^\${\d\+:'
       out ..= matchstr(found, '^\${\d\+:\zs.*\ze}$')
     elseif found =~# '^\${\d\+|'
       # One of several, with no way to pick: the first is as good as any.
       out ..= matchstr(found, '^\${\d\+|\zs[^,|]*')
     endif
+    # The order to step through them in: by number, with "$0" last of all.
+    # Two under the same number keep the order they were written in; they are
+    # not tied to one another.
+    var nr = str2nr(matchstr(found, '\d\+'))
+    stops->add({at: start, len: strlen(out) - start,
+		key: (nr == 0 ? 100000 : nr) * 1000 + len(stops)})
   endwhile
-  # "$0" says where to end up; without one it is the first stop, and without
-  # any of them the end of what was put in.
-  return [out, last >= 0 ? last : (first >= 0 ? first : strlen(out))]
+  return [out, stops->sort((a, b) => a.key - b.key)]
 enddef
 
 def ItemWord(item: dict<any>): string
@@ -1972,11 +1968,80 @@ enddef
 # it, and the byte the word begins at.
 var started: dict<any> = {}
 
-# Puts "text" in place of the bytes from "from" to "to" of line "lnum", and
-# leaves the cursor "offset" bytes into what was put in.  The change belongs
-# to the keystroke that took the item, hence the |:undojoin|.
+# The stops of the snippet that was last put in are marked in the buffer, so
+# that they move along with what is typed over them.
+const STOP_TYPE = 'LspSnippetStop'
+
+var stop_type_added = false
+
+def AddStopType()
+  if !stop_type_added
+    if prop_type_get(STOP_TYPE)->empty()
+      prop_type_add(STOP_TYPE, {})
+    endif
+    stop_type_added = true
+  endif
+enddef
+
+export def ClearSnippet(bufnr: number = bufnr('%'))
+  if stop_type_added && bufexists(bufnr)
+    prop_remove({bufnr: bufnr, type: STOP_TYPE, all: true})
+  endif
+enddef
+
+# The keys that step to the next stop of the snippet that was put in, or back
+# to the one before.  What a stop stands for is selected so that it is typed
+# over, and a stop that stands for nothing is only gone to.  An empty string
+# means there was nowhere to go, which is what lets a mapping fall back on
+# what its key does otherwise: >vim
+#	inoremap <expr> <Tab> lsp.SnippetKeys(1) ?? "\<Tab>"
+export def SnippetKeys(dir: number = 1): string
+  if !stop_type_added
+    return ''
+  endif
+  var found = prop_list(1, {bufnr: bufnr('%'), end_lnum: line('$'),
+			    types: [STOP_TYPE]})
+  var at = get(b:, 'lsp_snippet_at', 0)
+  var next: dict<any> = {}
+  for stop in found
+    if (dir > 0 ? stop.id > at : stop.id < at)
+	  && (next->empty()
+	      || (dir > 0 ? stop.id < next.id : stop.id > next.id))
+      next = stop
+    endif
+  endfor
+  if next->empty()
+    return ''
+  endif
+  b:lsp_snippet_at = next.id
+  # Normal mode first, so that the column is the one that was worked out and
+  # not what leaving Insert mode makes of it.
+  var keys = printf("\<C-\>\<C-n>:call cursor(%d, %d)\<CR>",
+						      next.lnum, next.col)
+  if next.length <= 0
+    # cursor() cannot go past the last byte, so the far end needs "a".
+    return keys .. (next.col > strlen(getline(next.lnum)) ? 'a' : 'i')
+  endif
+  var over = strpart(getline(next.lnum), next.col - 1, next.length)
+			  ->strchars()
+  return keys .. 'v' .. (over > 1 ? printf('%dl', over - 1) : '') .. "\<C-g>"
+enddef
+
+# Where a byte of the text ends up once it has been put in at "lnum" and
+# "from"; "head" is what stays in front of it on that line.
+def TextPos(lnum: number, head: string, text: string, at: number): list<number>
+  var before = head .. strpart(text, 0, at)
+  var nl = strridx(before, "\n")
+  return [lnum + count(before, "\n"),
+	  nl < 0 ? strlen(before) + 1 : strlen(before) - nl]
+enddef
+
+# Puts "text" in place of the bytes from "from" to "to" of line "lnum".  The
+# stops are marked and the cursor goes to the first of them, or to the end of
+# what was put in when there are none.  The change belongs to the keystroke
+# that took the item, hence the |:undojoin|.
 def PutText(lnum: number, from: number, to: number, text: string,
-						      offset: number)
+					      stops: list<dict<number>> = [])
   var line = getline(lnum)
   var head = strpart(line, 0, from)
   var tail = strpart(line, to)
@@ -1991,10 +2056,23 @@ def PutText(lnum: number, from: number, to: number, text: string,
   if len(lines) > 1
     append(lnum, lines[1 : ])
   endif
-  var before = head .. strpart(text, 0, offset)
-  var nl = strridx(before, "\n")
-  cursor(lnum + count(before, "\n"),
-	 nl < 0 ? strlen(before) + 1 : strlen(before) - nl)
+
+  ClearSnippet()
+  if !stops->empty()
+    AddStopType()
+  endif
+  var id = 0
+  for stop in stops
+    id += 1
+    var [at_lnum, at_col] = TextPos(lnum, head, text, stop.at)
+    try
+      prop_add(at_lnum, at_col, {type: STOP_TYPE, id: id, length: stop.len})
+    catch /E96[4-6]/
+    endtry
+  endfor
+  var [to_lnum, to_col] = TextPos(lnum, head, text,
+			      stops->empty() ? strlen(text) : stops[0].at)
+  cursor(to_lnum, to_col)
 enddef
 
 # What a server answers with is written against the line as it was when it was
@@ -2018,15 +2096,14 @@ def FixWiderEdit(item: dict<any>): bool
   endif
 
   var raw = ItemText(item)
-  var [text, offset] = IsSnippet(item) ? ExpandSnippet(raw)
-					: [raw, strlen(raw)]
+  var [text, stops] = IsSnippet(item) ? ExpandSnippet(raw) : [raw, []]
   try
     undojoin
   catch
   endtry
   # The line as it was, so that what completion put in goes with the word.
   setline(started.lnum, started.line)
-  PutText(started.lnum, from, started.cursor, text, offset)
+  PutText(started.lnum, from, started.cursor, text, stops)
   return true
 enddef
 
@@ -2041,8 +2118,8 @@ def FinishSnippet(item: dict<any>, word: string)
 	|| strpart(getline(lnum), from, strlen(word)) !=# word
     return
   endif
-  var [text, offset] = ExpandSnippet(ItemText(item))
-  PutText(lnum, from, to, text, offset)
+  var [text, stops] = ExpandSnippet(ItemText(item))
+  PutText(lnum, from, to, text, stops)
 enddef
 
 def OnCompleteDone()

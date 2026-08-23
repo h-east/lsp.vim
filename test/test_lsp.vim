@@ -148,7 +148,7 @@ def g:Test_a_snippet_may_reach_over_more_than_one_line()
     kind: 15,
     textEdit: {
       range: {start: {line: 2, character: 4}, end: {line: 2, character: 4}},
-      newText: "do {\n${1:body}\n} while ($0);",
+      newText: "do {\n\n} while ($0);",
     },
   }
   assert_true(t.StartServer({
@@ -158,9 +158,43 @@ def g:Test_a_snippet_may_reach_over_more_than_one_line()
 
   cursor(3, 5)
   feedkeys("A\<C-X>\<C-O>\<C-Y>\<C-R>=g:SnippetStop()\<CR>\<Esc>", 'tx')
-  assert_equal(['    do {', 'body', '} while ();'], getline(3, 5))
+  assert_equal(['    do {', '', '} while ();'], getline(3, 5))
   # "$0" wins over the first stop.
   assert_equal([5, 10], stopped_at)
+enddef
+
+def g:Test_the_stops_of_a_snippet_are_stepped_through()
+  const ITEM = {
+    label: 'demo',
+    filterText: 'demo',
+    insertTextFormat: 2,
+    kind: 3,
+    textEdit: {
+      range: {start: {line: 2, character: 4}, end: {line: 2, character: 4}},
+      newText: 'demo(${1:int a}, ${2:int b})$0',
+    },
+  }
+  assert_true(t.StartServer({
+    capabilities: Offering({completionProvider: {resolveProvider: false}}),
+    replies: {'textDocument/completion': {isIncomplete: false, items: [ITEM]}},
+  }, ['int main(void)', '{', '    dem', '}']))
+
+  imap <buffer> <F5> <Plug>(lsp-snippet-next)
+  smap <buffer> <F5> <Plug>(lsp-snippet-next)
+  imap <buffer> <F6> <Plug>(lsp-snippet-prev)
+  smap <buffer> <F6> <Plug>(lsp-snippet-prev)
+
+  cursor(3, 7)
+  feedkeys("A\<C-X>\<C-O>\<C-Y>", 'tx')
+
+  # Each stop in turn is selected, so what it stands for is typed over, and
+  # going back reaches the one before.
+  feedkeys("i\<F5>\<F5>\<F6>A\<Esc>", 'tx')
+  assert_equal('    demo(A, int b)', getline(3))
+
+  # "$0" comes after the numbered ones, wherever it is written.
+  feedkeys("i\<F5>B\<F5>!\<Esc>", 'tx')
+  assert_equal('    demo(A, B)!', getline(3))
 enddef
 
 def g:Test_a_log_message_is_kept_for_LspLog()

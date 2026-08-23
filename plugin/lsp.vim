@@ -57,6 +57,12 @@ command! -bar LspSignature  lsp.Signature()
 command! -bar LspDiag       lsp.Diagnostics()
 command! -bar LspLog        lsp.Log()
 
+# Nothing is bound to these; see |lsp-snippet|.
+inoremap <expr> <Plug>(lsp-snippet-next) lsp.SnippetKeys(1)
+inoremap <expr> <Plug>(lsp-snippet-prev) lsp.SnippetKeys(-1)
+snoremap <expr> <Plug>(lsp-snippet-next) lsp.SnippetKeys(1)
+snoremap <expr> <Plug>(lsp-snippet-prev) lsp.SnippetKeys(-1)
+
 # Kept out of the autoload script, because reaching that script is what this
 # decides: a file nothing is configured for leaves the plugin asleep.
 def HasServer(): bool
