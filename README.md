@@ -226,4 +226,5 @@ This plugin is developed with the support of AI.
 
 ## License
 
-Same terms as Vim itself.  See `:help license`.
+Same terms as Vim itself: the Vim license, in `LICENSE` here and under
+`:help license`.
