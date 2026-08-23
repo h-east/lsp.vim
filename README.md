@@ -6,6 +6,11 @@ Vim frames the protocol messages and matches replies to requests itself, so
 what is left to the plugin is the conversation and what to do with the
 answers.
 
+It is written as much to put Vim's own side of the protocol through its
+paces as to be used every day, and some of what turned up that way has gone
+into Vim itself.  Expect it to move at that pace rather than at the pace of
+a plugin its author leans on all day.
+
 ## Requirements
 
 - Vim 9.2.970 or later, with the `+job` and `+channel` features.  That patch
@@ -67,6 +72,43 @@ listed under `:help lsp-configuration`.
 
 A buffer is connected to the server for its `'filetype'` when it is opened.
 The server is started once per workspace root.
+
+## Suggested settings
+
+Completion goes through `'omnifunc'`, which Vim uses only where it is told
+to, so a few options decide whether much of this shows up at all:
+
+```vim
+def LspBuffer()
+  # 'autocomplete' takes what it offers from 'complete', so the omni source
+  # has to be in there for the server to be asked in the first place.
+  setlocal complete^=o
+  setlocal autocomplete
+  # "menuone" so that a single match still opens the menu, "popup" so that
+  # what `completionItem/resolve` finds has somewhere to go.
+  setlocal completeopt=menuone,popup
+  # A sign arrives with the first diagnostic and leaves with the last;
+  # without this the text slides sideways each time.
+  setlocal signcolumn=yes
+
+  nnoremap <buffer> K  <Cmd>LspHover<CR>
+  nnoremap <buffer> gd <Cmd>LspDefinition<CR>
+enddef
+
+# Whatever the servers say they handle, so adding one above is enough.
+const LspFiletypes = g:lsp_server_list
+      ->mapnew((_, c) => c.filetypes)->flattennew()->join(',')
+
+augroup lsprc
+  autocmd!
+  execute 'autocmd FileType' LspFiletypes 'LspBuffer()'
+augroup END
+```
+
+`'autocompletedelay'` is global rather than per buffer, so it goes on its
+own: `set autocompletedelay=500` keeps the menu from opening between
+keystrokes.  Asking the server is a wait, and `completion_timeout` is what
+bounds it.
 
 ## Servers it has been used with
 
@@ -222,7 +264,7 @@ what the client did with the answers.
 
 ## AI
 
-This plugin is developed with the support of AI.
+This plugin is developed with the support of AI (Claude).
 
 ## License
 
