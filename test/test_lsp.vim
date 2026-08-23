@@ -639,6 +639,14 @@ def g:Test_the_server_colors_what_it_parsed()
 	       PaintedOn(1))
   assert_equal([[1, 4, 'LspSemType'], [6, 1, 'LspSemFunction']],
 	       PaintedOn(2))
+
+  # A change made in Insert mode is asked about too, so what is coming out
+  # from under a comment marker does not keep its old colors until <Esc>.
+  setline(1, '// int x = 1;')
+  doautocmd TextChangedI
+  assert_true(t.WaitFor(() =>
+		  len(t.Sent('textDocument/semanticTokens/full')) == 2),
+	      'an edit in Insert mode should be asked about')
 enddef
 
 def g:Test_a_delta_is_folded_into_what_was_there()
@@ -671,6 +679,40 @@ def g:Test_a_delta_is_folded_into_what_was_there()
 	      'the delta should reach the buffer')
   assert_equal([[1, 3, 'LspSemFunction'], [5, 1, 'LspSemVariable']],
 	       PaintedOn(1))
+enddef
+
+def g:Test_a_modifier_takes_over_from_the_token_type()
+  g:lsp_client_config.semantic_tokens = true
+  defer execute('unlet g:lsp_client_config.semantic_tokens')
+  const MODS = {tokenTypes: ['variable', 'function'],
+		tokenModifiers: ['declaration', 'readonly', 'deprecated']}
+  # A plain variable, a readonly one, and a deprecated function.
+  const MARKED = [0, 0, 1, 0, 0,
+		  0, 2, 1, 0, 2,
+		  0, 2, 1, 1, 4]
+  assert_true(t.StartServer({
+    capabilities: Offering({semanticTokensProvider:
+					{legend: MODS, full: true}}),
+    replies: {'textDocument/semanticTokens/full': {data: MARKED}},
+  }, ['a b c']))
+
+  assert_true(t.WaitFor(() => len(prop_list(1)) == 3),
+	      'every token should be painted')
+  assert_equal([[1, 1, 'LspSemVariable'],
+		[3, 1, 'LspSemReadonly'],
+		[5, 1, 'LspSemDeprecated']], PaintedOn(1))
+
+  # A group for the pair says more than one for the modifier alone, so it is
+  # the one that is used.
+  highlight link LspSemVariableReadonly Todo
+  defer execute('highlight clear LspSemVariableReadonly')
+  setline(1, 'a b c ')
+  doautocmd TextChanged
+  assert_true(t.WaitFor(() => PaintedOn(1)
+		    ->copy()
+		    ->filter((_, p) => p[2] ==# 'LspSemVariableReadonly')
+		    ->len() == 1),
+	      'the group for the pair should win')
 enddef
 
 def g:Test_the_colors_can_be_turned_on_and_off()

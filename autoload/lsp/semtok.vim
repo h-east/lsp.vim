@@ -36,26 +36,89 @@ const LINKS = {
   decorator: 'PreProc',
 }
 
-# The property type made for a token type, an empty string for one this client
-# has no group for.  Made on the way past rather than up front: a legend names
-# every type the server knows, most of which never turn up.
-var types: dict<string> = {}
+# The modifiers this client paints itself, in the order one takes over from
+# another when a token carries more than one.  A modifier that is not here is
+# still usable: make a group for it and it is picked up.
+const MOD_ORDER = ['deprecated', 'readonly']
 
-def PropType(name: string): string
-  if types->has_key(name)
-    return types[name]
+var defined = false
+
+def Define()
+  if defined
+    return
   endif
-  if !LINKS->has_key(name)
-    types[name] = ''
-    return ''
+  for [name, group] in LINKS->items()
+    execute 'highlight default link' Group(name) group
+  endfor
+  # No link for this one: a line through the text says "do not use it"
+  # whatever the colors around it are.
+  highlight default LspSemDeprecated term=strikethrough cterm=strikethrough
+	\ gui=strikethrough
+  highlight default link LspSemReadonly Constant
+  defined = true
+enddef
+
+def Group(name: string): string
+  return name->empty() ? '' : 'LspSem' .. toupper(name[0]) .. name[1 : ]
+enddef
+
+# One property type per group, made the first time a token needs it.
+var props: dict<bool> = {}
+
+def PropFor(group: string)
+  if !props->has_key(group)
+    if prop_type_get(group)->empty()
+      prop_type_add(group, {highlight: group})
+    endif
+    props[group] = true
   endif
-  var group = 'LspSem' .. toupper(name[0]) .. name[1 : ]
-  execute 'highlight default link' group LINKS[name]
-  if prop_type_get(group)->empty()
-    prop_type_add(group, {highlight: group})
+enddef
+
+# The names of the modifiers a token carries, one bit each in the order the
+# legend lists them.
+def ModNames(names: list<string>, bits: number): list<string>
+  var out: list<string> = []
+  var rest = bits
+  for name in names
+    if rest == 0
+      break
+    endif
+    if and(rest, 1) != 0
+      out->add(name)
+    endif
+    rest = rest / 2
+  endfor
+  return out
+enddef
+
+# What a token is painted with: the first of LspSem<Type><Modifier>,
+# LspSem<Modifier> and LspSem<Type> that exists.  An empty string leaves the
+# token to the syntax highlighting, which is what a type this client has no
+# group for gets.
+def GroupFor(type_name: string, mods: list<string>): string
+  var base = LINKS->has_key(type_name) ? Group(type_name) : ''
+  if mods->empty()
+    return base
   endif
-  types[name] = group
-  return group
+  if !base->empty()
+    for name in mods
+      var group = base .. toupper(name[0]) .. name[1 : ]
+      if hlexists(group)
+	return group
+      endif
+    endfor
+  endif
+  for name in MOD_ORDER
+    if index(mods, name) >= 0
+      return Group(name)
+    endif
+  endfor
+  for name in mods
+    if hlexists(Group(name))
+      return Group(name)
+    endif
+  endfor
+  return base
 enddef
 
 # What the server last answered with, by buffer: "id" is what a delta is asked
@@ -77,19 +140,22 @@ export def Clear(bufnr: number)
   if !bufexists(bufnr)
     return
   endif
-  var names = types->values()->filter((_, group) => !group->empty())
-  if !names->empty()
-    prop_remove({bufnr: bufnr, types: names, all: true})
+  if !props->empty()
+    prop_remove({bufnr: bufnr, types: props->keys(), all: true})
   endif
 enddef
 
 # Five numbers stand for one token, each counted from the one before it: the
 # line from the previous line, the start from the previous start when they
-# share a line, then the length, the type and the modifiers.  Only the type is
-# used here.
+# share a line, then the length, the type and the modifiers.
 def Paint(bufnr: number, legend: dict<any>, data: list<number>)
   Clear(bufnr)
+  Define()
   var token_types = legend->get('tokenTypes', [])
+  var mod_names = legend->get('tokenModifiers', [])
+  # The type and the modifiers together decide the group, and a file holds
+  # only a handful of the combinations a legend allows.
+  var by_token: dict<string> = {}
   var by_type: dict<list<list<number>>> = {}
   var line = 0
   var char = 0
@@ -101,7 +167,12 @@ def Paint(bufnr: number, legend: dict<any>, data: list<number>)
     line += data[at]
     char = data[at] == 0 ? char + data[at + 1] : data[at + 1]
     var length = data[at + 2]
-    var group = PropType(token_types->get(data[at + 3], ''))
+    var key = data[at + 3] .. ':' .. data[at + 4]
+    if !by_token->has_key(key)
+      by_token[key] = GroupFor(token_types->get(data[at + 3], ''),
+			       ModNames(mod_names, data[at + 4]))
+    endif
+    var group = by_token[key]
     at += 5
     if group->empty() || length <= 0
       continue
@@ -120,6 +191,7 @@ def Paint(bufnr: number, legend: dict<any>, data: list<number>)
     if end_col <= col
       continue
     endif
+    PropFor(group)
     if by_type->has_key(group)
       by_type[group]->add([lnum, col, lnum, end_col])
     else

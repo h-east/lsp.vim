@@ -129,8 +129,8 @@ def ClientCapabilities(): dict<any>
 		     'property', 'enumMember', 'event', 'function', 'method',
 		     'macro', 'keyword', 'modifier', 'comment', 'string',
 		     'number', 'regexp', 'operator', 'decorator'],
-	# None of them are acted on yet, but a server needs the list to know
-	# what the bits in a token stand for.
+	# The bits in a token are read against this list, so a server needs it
+	# to know what it can say.
 	tokenModifiers: ['declaration', 'definition', 'readonly', 'static',
 			 'deprecated', 'abstract', 'async', 'modification',
 			 'documentation', 'defaultLibrary'],

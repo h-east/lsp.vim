@@ -537,7 +537,8 @@ recolors the buffer rather than adding to a corner of it.
 The whole buffer is asked about where the server offers that, and only the
 part on screen where it does not.  An answer that comes with a "resultId" is
 followed by a request for a delta, so a change is answered with the tokens
-that moved rather than with all of them again.
+that moved rather than with all of them again.  A change is asked about once
+the typing has stopped for a moment, in Insert mode as well as out of it.
 
 The group for a token type is "LspSem" and the name the protocol uses,
 capitalized: LspSemFunction for "function", LspSemEnumMember for
@@ -552,9 +553,21 @@ the types this client has a group for:
 	interface	enumMember	modifier	decorator
 	struct		event		comment
 
-A server names in its legend the token types it uses.  One that is not in
-the list is left to the syntax highlighting, as are the modifiers a token
-carries, such as "readonly" or "deprecated".
+A token also carries modifiers, "readonly" and "deprecated" among them.  The
+group it is painted with is the first of these that exists:
+
+	LspSem{Type}{Modifier}	both, LspSemVariableReadonly for one
+	LspSem{Modifier}	the modifier on its own
+	LspSem{Type}		the type on its own
+
+Two modifier groups come with the plugin: LspSemDeprecated, drawn with a line
+through the text so it shows whatever the colors are, and LspSemReadonly,
+linked to |hl-Constant|.  Any other one is yours to make: >vim
+
+	highlight link LspSemVariableStatic Special
+<
+A server names in its legend the token types and the modifiers it uses.  A
+type this client has no group for is left to the syntax highlighting.
 
 ==============================================================================
 13. Limitations						*lsp-limitations*

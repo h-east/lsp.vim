@@ -140,8 +140,7 @@ would be felt first:
 
 - [x] `textDocument/semanticTokens/full`, `/range` and `/full/delta`, the
       highlighting a server works out from what it parsed
-- [ ] The token modifiers, `readonly` and `deprecated` among them; only the
-      token type is used out of what `semanticTokens` answers with
+- [x] The token modifiers, `readonly` and `deprecated` among them
 - [ ] `textDocument/diagnostic`, the pull kind; only the pushed
       `publishDiagnostics` is read, so a server offering nothing else
       reports nothing at all

@@ -314,7 +314,8 @@ def HookBuffer()
     autocmd TextChanged,BufEnter <buffer> InlayHints()
     autocmd TextChanged,BufEnter <buffer> CodeLenses()
     autocmd TextChanged,BufEnter <buffer> FoldingRanges()
-    autocmd TextChanged,BufEnter <buffer> SemanticLater()
+    autocmd TextChanged,TextChangedI,TextChangedP,BufEnter <buffer>
+	  \ SemanticLater()
     autocmd TextChangedI,TextChangedP <buffer> OnTextChanged()
     autocmd CursorMovedI <buffer> OnCursorMovedI()
     autocmd InsertLeave <buffer> CloseSignature()
@@ -1236,7 +1237,8 @@ enddef
 
 # Longer than the wait for the inlay hints: a whole buffer is being asked
 # about, and what comes back is the coloring of text that is already on
-# screen and readable as it stands.
+# screen and readable as it stands.  A change made in Insert mode counts, so
+# this is also what keeps a line from being asked about once per keystroke.
 const SEMANTIC_DELAY = 200
 
 var semantic_timer = -1
