@@ -197,6 +197,58 @@ def g:Test_the_stops_of_a_snippet_are_stepped_through()
   assert_equal('    demo(A, B)!', getline(3))
 enddef
 
+def Answered(id: string): list<dict<any>>
+  return t.Trace()->filter((_, m) => string(m->get('id', '')) ==# "'" .. id
+								      .. "'")
+enddef
+
+def g:Test_a_message_comes_with_answers_to_pick_from()
+  defer popup_clear()
+  assert_true(t.StartServer({
+    capabilities: Offering({definitionProvider: true}),
+    replies: {'textDocument/definition': v:null},
+    ask: {'textDocument/definition': [{
+      id: 'ask',
+      method: 'window/showMessageRequest',
+      params: {type: 3, message: 'start over?',
+	       actions: [{title: 'Yes'}, {title: 'No'}]},
+    }]},
+  }, ['int one;']))
+
+  LspDefinition
+  assert_true(t.WaitFor(() => !popup_list()->empty()),
+	      'the answers should be put in a menu')
+  # The menu takes the first entry on <CR>.
+  feedkeys("\<CR>", 'tx')
+  assert_true(t.WaitFor(() => !Answered('ask')->empty()),
+	      'the server should be told what was picked')
+  assert_equal('Yes', Answered('ask')[0].result.title)
+enddef
+
+def g:Test_the_server_asks_for_a_file_to_be_looked_at()
+  const OTHER = t.SRC->substitute('\.c$', '_more.c', '')
+  writefile(['int here;', 'int there;'], OTHER)
+  defer delete(OTHER)
+  assert_true(t.StartServer({
+    capabilities: Offering({definitionProvider: true}),
+    replies: {'textDocument/definition': v:null},
+    ask: {'textDocument/definition': [{
+      id: 'show',
+      method: 'window/showDocument',
+      params: {uri: 'file://' .. OTHER,
+	       selection: {start: {line: 1, character: 4},
+			   end: {line: 1, character: 9}}},
+    }]},
+  }, ['int one;']))
+
+  LspDefinition
+  assert_true(t.WaitFor(() => !Answered('show')->empty()),
+	      'the server should be told how it went')
+  assert_true(Answered('show')[0].result.success)
+  assert_match('_more\.c$', bufname('%'), 'the file should be open')
+  assert_equal([2, 5], [line('.'), col('.')], 'at the place it named')
+enddef
+
 def g:Test_a_log_message_is_kept_for_LspLog()
   assert_true(t.StartServer({
     capabilities: SYNC,

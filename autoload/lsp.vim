@@ -230,6 +230,17 @@ enddef
 const MSG_ERROR = 1
 const MSG_WARNING = 2
 
+def Say(type: number, message: string)
+  var text = message->substitute('\n', ' ', 'g')
+  if type == MSG_ERROR
+    util.ErrorMsg(text)
+  elseif type == MSG_WARNING
+    util.WarningMsg(text)
+  else
+    echomsg 'lsp: ' .. text
+  endif
+enddef
+
 # What a server says it is busy with, kept by the token it named, since only
 # the first message of a run carries the title.
 var progress_title: dict<string> = {}
@@ -276,15 +287,7 @@ def OnNotify(cl: dict<any>, method: string, params: any)
       diag.Update(bufnr, cl.diagnostics[uri])
     endif
   elseif method ==# 'window/showMessage'
-    var type = params->get('type', 0)
-    var message = params->get('message', '')->substitute('\n', ' ', 'g')
-    if type == MSG_ERROR
-      util.ErrorMsg(message)
-    elseif type == MSG_WARNING
-      util.WarningMsg(message)
-    else
-      echomsg 'lsp: ' .. message
-    endif
+    Say(params->get('type', 0), params->get('message', ''))
   elseif method ==# 'window/logMessage'
     # For the record, and there can be a lot of it.
     cl.log->add(params->get('message', ''))
@@ -2519,10 +2522,76 @@ enddef
 # "workspace/applyEdit" is how a server hands over changes it worked out
 # itself; "window/workDoneProgress/create" only asks whether it may report
 # progress.  Anything else is turned down by the caller.
+# A message with answers to pick from.  Picking nothing is an answer of its
+# own, which is what a server gets when the menu is closed.
+def ShowMessageRequest(params: any, Answer: func(any))
+  if type(params) != v:t_dict
+    Answer(v:null)
+    return
+  endif
+  var actions = params->get('actions', [])
+  if type(actions) != v:t_list || actions->empty()
+    Say(params->get('type', 0), params->get('message', ''))
+    Answer(v:null)
+    return
+  endif
+  var options = MENU_OPTIONS->copy()
+  options.title = ' ' .. params->get('message', '')
+			      ->substitute('\n', ' ', 'g') .. ' '
+  options.callback = (_, idx) =>
+      Answer(idx > 0 && idx <= len(actions) ? actions[idx - 1] : v:null)
+  popup_menu(actions->mapnew((_, action) =>
+	  type(action) == v:t_dict ? action->get('title', '') : ''), options)
+enddef
+
+# |:URLOpen| hands it to whatever the system opens such a thing with, and
+# does not expand |cmdline-special|, which a URI is free to hold.
+def OpenExternal(uri: string): bool
+  if !exists(':URLOpen')
+    util.WarningMsg('nothing to open ' .. uri .. ' with')
+    return false
+  endif
+  execute 'URLOpen ' .. uri
+  return true
+enddef
+
+# A file the server would like looked at, at a place in it if it says one.
+def ShowDocument(params: any): bool
+  if type(params) != v:t_dict
+    return false
+  endif
+  var uri = params->get('uri', '')
+  if type(uri) != v:t_string || uri->empty()
+    return false
+  endif
+  if params->get('external', false)
+    return OpenExternal(uri)
+  endif
+  var path = util.UriToPath(uri)
+  if path ==# uri
+    # Not a file, so there is no window to put it in.
+    return OpenExternal(uri)
+  endif
+  execute 'edit ' .. fnameescape(path)
+  var where = params->get('selection', {})
+  if type(where) == v:t_dict && type(where->get('start', 0)) == v:t_dict
+    cursor(util.PosFromLsp(bufnr('%'), where.start))
+  endif
+  return true
+enddef
+
 def OnRequest(cl: dict<any>, method: string, params: any,
 	      Answer: func(any)): bool
   if method ==# 'window/workDoneProgress/create'
     Answer(v:null)
+    return true
+  endif
+  if method ==# 'window/showMessageRequest'
+    ShowMessageRequest(params, Answer)
+    return true
+  endif
+  if method ==# 'window/showDocument'
+    Answer({success: ShowDocument(params)})
     return true
   endif
   if method ==# 'client/registerCapability'

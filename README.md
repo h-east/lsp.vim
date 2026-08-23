@@ -111,6 +111,7 @@ than the source as well.
 - Incremental document synchronization with `listener_add()`
 - What the server reports about itself: messages, logs, and what it is busy
   with
+- What the server asks of the editor: a message to answer, a file to look at
 - Changes the server works out on its own, including an action it carries out
   itself
 - Files the server asked to watch, reported when Vim writes one or notices
@@ -172,8 +173,7 @@ Worth having:
 - [x] `codeAction/resolve`, `codeLens/resolve` and `workspaceSymbol/resolve`
 - [x] `inlayHint/resolve`, with `:LspInlayHintInfo` and
       `:LspInlayHintApply` to act on a hint
-- [ ] `window/showMessageRequest` and `window/showDocument`, both turned
-      down as unsupported
+- [x] `window/showMessageRequest` and `window/showDocument`
 - [ ] `textDocument/willSaveWaitUntil`, which is where a server formats or
       sorts the includes on the way to disk
 - [ ] The file operations, `willRenameFiles` and the rest, so a file being

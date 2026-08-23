@@ -200,6 +200,16 @@ The server ~
 		line as it arrives.  So does what a server says it is busy
 		with, such as indexing a project.
 
+		A message may come with answers to pick from, and then it
+		goes into a menu rather than onto the message line; closing
+		the menu without picking is an answer of its own.
+
+		A server may also ask for a file to be looked at, which opens
+		it at the place it names.  A URI that is not a file, or one
+		the server marks as external, goes to |:URLOpen|, which hands
+		it to whatever the system opens such a thing with; |g:Openprg|
+		is what decides that.
+
 Asking ~
 								*:LspHover*
 :LspHover	Ask the server about the symbol under the cursor and show the

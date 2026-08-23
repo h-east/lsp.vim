@@ -185,6 +185,11 @@ def ClientCapabilities(): dict<any>
     window: {
       # A server only reports what it is busy with when told someone listens.
       workDoneProgress: true,
+      # A message may come with answers to pick from.
+      showMessage: {messageActionItem: {additionalPropertiesSupport: true}},
+      # A server may ask for a file to be looked at, or for a URI to be
+      # handed to whatever the system opens it with.
+      showDocument: {support: true},
     },
   }
 enddef
