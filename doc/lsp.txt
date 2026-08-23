@@ -89,6 +89,25 @@ g:lsp_server_list
 				marks the root of the workspace.  When none
 				is found the directory of the file is used.
 				Default: [".git"]
+		initializationOptions
+				Optional, what the server takes at
+				startup.  What goes in here is up to the
+				server, each has its own; read the one you
+				are setting up.  It is sent as it was
+				written, so a Dictionary is what a server
+				usually wants.  Left out when it is not
+				there, which is not the same as sending an
+				empty Dictionary.
+
+		A server may keep something turned off until it is asked for
+		this way.  "gopls" offers the semantic tokens and then turns
+		down every request for them unless it was started with
+		#{semanticTokens: true}.
+
+		Such a turn-down is reported once.  What is asked for on its
+		own, with every change or as the cursor moves, is not asked
+		for again after that; what you ask for by command is tried
+		every time.
 
 		The first entry whose "filetypes" holds the 'filetype' of a
 		buffer is the one used for it, so put a more specific entry
@@ -208,13 +227,43 @@ The server ~
 :LspStart	Connect the current buffer to the server for its 'filetype'.
 		This happens on its own when a buffer is opened, the command
 		is for a buffer whose 'filetype' was decided later.
+
 								*:LspStop*
 :LspStop	Shut down every running server.  A buffer is connected again
 		when it is opened again.
+
 								*:LspStatus*
 :LspStatus	List the running servers, whether each one finished starting
 		up, how many buffers it has, and how many diagnostics are
-		known for the current buffer.
+		known for the current buffer.  A server that was given more
+		than one workspace folder lists them under its own line.
+
+						  *:LspWorkspaceFolderAdd*
+:LspWorkspaceFolderAdd [{dir}]
+		Hand {dir} to the server of the current buffer as another
+		workspace folder, so that what is there is looked at as part
+		of the same project.  Without {dir} the working directory is
+		used.
+
+		Opening a file is what usually does this: its root goes to a
+		server that takes workspace folders, see |lsp-configuration|.
+		The command is for a directory no file is opened from, such
+		as a library the project is built against.
+
+		Only a server that says it takes more than one folder, and
+		that it wants to hear about them changing, can be given one.
+
+						*:LspWorkspaceFolderRemove*
+:LspWorkspaceFolderRemove {dir}
+		Take {dir} back from the server of the current buffer.
+		Completion offers the folders that can be taken back: the
+		root a server started on is not one of them, that one lasts
+		as long as the server does.
+
+		A buffer under {dir} keeps its server, what is open stays
+		open.  It is what the folder brings with it, such as the
+		symbols of the files that are not open, that goes.
+
 								*:LspLog*
 :LspLog		Open a scratch buffer holding what the server for the current
 		buffer has logged, which is where one explains why it is
@@ -247,6 +296,7 @@ Asking ~
 								*:LspHover*
 :LspHover	Ask the server about the symbol under the cursor and show the
 		answer in a popup.  The popup closes when the cursor moves.
+
 								*:LspSignature*
 :LspSignature	Show what the call the cursor is in takes, in a popup.  See
 		|lsp-signature|.
@@ -256,14 +306,17 @@ Jumping ~
 :LspDefinition	Jump to the definition of the symbol under the cursor.  When
 		the definition is in another file it is opened in the current
 		window.
+
 							*:LspDeclaration*
 :LspDeclaration	Jump to the declaration of the symbol under the cursor, which
 		in C is where its prototype is rather than where it is
 		written out.  Otherwise like |:LspDefinition|.
+
 						    *:LspTypeDefinition*
 :LspTypeDefinition
 		Jump to the definition of the type of the symbol under the
 		cursor.  Otherwise like |:LspDefinition|.
+
 						     *:LspImplementation*
 :LspImplementation
 		Jump to what implements the symbol under the cursor.
@@ -276,6 +329,7 @@ Filling a list ~
 		mention, so it is in the list too.  A file that is not open
 		is read for the line to show, which is also what places the
 		column.
+
 						    *:LspIncomingCalls*
 :LspIncomingCalls
 		Put every place the function under the cursor is called from
@@ -305,6 +359,7 @@ Filling a list ~
 :LspOutline	Put the symbols in the current buffer into its location list
 		and open it.  A symbol inside another, a field of a struct
 		for instance, is shown indented under it.
+
 								*:LspSymbol*
 :LspSymbol {query}
 		Put the symbols in the workspace whose name matches {query}
@@ -316,6 +371,7 @@ Filling a list ~
 		the place in it, to save working that out for symbols
 		nobody looks at.  Those are asked about again before the
 		list is put together.
+
 							*:LspDiag*
 :LspDiag	Put the diagnostics for the current buffer into its location
 		list and open it.  See |lsp-diagnostics|.
@@ -336,6 +392,7 @@ Changing the text ~
 		An action may arrive without the change it stands for, so
 		that the server works one out only for what is picked.
 		Picking it is what asks for the rest.
+
 						    *:LspRenameFile*
 :LspRenameFile [{name}]
 		Rename the file in the current buffer to {name}, asking for
@@ -366,6 +423,7 @@ Changing the text ~
 		for files to be created, renamed or deleted is turned down,
 		since that is not supported.  The same goes for changes a
 		server sends on its own.
+
 							*:LspFormat*
 :LspFormat
 :{range}LspFormat

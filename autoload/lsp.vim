@@ -550,11 +550,95 @@ export def Status()
     return
   endif
   for [key, cl] in clients->items()
-    echo printf('%s  %s  %d buffer(s)  %d diagnostic(s) here%s', key,
+    echo printf('%s  %s  %d buffer(s)  %d diagnostic(s) here', key,
 	cl.initialized ? 'ready' : 'starting', len(cl.documents),
-	diag.Count(bufnr('%')),
-	len(cl.folders) > 1 ? printf('  %d folders', len(cl.folders)) : '')
+	diag.Count(bufnr('%')))
+    # The root is in the key already, so one folder is worth no list.
+    if len(cl.folders) > 1
+      for i in range(len(cl.folders))
+	echo printf('%s%s', i == 0 ? '  folders: ' : '           ',
+		    cl.folders[i])
+      endfor
+    endif
   endfor
+enddef
+
+# What ":LspWorkspaceFolderRemove" can be given: not the root it started on.
+export def RemovableFolders(): list<string>
+  var cl = BufClient(bufnr('%'))
+  if cl->empty()
+    return []
+  endif
+  return copy(cl.folders)->filter((_, folder) => folder !=# cl.root)
+enddef
+
+# A folder joins the project of the current buffer, so that is the server it
+# is added to or taken from.
+def FolderClient(): dict<any>
+  var cl = BufClient(bufnr('%'))
+  if cl->empty() || !cl.initialized
+    util.WarningMsg('this buffer has no server')
+    return {}
+  endif
+  if !TakesFolders(cl)
+    util.WarningMsg(printf('%s does not take workspace folders', cl.name))
+    return {}
+  endif
+  return cl
+enddef
+
+# A path as the folders are held: absolute, and without the trailing slash
+# that would keep it from matching.
+def AsFolder(path: string): string
+  return fnamemodify(path, ':p')->substitute('/\+$', '', '')
+enddef
+
+export def WorkspaceFolderAdd(path: string)
+  var cl = FolderClient()
+  if cl->empty()
+    return
+  endif
+  var dir = AsFolder(path->empty() ? getcwd() : path)
+  if !isdirectory(dir)
+    util.WarningMsg(dir .. ' is not a directory')
+    return
+  endif
+  if index(cl.folders, dir) >= 0
+    util.WarningMsg(dir .. ' is there already')
+    return
+  endif
+  cl.folders->add(dir)
+  # A file under it that is opened later finds this server again.
+  adopted[dir] = ClientKey(cl.name, cl.root)
+  lspclient.Notify(cl, 'workspace/didChangeWorkspaceFolders',
+		   {event: {added: [Folder(dir)], removed: []}})
+  echomsg printf('lsp: %s now covers %s', cl.name, dir)
+enddef
+
+export def WorkspaceFolderRemove(path: string)
+  var cl = FolderClient()
+  if cl->empty()
+    return
+  endif
+  var dir = AsFolder(path)
+  # The root is in the client's key and in the "rootUri" the server was
+  # given, so it stays for as long as the server does.
+  if dir ==# cl.root
+    util.WarningMsg(dir .. ' is what the server started on')
+    return
+  endif
+  var at = index(cl.folders, dir)
+  if at < 0
+    util.WarningMsg(dir .. ' is not one of its folders')
+    return
+  endif
+  remove(cl.folders, at)
+  if adopted->get(dir, '') ==# ClientKey(cl.name, cl.root)
+    remove(adopted, dir)
+  endif
+  lspclient.Notify(cl, 'workspace/didChangeWorkspaceFolders',
+		   {event: {added: [], removed: [Folder(dir)]}})
+  echomsg printf('lsp: %s no longer covers %s', cl.name, dir)
 enddef
 
 # The "contents" of a hover reply is a string, a Dict, or a List of either.
@@ -1337,6 +1421,7 @@ def InlayHints()
   var cl = BufClient(bufnr('%'))
   if cl->empty() || !cl.initialized
 	|| !cl.capabilities->has_key('inlayHintProvider')
+	|| lspclient.Declined(cl, 'textDocument/inlayHint')
     return
   endif
   var bufnr = bufnr('%')
@@ -1436,6 +1521,9 @@ def SemanticTokens()
   else
     return
   endif
+  if lspclient.Declined(cl, method)
+    return
+  endif
   var legend = provider->get('legend', {})
   listener_flush(bufnr)
   lspclient.Request(cl, method, params, (result: any) => {
@@ -1518,6 +1606,7 @@ def FoldingRanges()
   var cl = BufClient(bufnr('%'))
   if cl->empty() || !cl.initialized
 	|| !cl.capabilities->has_key('foldingRangeProvider')
+	|| lspclient.Declined(cl, 'textDocument/foldingRange')
     return
   endif
   var bufnr = bufnr('%')
@@ -1622,6 +1711,7 @@ def CodeLenses()
   var cl = BufClient(bufnr('%'))
   if cl->empty() || !cl.initialized
 	|| !cl.capabilities->has_key('codeLensProvider')
+	|| lspclient.Declined(cl, 'textDocument/codeLens')
     return
   endif
   var bufnr = bufnr('%')
@@ -1730,6 +1820,7 @@ def HighlightSymbol()
   var cl = BufClient(bufnr('%'))
   if cl->empty() || !cl.initialized
 	|| !cl.capabilities->has_key('documentHighlightProvider')
+	|| lspclient.Declined(cl, 'textDocument/documentHighlight')
     return
   endif
   var at = [bufnr('%'), line('.'), col('.')]
@@ -2693,6 +2784,7 @@ def PullDiagnostics()
   var cl = BufClient(bufnr('%'))
   if cl->empty() || !cl.initialized
 	|| type(cl.capabilities->get('diagnosticProvider', 0)) != v:t_dict
+	|| lspclient.Declined(cl, 'textDocument/diagnostic')
     return
   endif
   var bufnr = bufnr('%')

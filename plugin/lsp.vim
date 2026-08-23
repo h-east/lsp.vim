@@ -30,9 +30,17 @@ if !exists('g:lsp_client_config')
   g:lsp_client_config = {}
 endif
 
+def FolderNames(arglead: string, _: string, _: number): list<string>
+  return lsp.RemovableFolders()->filter((_, f) => f->stridx(arglead) == 0)
+enddef
+
 command! -bar LspStart      lsp.Attach(true)
 command! -bar LspStop       lsp.Stop(true)
 command! -bar LspStatus     lsp.Status()
+command! -bar -nargs=? -complete=dir LspWorkspaceFolderAdd
+	\ lsp.WorkspaceFolderAdd(<q-args>)
+command! -bar -nargs=1 -complete=customlist,FolderNames LspWorkspaceFolderRemove
+	\ lsp.WorkspaceFolderRemove(<q-args>)
 command! -bar LspHover      lsp.Hover()
 command! -bar LspDefinition lsp.Definition()
 command! -bar LspDeclaration lsp.Declaration()

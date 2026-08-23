@@ -166,6 +166,8 @@ process per root.
 | Server | `:LspStart` | Connect this buffer to the server for its filetype |
 |  | `:LspStop` | Shut down every running server |
 |  | `:LspStatus` | List the running servers |
+|  | `:LspWorkspaceFolderAdd [{dir}]` | Hand a directory to this server as another workspace folder |
+|  | `:LspWorkspaceFolderRemove {dir}` | Take a workspace folder back from this server |
 |  | `:LspLog` | Open what the server has logged |
 | Asking | `:LspHover` | What the server knows about the symbol |
 |  | `:LspSignature` | What the call the cursor is in takes |

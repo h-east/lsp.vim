@@ -15,6 +15,22 @@ def Offering(what: dict<any>): dict<any>
   return extend(SYNC->copy(), what)
 enddef
 
+def g:Test_what_a_server_takes_at_startup_is_handed_over()
+  const OPTIONS = {semanticTokens: true, analyses: {unusedparams: true}}
+  assert_true(t.StartServer({capabilities: SYNC}, ['int one;'],
+			    {initializationOptions: OPTIONS}))
+
+  assert_equal(OPTIONS, t.Sent('initialize')[0].params.initializationOptions)
+enddef
+
+def g:Test_a_server_set_up_with_nothing_is_handed_nothing()
+  assert_true(t.StartServer({capabilities: SYNC}, ['int one;']))
+
+  # Not an empty Dictionary: a server tells the two apart.
+  assert_false(t.Sent('initialize')[0].params
+		  ->has_key('initializationOptions'))
+enddef
+
 def g:Test_didopen_carries_the_text()
   assert_true(t.StartServer({capabilities: SYNC},
 			    ['int main(void)', '{', '    return 0;', '}']),
@@ -392,8 +408,57 @@ def g:Test_a_second_root_is_added_to_the_server_that_is_running()
   assert_equal(1, len(added))
   assert_match('Xelsewhere/\=$', added[0].uri)
 
-  # One server, not two.
-  assert_equal(1, execute('LspStatus')->trim()->split("\n")->len())
+  # One server, not two; the folders it holds go under its own line.
+  assert_equal(1, execute('LspStatus')->split("\n")
+			->filter((_, l) => l =~# 'fake@')->len())
+enddef
+
+def g:Test_a_folder_is_added_and_taken_back_by_hand()
+  const DIR = t.SRC->substitute('/[^/]*$', '/Xlibrary', '')
+  mkdir(DIR, 'p')
+  defer delete(DIR, 'rf')
+  assert_true(t.StartServer({
+    capabilities: extend(Offering({}), {workspace: {workspaceFolders: {
+      supported: true,
+      changeNotifications: 'workspace/didChangeWorkspaceFolders',
+    }}}),
+  }, ['int one;']))
+
+  execute 'LspWorkspaceFolderAdd ' .. fnameescape(DIR)
+  assert_match('now covers .*Xlibrary$', LastMessage())
+  assert_true(t.WaitFor(() =>
+	      !t.Sent('workspace/didChangeWorkspaceFolders')->empty()),
+	      'the server should be told about the folder')
+  var event = t.Sent('workspace/didChangeWorkspaceFolders')[0].params.event
+  assert_equal([], event.removed)
+  assert_equal(1, len(event.added))
+  assert_match('Xlibrary/\=$', event.added[0].uri)
+  assert_equal('Xlibrary', event.added[0].name)
+
+  # Both are listed, and only the added one can be taken back.
+  assert_match('folders:', execute('LspStatus'))
+  assert_equal([DIR], getcompletion('LspWorkspaceFolderRemove ', 'cmdline'))
+
+  execute 'LspWorkspaceFolderRemove ' .. fnameescape(DIR)
+  assert_match('no longer covers .*Xlibrary$', LastMessage())
+  assert_true(t.WaitFor(() =>
+	      len(t.Sent('workspace/didChangeWorkspaceFolders')) == 2),
+	      'the server should be told the folder is gone')
+  event = t.Sent('workspace/didChangeWorkspaceFolders')[1].params.event
+  assert_equal([], event.added)
+  assert_equal(1, len(event.removed))
+  assert_match('Xlibrary/\=$', event.removed[0].uri)
+  assert_equal([], getcompletion('LspWorkspaceFolderRemove ', 'cmdline'))
+  assert_notmatch('folders:', execute('LspStatus'))
+enddef
+
+def g:Test_a_folder_is_refused_by_a_server_taking_one_root()
+  assert_true(t.StartServer({capabilities: SYNC}, ['int one;']))
+
+  execute 'LspWorkspaceFolderAdd '
+	  .. fnameescape(t.SRC->substitute('/[^/]*$', '', ''))
+  assert_match('does not take workspace folders', LastMessage())
+  assert_true(t.Sent('workspace/didChangeWorkspaceFolders')->empty())
 enddef
 
 def g:Test_a_position_is_counted_the_way_the_server_said()
@@ -1238,6 +1303,30 @@ def g:Test_only_the_part_on_screen_without_a_full_request()
   var asked = t.Sent('textDocument/semanticTokens/range')[0].params.range
   assert_equal(0, asked.start.line)
   assert_equal(1, asked.end.line)
+enddef
+
+def g:Test_a_request_that_was_turned_down_is_not_asked_again()
+  g:lsp_client_config.semantic_tokens = true
+  defer execute('unlet g:lsp_client_config.semantic_tokens')
+  # A server can offer the tokens and turn every request for them down.
+  assert_true(t.StartServer({
+    capabilities: Offering({semanticTokensProvider:
+					{legend: LEGEND, full: true}}),
+    errors: {'textDocument/semanticTokens/full':
+	     {code: -32603, message: 'semantictokens are disabled'}},
+  }, SOURCE))
+
+  # The reply is what the message comes from, so the request being on its way
+  # is not far enough.
+  assert_true(t.WaitFor(() =>
+	      execute('messages') =~# 'semantictokens are disabled'),
+	      'the turn-down should be reported')
+
+  # Every change after that leaves the server alone.
+  setline(1, 'int y = 2;')
+  doautocmd TextChanged
+  sleep 400m
+  assert_equal(1, len(t.Sent('textDocument/semanticTokens/full')))
 enddef
 
 def g:Test_the_diagnostics_are_asked_for_when_they_are_not_sent()

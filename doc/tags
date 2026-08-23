@@ -27,6 +27,8 @@
 :LspSuperTypes	lsp.txt	/*:LspSuperTypes*
 :LspSymbol	lsp.txt	/*:LspSymbol*
 :LspTypeDefinition	lsp.txt	/*:LspTypeDefinition*
+:LspWorkspaceFolderAdd	lsp.txt	/*:LspWorkspaceFolderAdd*
+:LspWorkspaceFolderRemove	lsp.txt	/*:LspWorkspaceFolderRemove*
 g:lsp_client_config	lsp.txt	/*g:lsp_client_config*
 g:lsp_server_list	lsp.txt	/*g:lsp_server_list*
 lsp-ai	lsp.txt	/*lsp-ai*

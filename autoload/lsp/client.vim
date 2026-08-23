@@ -307,6 +307,7 @@ export def Request(client: dict<any>, method: string, params: any,
 	  else
 	    util.ErrorMsg(printf('%s: %s', method, err->get('message', '')))
 	  endif
+	  client.declined[method] = true
 	  return
 	endif
 	Cb(reply->get('result', v:null))
@@ -341,6 +342,12 @@ export def RequestSync(client: dict<any>, method: string, params: any,
   return reply->get('result', v:null)
 enddef
 
+# Whether the server turned this request down before.  One that offers
+# something and then refuses it is not worth asking with every change.
+export def Declined(client: dict<any>, method: string): bool
+  return client.declined->get(method, false)
+enddef
+
 export def Cancel(client: dict<any>, id: number)
   if id > 0
     Notify(client, '$/cancelRequest', {id: id})
@@ -360,6 +367,12 @@ def Initialize(client: dict<any>, OnReady: func(dict<any>))
     capabilities: ClientCapabilities(),
     trace: 'off',
   }
+  # The shape of this is up to the server, so it goes out as written.  Left
+  # out when it is not there: a server tells that from an empty Dictionary.
+  var options = client.config->get('initializationOptions', null)
+  if options != null
+    params.initializationOptions = options
+  endif
   Request(client, 'initialize', params, (result: any) => {
     if type(result) != v:t_dict
       util.ErrorMsg('server "' .. client.name .. '" sent no capabilities')
@@ -407,6 +420,9 @@ export def Start(config: dict<any>, root: string,
     # to; see |lsp-watched-files|.
     registrations: {},
     watchers: [],
+    # The requests the server turned down.  What is asked on its own, over and
+    # over, looks here first; what the user asks for is tried every time.
+    declined: {},
   }
 
   var job = job_start(config.cmd, {
