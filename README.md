@@ -44,6 +44,11 @@ g:lsp_server_list = [{
   filetypes: ['python'],
   cmd: ['pylsp'],
   rootPatterns: ['pyproject.toml', '.git'],
+}, {
+  name: 'gopls',
+  filetypes: ['go'],
+  cmd: ['gopls'],
+  rootPatterns: ['go.work', 'go.mod', '.git'],
 }]
 ```
 
@@ -67,13 +72,21 @@ The server is started once per workspace root.
 
 - clangd 18.1.3, for C and C++
 - pylsp 1.15.0, for Python
+- gopls 0.18.0, for Go
 
-Only what a server says it offers is asked for, and the two differ enough to
-be worth naming.  clangd answers a type hierarchy, semantic tokens and a
+Only what a server says it offers is asked for, and the three differ enough
+to be worth naming.  clangd answers a type hierarchy, semantic tokens and a
 formatting request for a range, and offers no code lens; its call hierarchy
 answers who calls a function, while `callHierarchy/outgoingCalls` comes back
 as an unknown method.  pylsp offers a code lens, and offers no workspace
-symbol search, no inlay hints and no call hierarchy.
+symbol search, no inlay hints and no call hierarchy.  gopls offers a code
+lens, inlay hints and semantic tokens, and neither a type hierarchy nor a
+formatting request for a range; it is the only one of the three that asks at
+run time to be told about files it is not being sent.
+
+gopls wants the Go toolchain on the path.  Without it, it still starts and
+answers, but with much less: it watches only `go.mod` and `go.work` rather
+than the source as well.
 
 ## What it does
 
