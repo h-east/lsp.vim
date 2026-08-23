@@ -80,15 +80,12 @@ to, so a few options decide whether much of this shows up at all:
 
 ```vim
 def LspBuffer()
-  # 'autocomplete' takes what it offers from 'complete', so the omni source
-  # has to be in there for the server to be asked in the first place.
+  # 'autocomplete' offers what 'complete' names, so "o" has to be in it.
   setlocal complete^=o
   setlocal autocomplete
-  # "menuone" so that a single match still opens the menu, "popup" so that
-  # what `completionItem/resolve` finds has somewhere to go.
+  # "menuone" for a single match, "popup" for the resolved documentation.
   setlocal completeopt=menuone,popup
-  # A sign arrives with the first diagnostic and leaves with the last;
-  # without this the text slides sideways each time.
+  # So the text stays put as a sign comes and goes.
   setlocal signcolumn=yes
 
   nnoremap <buffer> K  <Cmd>LspHover<CR>
