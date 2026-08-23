@@ -177,6 +177,12 @@ def ClientCapabilities(): dict<any>
       # A server that works a change out on its side hands it over this way,
       # which is how an action it runs itself comes back.
       applyEdit: true,
+      # A server that finds what it said is out of date can ask for it to be
+      # asked for again.
+      semanticTokens: {refreshSupport: true},
+      codeLens: {refreshSupport: true},
+      inlayHint: {refreshSupport: true},
+      diagnostics: {refreshSupport: true},
       fileOperations: {
 	dynamicRegistration: false,
 	willCreate: true,

@@ -113,7 +113,8 @@ than the source as well.
   write
 - What the server reports about itself: messages, logs, and what it is busy
   with
-- What the server asks of the editor: a message to answer, a file to look at
+- What the server asks of the editor: a message to answer, a file to look
+  at, and what has gone out of date and should be asked for again
 - Changes the server works out on its own, including an action it carries out
   itself
 - Files the server asked to watch, reported when Vim writes one or notices
@@ -180,7 +181,7 @@ Worth having:
 - [x] `textDocument/willSave` and `textDocument/willSaveWaitUntil`
 - [x] The file operations, with `:LspRenameFile`; nothing here deletes a
       file, so `willDeleteFiles` and `didDeleteFiles` are declared off
-- [ ] The refresh requests for code lenses, inlay hints, semantic tokens
+- [x] The refresh requests for code lenses, inlay hints, semantic tokens
       and diagnostics
 
 Smaller:

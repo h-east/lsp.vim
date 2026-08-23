@@ -310,6 +310,47 @@ def g:Test_a_file_that_is_there_is_not_written_over()
   assert_match('Xsrc\.c$', bufname('%'))
 enddef
 
+def g:Test_the_server_asks_for_things_to_be_asked_for_again()
+  g:lsp_client_config.semantic_tokens = true
+  defer execute('unlet g:lsp_client_config.semantic_tokens')
+  assert_true(t.StartServer({
+    capabilities: Offering({
+      definitionProvider: true,
+      semanticTokensProvider: {legend: LEGEND, full: true},
+      diagnosticProvider: {interFileDependencies: true,
+			   workspaceDiagnostics: false},
+    }),
+    replies: {
+      'textDocument/definition': v:null,
+      'textDocument/semanticTokens/full': {data: TOKENS},
+      'textDocument/diagnostic': {kind: 'full', resultId: '1', items: []},
+    },
+    ask: {'textDocument/definition': [
+      {id: 'sem', method: 'workspace/semanticTokens/refresh', params: v:null},
+      {id: 'diag', method: 'workspace/diagnostic/refresh', params: v:null},
+    ]},
+  }, SOURCE))
+
+  assert_true(t.WaitFor(() =>
+		    len(t.Sent('textDocument/semanticTokens/full')) == 1),
+	      'asked for once to start with')
+  var first = len(t.Sent('textDocument/diagnostic'))
+
+  LspDefinition
+  assert_true(t.WaitFor(() => !Answered('sem')->empty()
+			      && !Answered('diag')->empty()),
+	      'both should be answered')
+  assert_true(t.WaitFor(() =>
+		    len(t.Sent('textDocument/semanticTokens/full')) == 2),
+	      'the tokens should be asked for again')
+  assert_true(t.WaitFor(() =>
+		    len(t.Sent('textDocument/diagnostic')) > first),
+	      'the diagnostics should be asked for again')
+  assert_false(t.Sent('textDocument/diagnostic')[-1].params
+		->has_key('previousResultId'),
+	       'what was reported before no longer stands')
+enddef
+
 def g:Test_a_log_message_is_kept_for_LspLog()
   assert_true(t.StartServer({
     capabilities: SYNC,

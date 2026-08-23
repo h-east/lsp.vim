@@ -2766,6 +2766,32 @@ def OnRequest(cl: dict<any>, method: string, params: any,
     Answer(v:null)
     return true
   endif
+  # What the server told us has gone out of date, usually because a file it
+  # depends on changed, so it is asked for again.  The answer goes first: the
+  # server is waiting on it while the asking is done.
+  if method ==# 'workspace/semanticTokens/refresh'
+    Answer(v:null)
+    semantic_asked = {}
+    SemanticTokens()
+    return true
+  endif
+  if method ==# 'workspace/codeLens/refresh'
+    Answer(v:null)
+    CodeLenses()
+    return true
+  endif
+  if method ==# 'workspace/inlayHint/refresh'
+    Answer(v:null)
+    InlayHints()
+    return true
+  endif
+  if method ==# 'workspace/diagnostic/refresh'
+    Answer(v:null)
+    # What was reported before no longer stands, so no "unchanged" answer.
+    diagnostic_ids = {}
+    PullDiagnostics()
+    return true
+  endif
   if method ==# 'window/showMessageRequest'
     ShowMessageRequest(params, Answer)
     return true

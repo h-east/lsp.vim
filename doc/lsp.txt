@@ -214,6 +214,12 @@ The server ~
 		line as it arrives.  So does what a server says it is busy
 		with, such as indexing a project.
 
+		A server may find that what it told us has gone out of date,
+		because a file it depends on changed, and ask for it to be
+		asked for again.  The semantic tokens, the code lenses, the
+		inlay hints and the diagnostics can each be asked for that
+		way; whichever of them is turned off stays off.
+
 		A message may come with answers to pick from, and then it
 		goes into a menu rather than onto the message line; closing
 		the menu without picking is an answer of its own.
