@@ -104,6 +104,13 @@ g:lsp_server_list
 		One server is started per workspace root rather than per
 		buffer, so buffers from the same project share a server.
 
+		A server that says it takes more than one workspace folder,
+		and that it wants to hear about them changing, is given the
+		next root instead of another one of it being started: open a
+		file from a second project and the server that is running is
+		told about it.  What is left of the roots is what a server
+		that says neither of those gets, one process each.
+
 						     *g:lsp_client_config*
 g:lsp_client_config
 		A Dictionary holding what the client itself does.  A key that

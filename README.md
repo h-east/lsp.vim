@@ -108,6 +108,8 @@ than the source as well.
   from or gives rise to
 - Rename across files, formatting a buffer or a range, and code actions from
   a menu
+- One server for several projects where it takes workspace folders, one per
+  root where it does not
 - Incremental document synchronization with `listener_add()`
 - What the server wants changed on the way to disk, waited for before the
   write
@@ -192,7 +194,7 @@ Smaller:
 - [ ] `textDocument/onTypeFormatting`
 - [ ] `textDocument/documentColor` and `colorPresentation`
 - [ ] `textDocument/inlineValue`, `moniker` and `inlineCompletion`
-- [ ] More than one workspace folder for a server
+- [x] More than one workspace folder for a server that takes them
 - [ ] A `positionEncoding` other than UTF-16
 - [ ] The completion `context`, and asking again for a list that came back
       incomplete

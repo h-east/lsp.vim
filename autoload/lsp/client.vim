@@ -168,7 +168,9 @@ def ClientCapabilities(): dict<any>
       },
     },
     workspace: {
-      workspaceFolders: false,
+      # More than one root can be handed to one server, and it is told when
+      # another one is added.
+      workspaceFolders: true,
       symbol: {
 	dynamicRegistration: false,
 	# A symbol may come with the file it is in but not the place in it.
@@ -350,7 +352,9 @@ def Initialize(client: dict<any>, OnReady: func(dict<any>))
     processId: getpid(),
     clientInfo: {name: 'Vim', version: v:versionlong->string()},
     rootUri: util.PathToUri(client.root),
-    workspaceFolders: v:null,
+    workspaceFolders: client.folders->mapnew((_, folder) =>
+	  ({uri: util.PathToUri(folder),
+	    name: fnamemodify(folder, ':t')})),
     capabilities: ClientCapabilities(),
     trace: 'off',
   }
@@ -386,6 +390,9 @@ export def Start(config: dict<any>, root: string,
     log: [],
     documents: {},
     diagnostics: {},
+    # The roots this one covers; a server that takes workspace folders can be
+    # given more than the one it started with.
+    folders: [root],
     # What the server asked to be told about at run time, and what that comes
     # to; see |lsp-watched-files|.
     registrations: {},
@@ -425,5 +432,12 @@ export def Stop(client: dict<any>)
     Notify(client, 'exit')
   })
 enddef
+
+# A :def function is compiled when it is first called, so what is wrong with
+# one that is never reached only shows up as E1091 later on.  test/run sets
+# this to have every function compiled here and now.
+if $LSP_COMPILE_CHECK != ''
+  defcompile
+endif
 
 # vim: sw=2 sts=2 et

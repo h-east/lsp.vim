@@ -351,6 +351,37 @@ def g:Test_the_server_asks_for_things_to_be_asked_for_again()
 	       'what was reported before no longer stands')
 enddef
 
+def g:Test_a_second_root_is_added_to_the_server_that_is_running()
+  const DIR = t.SRC->substitute('/[^/]*$', '/Xelsewhere', '')
+  mkdir(DIR .. '/.git', 'p')
+  defer delete(DIR, 'rf')
+  writefile(['int two;'], DIR .. '/Xtwo.c')
+  assert_true(t.StartServer({
+    capabilities: extend(Offering({}), {workspace: {workspaceFolders: {
+      supported: true,
+      changeNotifications: 'workspace/didChangeWorkspaceFolders',
+    }}}),
+    ask: {'textDocument/didSave': []},
+  }, ['int one;']))
+
+  # The root it started with goes out with the handshake.
+  var folders = t.Sent('initialize')[0].params.workspaceFolders
+  assert_equal(1, len(folders))
+
+  execute 'edit ' .. fnameescape(DIR .. '/Xtwo.c')
+  setfiletype c
+  assert_true(t.WaitFor(() =>
+	      !t.Sent('workspace/didChangeWorkspaceFolders')->empty()),
+	      'the server should be told about the other root')
+  var added = t.Sent('workspace/didChangeWorkspaceFolders')[0]
+		  .params.event.added
+  assert_equal(1, len(added))
+  assert_match('Xelsewhere/\=$', added[0].uri)
+
+  # One server, not two.
+  assert_equal(1, execute('LspStatus')->trim()->split("\n")->len())
+enddef
+
 def g:Test_a_log_message_is_kept_for_LspLog()
   assert_true(t.StartServer({
     capabilities: SYNC,

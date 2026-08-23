@@ -99,4 +99,11 @@ export def Count(bufnr: number): number
   return found
 enddef
 
+# A :def function is compiled when it is first called, so what is wrong with
+# one that is never reached only shows up as E1091 later on.  test/run sets
+# this to have every function compiled here and now.
+if $LSP_COMPILE_CHECK != ''
+  defcompile
+endif
+
 # vim: sw=2 sts=2 et

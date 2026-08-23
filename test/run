@@ -10,6 +10,10 @@
 here=$(cd "$(dirname "$0")" && pwd)
 rm -f "$here/messages"
 
+# Have every :def function compiled while the scripts are read, so that a
+# mistake in one that no test reaches is reported here rather than turning
+# into "E1091: Function is not compiled" much later.
+LSP_COMPILE_CHECK=1 \
 "${VIMPROG:-vim}" -u NONE -N -n --not-a-term -S "$here/runtest.vim" \
     >/dev/null 2>&1
 status=$?

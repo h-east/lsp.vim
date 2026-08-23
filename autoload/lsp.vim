@@ -69,6 +69,64 @@ def ClientKey(name: string, root: string): string
   return name .. '@' .. root
 enddef
 
+# Which client took a root on that it did not start with, so that a buffer
+# under it finds the same one again.
+var adopted: dict<string> = {}
+
+def Folder(root: string): dict<string>
+  return {uri: util.PathToUri(root), name: fnamemodify(root, ':t')}
+enddef
+
+# A server has to say both that it takes more than one folder and that it
+# wants to hear about them changing.  Without the second, a folder added
+# after it started would go unnoticed, which is worse than a server of its
+# own for that root.
+def TakesFolders(cl: dict<any>): bool
+  var space = cl.capabilities->get('workspace', {})
+  if type(space) != v:t_dict
+    return false
+  endif
+  var folders = space->get('workspaceFolders', {})
+  return type(folders) == v:t_dict && folders->get('supported', false)
+	  && !folders->get('changeNotifications', false)->empty()
+enddef
+
+# The client that covers this root: the one started for it, one that took it
+# on before, or one running under the same name that can take it on now.
+def ClientFor(name: string, root: string): string
+  var key = ClientKey(name, root)
+  if clients->has_key(key)
+    return key
+  endif
+  key = adopted->get(root, '')
+  if clients->has_key(key)
+    return key
+  endif
+  for [at, cl] in clients->items()
+    if cl.name ==# name && cl.running && cl.initialized && TakesFolders(cl)
+      cl.folders->add(root)
+      adopted[root] = at
+      lspclient.Notify(cl, 'workspace/didChangeWorkspaceFolders',
+		       {event: {added: [Folder(root)], removed: []}})
+      return at
+    endif
+  endfor
+  return ''
+enddef
+
+# A path as the server may have written it: on its own, and from each of the
+# folders it is under.
+def RelativeTo(cl: dict<any>, path: string): list<string>
+  var out = [path]
+  for folder in cl.folders
+    var base = folder .. '/'
+    if strpart(path, 0, strlen(base)) ==# base
+      out->add(strpart(path, strlen(base)))
+    endif
+  endfor
+  return out
+enddef
+
 def ServerFor(ft: string): dict<any>
   for config in get(g:, 'lsp_server_list', [])
     if index(config->get('filetypes', []), ft) >= 0
@@ -405,15 +463,16 @@ export def Attach()
   endif
 
   var root = util.FindRoot(name, config->get('rootPatterns', ['.git']))
-  var key = ClientKey(config.name, root)
-  var cl = clients->get(key, {})
-  if cl->empty()
-    cl = lspclient.Start(config, root, OnReady)
-    if cl->empty()
+  var key = ClientFor(config.name, root)
+  if key->empty()
+    key = ClientKey(config.name, root)
+    var fresh = lspclient.Start(config, root, OnReady)
+    if fresh->empty()
       return
     endif
-    clients[key] = cl
+    clients[key] = fresh
   endif
+  var cl = clients[key]
   b:lsp_client_key = key
   HookBuffer()
 
@@ -458,6 +517,7 @@ export def Stop()
     lspclient.Stop(cl)
   endfor
   clients = {}
+  adopted = {}
   pending_open = {}
 enddef
 
@@ -467,9 +527,10 @@ export def Status()
     return
   endif
   for [key, cl] in clients->items()
-    echo printf('%s  %s  %d buffer(s)  %d diagnostic(s) here', key,
+    echo printf('%s  %s  %d buffer(s)  %d diagnostic(s) here%s', key,
 	cl.initialized ? 'ready' : 'starting', len(cl.documents),
-	diag.Count(bufnr('%')))
+	diag.Count(bufnr('%')),
+	len(cl.folders) > 1 ? printf('  %d folders', len(cl.folders)) : '')
   endfor
 enddef
 
@@ -2429,6 +2490,11 @@ def Watched(cl: dict<any>, path: string, kind: number): bool
 	  && strpart(path, strlen(base)) =~# watcher.pat
       return true
     endif
+    for name in RelativeTo(cl, path)
+      if name =~# watcher.pat
+	return true
+      endif
+    endfor
   endfor
   return false
 enddef
@@ -2487,14 +2553,11 @@ def WantsFileOp(cl: dict<any>, op: string, path: string): bool
     # Written against the root it was registered under, so the name is tried
     # both ways, the same as a watcher's pattern is.
     var pat = glob2regpat(glob)
-    if path =~# pat
-      return true
-    endif
-    var base = cl.root .. '/'
-    if strpart(path, 0, strlen(base)) ==# base
-	  && strpart(path, strlen(base)) =~# pat
-      return true
-    endif
+    for name in RelativeTo(cl, path)
+      if name =~# pat
+	return true
+      endif
+    endfor
   endfor
   return false
 enddef
@@ -2769,6 +2832,10 @@ def OnRequest(cl: dict<any>, method: string, params: any,
   # What the server told us has gone out of date, usually because a file it
   # depends on changed, so it is asked for again.  The answer goes first: the
   # server is waiting on it while the asking is done.
+  if method ==# 'workspace/workspaceFolders'
+    Answer(cl.folders->mapnew((_, root) => Folder(root)))
+    return true
+  endif
   if method ==# 'workspace/semanticTokens/refresh'
     Answer(v:null)
     semantic_asked = {}
@@ -2829,5 +2896,12 @@ enddef
 
 lspclient.SetNotifyHandler(OnNotify)
 lspclient.SetRequestHandler(OnRequest)
+
+# A :def function is compiled when it is first called, so what is wrong with
+# one that is never reached only shows up as E1091 later on.  test/run sets
+# this to have every function compiled here and now.
+if $LSP_COMPILE_CHECK != ''
+  defcompile
+endif
 
 # vim: sw=2 sts=2 et
