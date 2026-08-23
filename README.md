@@ -142,6 +142,8 @@ than the source as well.
 |  | `:LspRename [{name}]` | Rename the symbol everywhere |
 |  | `:LspFormat` | Format this buffer, or a range of it |
 | Display | `:LspInlayHint` | Turn the inlay hints on or off |
+|  | `:LspInlayHintInfo` | What the server says about the hint here |
+|  | `:LspInlayHintApply` | Put what the hint here says into the file |
 |  | `:LspFolding` | Turn the folds from the server on or off |
 |  | `:LspCodeLens` | Turn the code lenses on or off |
 |  | `:LspCodeLensRun` | Run the lens above this line |
@@ -168,8 +170,8 @@ would be felt first:
 Worth having:
 
 - [x] `codeAction/resolve`, `codeLens/resolve` and `workspaceSymbol/resolve`
-- [ ] What an inlay hint carries besides its label, a tooltip or the edits
-      that go with taking it, which is what `inlayHint/resolve` fills in
+- [x] `inlayHint/resolve`, with `:LspInlayHintInfo` and
+      `:LspInlayHintApply` to act on a hint
 - [ ] `window/showMessageRequest` and `window/showDocument`, both turned
       down as unsupported
 - [ ] `textDocument/willSaveWaitUntil`, which is where a server formats or

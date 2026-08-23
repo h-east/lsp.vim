@@ -93,6 +93,9 @@ def ClientCapabilities(): dict<any>
       },
       inlayHint: {
 	dynamicRegistration: false,
+	# A hint may be handed over as the text to show and nothing else, with
+	# the rest of it worked out only when it is acted on.
+	resolveSupport: {properties: ['tooltip', 'textEdits']},
       },
       callHierarchy: {
 	dynamicRegistration: false,

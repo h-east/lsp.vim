@@ -346,6 +346,17 @@ What is shown ~
 		away the ones already shown, in every buffer.  See
 		|lsp-inlay-hint|.
 
+						   *:LspInlayHintInfo*
+:LspInlayHintInfo
+		Show what the server has to say about the hint nearest the
+		cursor, in a popup.  Most hints have nothing to add.
+
+						  *:LspInlayHintApply*
+:LspInlayHintApply
+		Put what the hint nearest the cursor says into the file, so
+		that a type it worked out becomes text like any other.  Not
+		every hint has a change to make.
+
 						  *:LspSemanticTokens*
 :LspSemanticTokens
 		Turn the coloring from the server on when it is off and off
@@ -516,6 +527,13 @@ buffer changes or the window scrolls.
 
 |:LspInlayHint| turns them on and off without leaving Vim, which is the way
 to have a look at them and then be rid of them again.
+
+A hint carries more than the text it shows: something to say about it, and
+the change that puts what it says into the file.  |:LspInlayHintInfo| shows
+the first, |:LspInlayHintApply| makes the second; both act on the hint
+nearest the cursor on its line.  A server is allowed to leave those out of
+the answer and work them out only when a hint is acted on, so acting on one
+is what asks for the rest of it.
 
 These are the groups, each linked to |hl-Comment| so the hints stay quieter
 than the file, and free to be given a look of their own with |:highlight|:

@@ -387,6 +387,7 @@ export def Detach(bufnr: number = bufnr('%'))
   hl.Clear(bufnr)
   StopHighlight()
   inlay.Clear(bufnr)
+  inlay.Forget(bufnr)
   lens.Clear(bufnr)
   semtok.Clear(bufnr)
   semtok.Forget(bufnr)
@@ -1426,6 +1427,53 @@ export def FoldExpr(lnum: number): string
   return fold.Expr(lnum)
 enddef
 
+# A hint carries more than the text it shows: something to say about it, and
+# the change that puts what it says into the file.  A server may leave those
+# out until the hint is acted on, which is what "inlayHint/resolve" is for.
+def WithHint(want: string, Use: func(dict<any>))
+  var cl = ReadyClient()
+  if cl->empty()
+    return
+  endif
+  if !Setting('inlay_hint')
+    util.WarningMsg('the inlay hints are off')
+    return
+  endif
+  var hint = inlay.At(bufnr('%'), line('.'), col('.'))
+  if hint->empty()
+    util.WarningMsg('no inlay hint on this line')
+    return
+  endif
+  if hint->has_key(want) || !Resolves(cl, 'inlayHintProvider')
+    Use(hint)
+    return
+  endif
+  lspclient.Request(cl, 'inlayHint/resolve', hint, (result: any) =>
+      Use(type(result) == v:t_dict && !result->empty() ? result : hint))
+enddef
+
+export def InlayHintApply()
+  WithHint('textEdits', (hint: dict<any>) => {
+    var edits = hint->get('textEdits', [])
+    if type(edits) != v:t_list || edits->empty()
+      util.WarningMsg('the hint has nothing to put in the file')
+      return
+    endif
+    ApplyTextEdits(bufnr('%'), edits)
+  })
+enddef
+
+export def InlayHintInfo()
+  WithHint('tooltip', (hint: dict<any>) => {
+    var lines = HoverText(hint->get('tooltip', ''))
+    if lines->empty()
+      util.WarningMsg('the hint has nothing more to say')
+      return
+    endif
+    popup_atcursor(lines, POPUP_OPTIONS)
+  })
+enddef
+
 export def ToggleInlayHints()
   var on = !Setting('inlay_hint')
   SetSetting('inlay_hint', on)
@@ -1435,6 +1483,7 @@ export def ToggleInlayHints()
     # Every buffer, not just this one: they were put there while it was on.
     for info in getbufinfo({bufloaded: 1})
       inlay.Clear(info.bufnr)
+      inlay.Forget(info.bufnr)
     endfor
   endif
   echo 'lsp: inlay hints ' .. (on ? 'on' : 'off')

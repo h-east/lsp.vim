@@ -52,12 +52,43 @@ def LabelText(hint: dict<any>): string
 	      ->join('')
 enddef
 
+# What was put in each buffer, so that the hint at the cursor can be found
+# again: a hint carries more than the text it shows.
+var shown: dict<list<dict<any>>> = {}
+
+export def Forget(bufnr: number)
+  var key = string(bufnr)
+  if shown->has_key(key)
+    remove(shown, key)
+  endif
+enddef
+
+# The hint on the line nearest to the column, an empty Dictionary when the
+# line has none.
+export def At(bufnr: number, lnum: number, col: number): dict<any>
+  var best: dict<any> = {}
+  var best_off = 0
+  for item in shown->get(string(bufnr), [])
+    if item.lnum != lnum
+      continue
+    endif
+    var off = abs(item.col - col)
+    if best->empty() || off < best_off
+      best = item.hint
+      best_off = off
+    endif
+  endfor
+  return best
+enddef
+
 export def Update(bufnr: number, hints: list<any>)
   Clear(bufnr)
+  Forget(bufnr)
   if hints->empty()
     return
   endif
   Define()
+  var here: list<dict<any>> = []
   for hint in hints
     if type(hint) != v:t_dict
       continue
@@ -79,10 +110,12 @@ export def Update(bufnr: number, hints: list<any>)
 	type: TYPES->get(hint->get('kind', KIND_TYPE), TYPES[KIND_TYPE]),
 	text: text,
       })
+      here->add({lnum: lnum, col: col, hint: hint})
     catch /E96[4-6]/
       # The buffer moved on while the answer was on its way.
     endtry
   endfor
+  shown[string(bufnr)] = here
 enddef
 
 # vim: sw=2 sts=2 et

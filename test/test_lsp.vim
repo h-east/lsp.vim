@@ -797,6 +797,48 @@ def g:Test_inlay_hints_stay_away_unless_asked_for()
   assert_equal([], prop_list(1))
 enddef
 
+def g:Test_the_rest_of_an_inlay_hint_is_asked_for()
+  g:lsp_client_config.inlay_hint = true
+  defer execute('unlet g:lsp_client_config.inlay_hint')
+  defer popup_clear()
+  const HINT = {position: {line: 1, character: 9}, label: ': int', kind: 1,
+		data: 'the rest'}
+  assert_true(t.StartServer({
+    capabilities: Offering({inlayHintProvider: {resolveProvider: true}}),
+    replies: {
+      'textDocument/inlayHint': [HINT],
+      # What the hint carries besides the text it shows.
+      'inlayHint/resolve': extend(HINT->copy(), {
+	tooltip: 'the type it works out to',
+	textEdits: [{newText: ': int',
+		     range: {start: {line: 1, character: 9},
+			     end: {line: 1, character: 9}}}],
+      }),
+    },
+  }, ['int main(void)', '    var x = 1;']))
+
+  doautocmd WinScrolled
+  assert_true(t.WaitFor(() => !prop_list(2)->empty()),
+	      'the hint should be shown')
+
+  # Nothing is asked for until the hint is acted on.
+  assert_equal([], t.Sent('inlayHint/resolve'))
+
+  cursor(2, 9)
+  LspInlayHintInfo
+  assert_true(t.WaitFor(() => !popup_list()->empty()),
+	      'what the hint has to say should be shown')
+  assert_equal('the type it works out to',
+	       getbufline(winbufnr(popup_list()[0]), 1)->get(0, ''))
+  assert_equal('the rest', t.Sent('inlayHint/resolve')[0].params.data,
+	       'the hint goes back as it came')
+
+  popup_clear()
+  LspInlayHintApply
+  assert_true(t.WaitFor(() => getline(2) ==# '    var x: int = 1;'),
+	      'the change that goes with the hint should be made')
+enddef
+
 def g:Test_inlay_hints_can_be_turned_on_and_off()
   defer execute('unlet! g:lsp_client_config.inlay_hint')
   assert_true(t.StartServer({
