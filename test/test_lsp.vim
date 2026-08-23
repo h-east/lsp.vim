@@ -249,6 +249,25 @@ def g:Test_the_server_asks_for_a_file_to_be_looked_at()
   assert_equal([2, 5], [line('.'), col('.')], 'at the place it named')
 enddef
 
+def g:Test_the_server_puts_the_file_right_on_the_way_to_disk()
+  assert_true(t.StartServer({
+    capabilities: {textDocumentSync: {change: 2, willSave: true,
+				      willSaveWaitUntil: true}},
+    replies: {'textDocument/willSaveWaitUntil': [{
+      newText: '#include <stdio.h>',
+      range: {start: {line: 0, character: 0}, end: {line: 0, character: 8}},
+    }]},
+  }, ['#include', 'int one;']))
+
+  write
+  # The write waits for the answer, so the change is in the file as well.
+  assert_equal('#include <stdio.h>', getline(1))
+  assert_equal('#include <stdio.h>', readfile(t.SRC)->get(0, ''))
+  assert_equal(1, len(t.Sent('textDocument/willSave')),
+	       'the server is told first, then asked')
+  assert_equal(1, t.Sent('textDocument/willSave')[0].params.reason)
+enddef
+
 def g:Test_a_log_message_is_kept_for_LspLog()
   assert_true(t.StartServer({
     capabilities: SYNC,

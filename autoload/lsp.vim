@@ -46,6 +46,7 @@ const DEFAULTS = {
   code_lens: false,
   folding: false,
   semantic_tokens: false,
+  will_save: true,
 }
 
 def Setting(name: string): any
@@ -144,6 +145,50 @@ def SyncKind(cl: dict<any>): number
     return sync->get('change', SYNC_FULL)
   endif
   return type(sync) == v:t_number ? sync : SYNC_FULL
+enddef
+
+# What a server says it wants around a save; a plain number says nothing.
+def Sync(cl: dict<any>, what: string): bool
+  var sync = cl.capabilities->get('textDocumentSync', 0)
+  return type(sync) == v:t_dict && sync->get(what, false)
+enddef
+
+# Vim writes a file because it was told to, which is the only reason the
+# protocol has a number for that fits.
+const SAVE_MANUAL = 1
+
+# How long a write waits for the server to say what to change first.  A save
+# that hangs is worse than one the server did not get to touch.
+const WILL_SAVE_TIMEOUT = 1000
+
+# A server may want to put a file right on the way to disk: sort the includes,
+# run the formatter.  Vim is about to write, so this is the one request that
+# has to be answered before anything else can happen.
+def WillSave(bufnr: number)
+  if !Setting('will_save')
+    return
+  endif
+  var cl = BufClient(bufnr)
+  if cl->empty() || !cl.initialized
+    return
+  endif
+  var params = {textDocument: {uri: util.PathToUri(bufname(bufnr))},
+		reason: SAVE_MANUAL}
+  if !Sync(cl, 'willSave') && !Sync(cl, 'willSaveWaitUntil')
+    return
+  endif
+  listener_flush(bufnr)
+  if Sync(cl, 'willSave')
+    lspclient.Notify(cl, 'textDocument/willSave', params)
+  endif
+  if !Sync(cl, 'willSaveWaitUntil')
+    return
+  endif
+  var edits = lspclient.RequestSync(cl, 'textDocument/willSaveWaitUntil',
+				    params, WILL_SAVE_TIMEOUT)
+  if type(edits) == v:t_list && !edits->empty()
+    ApplyTextEdits(bufnr, edits)
+  endif
 enddef
 
 # A listener change says: replace the lines "lnum" up to but not including
@@ -308,6 +353,7 @@ def HookBuffer()
   augroup lsp_buf
     autocmd! * <buffer>
     autocmd BufUnload <buffer> Detach(expand('<abuf>')->str2nr())
+    autocmd BufWritePre <buffer> WillSave(expand('<abuf>')->str2nr())
     autocmd BufWritePost <buffer> DidSave(expand('<abuf>')->str2nr())
     autocmd CompleteChanged <buffer> OnCompleteChanged()
     autocmd CompleteDone <buffer> OnCompleteDone()

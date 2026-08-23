@@ -50,6 +50,11 @@ text of each change, so only the lines that were touched travel.  Writing a
 buffer is reported too, for a server that only looks at a file when it is
 saved; the text goes along only when the server asks for it.
 
+A server may also want a say in what reaches the disk, to sort the includes
+or run its formatter.  It is told a write is coming and asked what to change
+first, and the write waits for the answer; "will_save" in
+|g:lsp_client_config| turns that off.
+
 ==============================================================================
 2. Requirements						*lsp-requirements*
 
@@ -161,6 +166,15 @@ g:lsp_client_config
 				paints over the syntax highlighting rather
 				than adding to it.  See |lsp-semantic-tokens|.
 				Default: |v:false|
+
+		will_save	When true, a server that wants to put the
+				file right on the way to disk is asked what
+				to change first, and the write waits for the
+				answer.  Set this to |v:false| to write what
+				is in the buffer and nothing else.  A server
+				that has not answered within a second is
+				written without.
+				Default: |v:true|
 
 		Example: >vim
 

@@ -109,6 +109,8 @@ than the source as well.
 - Rename across files, formatting a buffer or a range, and code actions from
   a menu
 - Incremental document synchronization with `listener_add()`
+- What the server wants changed on the way to disk, waited for before the
+  write
 - What the server reports about itself: messages, logs, and what it is busy
   with
 - What the server asks of the editor: a message to answer, a file to look at
@@ -174,8 +176,7 @@ Worth having:
 - [x] `inlayHint/resolve`, with `:LspInlayHintInfo` and
       `:LspInlayHintApply` to act on a hint
 - [x] `window/showMessageRequest` and `window/showDocument`
-- [ ] `textDocument/willSaveWaitUntil`, which is where a server formats or
-      sorts the includes on the way to disk
+- [x] `textDocument/willSave` and `textDocument/willSaveWaitUntil`
 - [ ] The file operations, `willRenameFiles` and the rest, so a file being
       renamed takes what refers to it along
 - [ ] The refresh requests for code lenses, inlay hints, semantic tokens

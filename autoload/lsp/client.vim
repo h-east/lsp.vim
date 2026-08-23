@@ -44,7 +44,10 @@ def ClientCapabilities(): dict<any>
     textDocument: {
       synchronization: {
 	didSave: true,
-	willSave: false,
+	willSave: true,
+	# A server that wants to put the file right on the way to disk is
+	# waited for; see |lsp-configuration| for turning that off.
+	willSaveWaitUntil: true,
 	dynamicRegistration: false,
       },
       completion: {
