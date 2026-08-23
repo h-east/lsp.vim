@@ -195,7 +195,7 @@ Smaller:
 - [ ] `textDocument/documentColor` and `colorPresentation`
 - [ ] `textDocument/inlineValue`, `moniker` and `inlineCompletion`
 - [x] More than one workspace folder for a server that takes them
-- [ ] A `positionEncoding` other than UTF-16
+- [x] A `positionEncoding` other than UTF-16, UTF-8 for choice
 - [ ] The completion `context`, and asking again for a list that came back
       incomplete
 

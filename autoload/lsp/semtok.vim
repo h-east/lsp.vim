@@ -151,6 +151,7 @@ enddef
 def Paint(bufnr: number, legend: dict<any>, data: list<number>)
   Clear(bufnr)
   Define()
+  var encoding = util.Encoding(bufnr)
   var token_types = legend->get('tokenTypes', [])
   var mod_names = legend->get('tokenModifiers', [])
   # The type and the modifiers together decide the group, and a file holds
@@ -186,8 +187,8 @@ def Paint(bufnr: number, legend: dict<any>, data: list<number>)
     if !known
       continue
     endif
-    var col = util.ColFromLsp(text, char)
-    var end_col = util.ColFromLsp(text, char + length)
+    var col = util.ColFromLsp(text, char, encoding)
+    var end_col = util.ColFromLsp(text, char + length, encoding)
     if end_col <= col
       continue
     endif

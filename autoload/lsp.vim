@@ -164,6 +164,7 @@ def DidOpen(cl: dict<any>, bufnr: number)
   endif
   SetBufferOptions(cl, bufnr)
   cl.documents[uri] = {version: 1, bufnr: bufnr}
+  util.SetEncoding(bufnr, cl.encoding)
   lspclient.Notify(cl, 'textDocument/didOpen', {
     textDocument: {
       uri: uri,
@@ -314,6 +315,7 @@ def DidClose(bufnr: number)
     return
   endif
   remove(cl.documents, uri)
+  util.ForgetEncoding(bufnr)
   lspclient.Notify(cl, 'textDocument/didClose', {textDocument: {uri: uri}})
 enddef
 
@@ -491,6 +493,7 @@ export def Detach(bufnr: number = bufnr('%'))
   DidClose(bufnr)
   diag.Clear(bufnr)
   ForgetDiagnosticId(bufnr)
+  util.ForgetEncoding(bufnr)
   ClearSnippet(bufnr)
   hl.Clear(bufnr)
   StopHighlight()
@@ -519,6 +522,9 @@ export def Stop()
   clients = {}
   adopted = {}
   pending_open = {}
+  # A buffer number is handed out again once the buffer is gone, so what was
+  # said about the old one must not be left lying about.
+  util.ClearEncodings()
 enddef
 
 export def Status()
@@ -2346,7 +2352,8 @@ def FixWiderEdit(item: dict<any>): bool
   if first->get('line', -1) != started.lnum - 1
     return false
   endif
-  var from = util.ColFromLsp(started.line, first->get('character', 0)) - 1
+  var from = util.ColFromLsp(started.line, first->get('character', 0),
+			     util.Encoding(bufnr('%'))) - 1
   if from >= started.word
     return false
   endif

@@ -62,27 +62,61 @@ export def UriToPath(uri: string): string
   return simplify(path)
 enddef
 
-# LSP counts a position in UTF-16 code units, Vim counts bytes.  "countcc" is
-# set so that a composing character is counted on its own, the way UTF-16
-# does.  Both directions round down to the start of a character.
+# LSP counts a position the way the server said it would at startup, Vim
+# counts bytes.  "utf-8" is the same thing and needs no conversion at all;
+# the other two are counted with a composing character on its own, which is
+# what both of them do.  Every direction rounds down to the start of a
+# character.
+var encodings: dict<string> = {}
+
+export def SetEncoding(bufnr: number, encoding: string)
+  encodings[string(bufnr)] = encoding
+enddef
+
+export def ForgetEncoding(bufnr: number)
+  var key = string(bufnr)
+  if encodings->has_key(key)
+    remove(encodings, key)
+  endif
+enddef
+
+# UTF-16 is what a server that says nothing means.
+export def ClearEncodings()
+  encodings = {}
+enddef
+
+export def Encoding(bufnr: number): string
+  return encodings->get(string(bufnr), 'utf-16')
+enddef
 
 export def PosToLsp(bufnr: number, lnum: number, col: number): dict<number>
+  var encoding = Encoding(bufnr)
+  if encoding ==# 'utf-8'
+    return {line: lnum - 1, character: col - 1}
+  endif
   var line = getbufline(bufnr, lnum)->get(0, '')
-  var idx = utf16idx(line, col - 1, 1)
+  var idx = encoding ==# 'utf-32' ? charidx(line, col - 1, true)
+				  : utf16idx(line, col - 1, 1)
   return {line: lnum - 1, character: idx < 0 ? 0 : idx}
 enddef
 
 # Takes the line itself rather than a buffer, so it also works for a file that
-# is not open.
-export def ColFromLsp(line: string, character: number): number
-  var idx = byteidxcomp(line, character, true)
+# is not open; the encoding has to come along for the same reason.
+export def ColFromLsp(line: string, character: number,
+					  encoding: string = 'utf-16'): number
+  if encoding ==# 'utf-8'
+    var last = line->strlen()
+    return (character > last ? last : character) + 1
+  endif
+  var idx = encoding ==# 'utf-32' ? byteidxcomp(line, character)
+				  : byteidxcomp(line, character, true)
   return (idx < 0 ? line->strlen() : idx) + 1
 enddef
 
 export def PosFromLsp(bufnr: number, pos: dict<number>): list<number>
   var lnum = pos->get('line', 0) + 1
   var line = getbufline(bufnr, lnum)->get(0, '')
-  return [lnum, ColFromLsp(line, pos->get('character', 0))]
+  return [lnum, ColFromLsp(line, pos->get('character', 0), Encoding(bufnr))]
 enddef
 
 export def CursorPosToLsp(): dict<number>

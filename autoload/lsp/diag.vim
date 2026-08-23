@@ -174,7 +174,7 @@ enddef
 
 # A report may point at other places that explain it, such as where a name was
 # declared before.  Those follow it in the list, indented.
-def RelatedEntries(item: dict<any>): list<dict<any>>
+def RelatedEntries(bufnr: number, item: dict<any>): list<dict<any>>
   var out: list<dict<any>> = []
   for related in item->get('relatedInformation', [])
     if type(related) != v:t_dict
@@ -191,7 +191,8 @@ def RelatedEntries(item: dict<any>): list<dict<any>>
     out->add({
       filename: path,
       lnum: lnum,
-      col: util.ColFromLsp(line, start->get('character', 0)),
+      col: util.ColFromLsp(line, start->get('character', 0),
+			   util.Encoding(bufnr)),
       text: '  ' .. related->get('message', '')->substitute('\n', ' ', 'g'),
     })
   endfor
@@ -218,7 +219,7 @@ export def ToLocList(bufnr: number)
       text: (source->empty() ? '' : '[' .. source .. '] ')
 	    .. item->get('message', '')->substitute('\n', ' ', 'g'),
     })
-    entries += RelatedEntries(item)
+    entries += RelatedEntries(bufnr, item)
   endfor
   setloclist(0, [], ' ', {title: 'LSP diagnostics', items: entries})
   lopen

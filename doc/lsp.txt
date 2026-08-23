@@ -50,6 +50,12 @@ text of each change, so only the lines that were touched travel.  Writing a
 buffer is reported too, for a server that only looks at a file when it is
 saved; the text goes along only when the server asks for it.
 
+A position in the protocol is counted in units the server picks at startup.
+UTF-8 is asked for first, since that is what Vim counts in anyway and needs
+no working out; UTF-16, which every server has to take, and UTF-32 follow.
+clangd answers under a name of its own, "offsetEncoding", and that is read as
+well as the one the protocol gives.
+
 A server may also want a say in what reaches the disk, to sort the includes
 or run its formatter.  It is told a write is coming and asked what to change
 first, and the write waits for the answer; "will_save" in

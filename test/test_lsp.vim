@@ -382,6 +382,43 @@ def g:Test_a_second_root_is_added_to_the_server_that_is_running()
   assert_equal(1, execute('LspStatus')->trim()->split("\n")->len())
 enddef
 
+def g:Test_a_position_is_counted_the_way_the_server_said()
+  # Three bytes in UTF-8, one unit in UTF-16, one in UTF-32, so which one the
+  # server picked shows in the numbers.
+  const WIDE = nr2char(0x3042)
+  const LINE = 'int ' .. WIDE .. ' = 1;'
+  const REPORT = {
+    # Byte counted: the name starts at 4 and is three bytes long.
+    range: {start: {line: 0, character: 4}, end: {line: 0, character: 7}},
+    severity: 1,
+    message: 'a fault',
+  }
+  assert_true(t.StartServer({
+    capabilities: {textDocumentSync: 2, positionEncoding: 'utf-8',
+		   hoverProvider: true},
+    replies: {'textDocument/hover': {contents: 'x'}},
+    notify: [{method: 'textDocument/publishDiagnostics',
+	      params: {uri: 'file://' .. t.SRC, diagnostics: [REPORT]}}],
+  }, [LINE]))
+
+  assert_true(t.WaitFor(() => !prop_list(1)->empty()),
+	      'the report should be shown')
+  var shown = prop_list(1)[0]
+  assert_equal([5, 3], [shown.col, shown.length],
+	       'the byte columns the server meant')
+
+  # And the same the other way: the cursor after the name is at byte 7.
+  popup_clear()
+  defer popup_clear()
+  cursor(1, 8)
+  LspHover
+  # Waiting for the popup, not only for the request: an answer that arrives
+  # after the test would put one up in the middle of the next one.
+  assert_true(t.WaitFor(() => !popup_list()->empty()),
+	      'the server should be asked and answer')
+  assert_equal(7, t.Sent('textDocument/hover')[0].params.position.character)
+enddef
+
 def g:Test_a_log_message_is_kept_for_LspLog()
   assert_true(t.StartServer({
     capabilities: SYNC,

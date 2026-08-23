@@ -39,7 +39,9 @@ enddef
 def ClientCapabilities(): dict<any>
   return {
     general: {
-      positionEncodings: ['utf-16'],
+      # UTF-8 first: that is what Vim counts in anyway, so a position needs
+      # no working out at all.  UTF-16 is what a server must take.
+      positionEncodings: ['utf-8', 'utf-16', 'utf-32'],
     },
     textDocument: {
       synchronization: {
@@ -364,6 +366,12 @@ def Initialize(client: dict<any>, OnReady: func(dict<any>))
       return
     endif
     client.capabilities = result->get('capabilities', {})
+    # clangd answers under a name of its own, next to the capabilities
+    # rather than in them, so both places are read.
+    var encoding = client.capabilities->get('positionEncoding',
+					result->get('offsetEncoding', 'utf-16'))
+    client.encoding = type(encoding) == v:t_string && !encoding->empty()
+					      ? encoding : 'utf-16'
     Notify(client, 'initialized', {})
     client.initialized = true
     OnReady(client)
@@ -393,6 +401,8 @@ export def Start(config: dict<any>, root: string,
     # The roots this one covers; a server that takes workspace folders can be
     # given more than the one it started with.
     folders: [root],
+    # How the server counts a position, which it says at startup.
+    encoding: 'utf-16',
     # What the server asked to be told about at run time, and what that comes
     # to; see |lsp-watched-files|.
     registrations: {},
