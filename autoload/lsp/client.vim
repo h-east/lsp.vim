@@ -51,9 +51,7 @@ def ClientCapabilities(): dict<any>
 	dynamicRegistration: false,
 	contextSupport: false,
 	completionItem: {
-	  # Placeholders cannot be expanded, so ask for plain text.  Without
-	  # saying so a server is free to send snippets.
-	  snippetSupport: false,
+	  snippetSupport: true,
 	  documentationFormat: ['plaintext', 'markdown'],
 	  # Not asking for labelDetailsSupport on purpose: a server that has it
 	  # leaves a bare name in "label", while the menu reads better with the

@@ -106,6 +106,63 @@ def g:Test_the_edits_around_a_completed_word()
   assert_equal('    printf', getline(4))
 enddef
 
+# Where the cursor is left has to be read while Insert mode is still on, so
+# it is read from the typeahead itself.
+var stopped_at: list<number> = []
+
+def g:SnippetStop(): string
+  stopped_at = [line('.'), col('.')]
+  return ''
+enddef
+
+def g:Test_a_snippet_is_put_in_with_its_stops_taken_out()
+  const ITEM = {
+    label: 'demo',
+    filterText: 'demo',
+    insertTextFormat: 2,
+    kind: 3,
+    textEdit: {
+      # Written against the line as it is when the server is asked, which is
+      # from the column completion starts at.
+      range: {start: {line: 2, character: 4}, end: {line: 2, character: 4}},
+      newText: 'demo(${1:int a}, ${2:int b})',
+    },
+  }
+  assert_true(t.StartServer({
+    capabilities: Offering({completionProvider: {resolveProvider: false}}),
+    replies: {'textDocument/completion': {isIncomplete: false, items: [ITEM]}},
+  }, ['int main(void)', '{', '    dem', '}']))
+
+  cursor(3, 7)
+  feedkeys("A\<C-X>\<C-O>\<C-Y>\<C-R>=g:SnippetStop()\<CR>\<Esc>", 'tx')
+  assert_equal('    demo(int a, int b)', getline(3))
+  # On the first stop, ready for it to be typed over.
+  assert_equal([3, 10], stopped_at)
+enddef
+
+def g:Test_a_snippet_may_reach_over_more_than_one_line()
+  const ITEM = {
+    label: 'do',
+    filterText: 'do',
+    insertTextFormat: 2,
+    kind: 15,
+    textEdit: {
+      range: {start: {line: 2, character: 4}, end: {line: 2, character: 4}},
+      newText: "do {\n${1:body}\n} while ($0);",
+    },
+  }
+  assert_true(t.StartServer({
+    capabilities: Offering({completionProvider: {resolveProvider: false}}),
+    replies: {'textDocument/completion': {isIncomplete: false, items: [ITEM]}},
+  }, ['int main(void)', '{', '    d', '}']))
+
+  cursor(3, 5)
+  feedkeys("A\<C-X>\<C-O>\<C-Y>\<C-R>=g:SnippetStop()\<CR>\<Esc>", 'tx')
+  assert_equal(['    do {', 'body', '} while ();'], getline(3, 5))
+  # "$0" wins over the first stop.
+  assert_equal([5, 10], stopped_at)
+enddef
+
 def g:Test_a_log_message_is_kept_for_LspLog()
   assert_true(t.StartServer({
     capabilities: SYNC,

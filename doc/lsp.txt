@@ -360,9 +360,17 @@ and no matches are offered; raise it if a server needs longer than that while
 it is still reading the file.
 
 The kind of an item is shown as the single letter |complete-items| asks for.
-What a server marks as a snippet is offered under its label: the placeholders
-in it cannot be expanded, and inserting them literally would be worse than
-inserting the plain name.
+
+An item may be a snippet, which is text with tab stops in it: "$1", "${2:a
+name}", and "$0" for where the cursor is meant to end up.  Taking one puts the
+text in with the stops taken out and what they stand for left where it is, so
+"printf(${1:const char *format})" comes out as "printf(const char *format)".
+The cursor is left on "$0" if the snippet has one and on the first stop
+otherwise, ready for it to be typed over.  A snippet reaching over more than
+one line is put in whole.
+
+There is nothing here to step from one stop to the next with; a snippet is put
+in and then it is ordinary text.
 
 A server is allowed to leave the documentation of an item out and hand it over
 only for the item that is actually looked at.  That answer arrives long after

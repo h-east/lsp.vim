@@ -91,7 +91,7 @@ than the source as well.
 ## What it does
 
 - Completion through `'omnifunc'`, including `completionItem/resolve` for the
-  info popup
+  info popup and snippets put in with their stops taken out
 - Diagnostics as signs, text highlights and a message on the cursor line,
   whether the server sends them or waits to be asked
 - Signature help while a call is being typed
@@ -162,7 +162,9 @@ would be felt first:
       and to start from the name the server names
 - [x] Dynamic registration and `workspace/didChangeWatchedFiles`, as far as
       Vim can tell that a file changed
-- [ ] Snippets, `insertTextFormat` 2; the label is used as it stands
+- [x] Snippets, `insertTextFormat` 2, put in with their stops taken out
+- [ ] Stepping from one snippet stop to the next, which needs an engine of
+      its own
 
 Worth having:
 

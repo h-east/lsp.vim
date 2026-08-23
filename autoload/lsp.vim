@@ -1778,18 +1778,72 @@ def ItemKind(item: dict<any>): string
   return kind > 0 && kind < strlen(KIND_LETTERS) ? KIND_LETTERS[kind] : ''
 enddef
 
+def IsSnippet(item: dict<any>): bool
+  return item->get('insertTextFormat', 1) == 2
+enddef
+
 # Omni completion can only replace the word before the cursor, so only the
-# "newText" of a "textEdit" is taken.  Snippet placeholders cannot be
-# expanded, for those the label is the honest answer.
-def ItemWord(item: dict<any>): string
-  if item->get('insertTextFormat', 1) == 2
-    return item->get('label', '')
-  endif
+# "newText" of a "textEdit" is taken.
+def ItemText(item: dict<any>): string
   var edit = item->get('textEdit', {})
   if type(edit) == v:t_dict && edit->has_key('newText')
     return edit.newText
   endif
   return item->get('insertText', item->get('label', ''))
+enddef
+
+# What a tab stop looks like, and what an escaped character looks like.
+const STOP_PAT = '\\[$}\\]\|\${\d\+:[^}]*}\|\${\d\+|[^|]*|}\|\${\d\+}\|\$\d\+'
+
+# A snippet is text with tab stops in it: "$1", "${2:a name}" and "$0", where
+# the cursor is meant to end up.  There is nothing here to step through the
+# stops with, so what a stop stands for is put in as it is and the cursor
+# goes to the first of them, ready for it to be typed over.  Returns the text
+# and how far into it the cursor goes.
+def ExpandSnippet(snippet: string): list<any>
+  var out = ''
+  var at = 0
+  var last = -1
+  var first = -1
+  var first_nr = 0
+  while true
+    var [found, from, to] = matchstrpos(snippet, STOP_PAT, at)
+    if from < 0
+      out ..= strpart(snippet, at)
+      break
+    endif
+    out ..= strpart(snippet, at, from - at)
+    at = to
+    if found[0] ==# '\'
+      out ..= found[1]
+      continue
+    endif
+    var nr = str2nr(matchstr(found, '\d\+'))
+    if nr == 0
+      last = strlen(out)
+    elseif first < 0 || nr < first_nr
+      first = strlen(out)
+      first_nr = nr
+    endif
+    if found =~# '^\${\d\+:'
+      out ..= matchstr(found, '^\${\d\+:\zs.*\ze}$')
+    elseif found =~# '^\${\d\+|'
+      # One of several, with no way to pick: the first is as good as any.
+      out ..= matchstr(found, '^\${\d\+|\zs[^,|]*')
+    endif
+  endwhile
+  # "$0" says where to end up; without one it is the first stop, and without
+  # any of them the end of what was put in.
+  return [out, last >= 0 ? last : (first >= 0 ? first : strlen(out))]
+enddef
+
+def ItemWord(item: dict<any>): string
+  var text = ItemText(item)
+  if !IsSnippet(item)
+    return text
+  endif
+  # The menu can only put in one line; the rest follows once it is taken.
+  return split(ExpandSnippet(text)[0], "\n", true)[0]
 enddef
 
 def ItemInfo(item: dict<any>): string
@@ -1918,41 +1972,77 @@ enddef
 # it, and the byte the word begins at.
 var started: dict<any> = {}
 
-# Omni completion replaces the word before the cursor and nothing else.  When
-# a server wants more than that, "obj->fie" becoming "obj.field" for instance,
-# what it asked for is put in place of what completion did.
+# Puts "text" in place of the bytes from "from" to "to" of line "lnum", and
+# leaves the cursor "offset" bytes into what was put in.  The change belongs
+# to the keystroke that took the item, hence the |:undojoin|.
+def PutText(lnum: number, from: number, to: number, text: string,
+						      offset: number)
+  var line = getline(lnum)
+  var head = strpart(line, 0, from)
+  var tail = strpart(line, to)
+  var lines = split(text, "\n", true)
+  lines[0] = head .. lines[0]
+  lines[-1] = lines[-1] .. tail
+  try
+    undojoin
+  catch
+  endtry
+  setline(lnum, lines[0])
+  if len(lines) > 1
+    append(lnum, lines[1 : ])
+  endif
+  var before = head .. strpart(text, 0, offset)
+  var nl = strridx(before, "\n")
+  cursor(lnum + count(before, "\n"),
+	 nl < 0 ? strlen(before) + 1 : strlen(before) - nl)
+enddef
+
+# What a server answers with is written against the line as it was when it was
+# asked, which is with the word taken off: the request goes out from the
+# column completion starts at.  So an edit that starts there is the word and
+# no more, and one that starts before it reaches further back than completion
+# can, "obj->fie" becoming "obj.field" for instance.
 def FixWiderEdit(item: dict<any>): bool
   var edit = item->get('textEdit', {})
   if started->empty() || type(edit) != v:t_dict || !edit->has_key('range')
 	|| line('.') != started.lnum
     return false
   endif
-  # Only an edit within the one line lines up with what was replaced.
-  var range = edit.range
-  var first = range->get('start', {})
-  var last = range->get('end', {})
+  var first = edit.range->get('start', {})
   if first->get('line', -1) != started.lnum - 1
-	|| last->get('line', -1) != started.lnum - 1
     return false
   endif
-
   var from = util.ColFromLsp(started.line, first->get('character', 0)) - 1
-  var to = util.ColFromLsp(started.line, last->get('character', 0)) - 1
-  if from == started.word && to == started.cursor
-    # The edit covers the word and no more, which is what was replaced.
+  if from >= started.word
     return false
   endif
 
-  var text = strpart(started.line, 0, from) .. edit->get('newText', '')
-  var rest = strpart(started.line, to)
-  # Both changes belong to the keystroke that took the item.
+  var raw = ItemText(item)
+  var [text, offset] = IsSnippet(item) ? ExpandSnippet(raw)
+					: [raw, strlen(raw)]
   try
     undojoin
   catch
   endtry
-  setline(started.lnum, text .. rest)
-  cursor(started.lnum, strlen(text) + 1)
+  # The line as it was, so that what completion put in goes with the word.
+  setline(started.lnum, started.line)
+  PutText(started.lnum, from, started.cursor, text, offset)
   return true
+enddef
+
+# The menu put in the first line of the snippet; the rest of it goes in here,
+# and the cursor goes where the first stop was.
+def FinishSnippet(item: dict<any>, word: string)
+  var lnum = line('.')
+  var to = col('.') - 1
+  var from = to - strlen(word)
+  # Only what the menu is known to have put in is replaced.
+  if word->empty() || from < 0
+	|| strpart(getline(lnum), from, strlen(word)) !=# word
+    return
+  endif
+  var [text, offset] = ExpandSnippet(ItemText(item))
+  PutText(lnum, from, to, text, offset)
 enddef
 
 def OnCompleteDone()
@@ -1967,6 +2057,9 @@ def OnCompleteDone()
   endif
   FixWiderEdit(item)
   started = {}
+  if IsSnippet(item)
+    FinishSnippet(item, v:completed_item->get('word', ''))
+  endif
 
   var edits = item->get('additionalTextEdits', [])
   if type(edits) != v:t_list || edits->empty()
