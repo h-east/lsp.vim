@@ -15,6 +15,11 @@ import autoload './util.vim'
 # found" error, which servers are required to cope with.
 const METHOD_NOT_FOUND = -32601
 
+# A request the buffer moved on from, or one the server dropped to get on with
+# something else.  Neither is a fault: what asks again will ask again.
+const CONTENT_MODIFIED = -32801
+const SERVER_CANCELLED = -32802
+
 # Set by lsp.vim, which owns what happens with a notification.
 var NotifyHandler: func(dict<any>, string, any)
 
@@ -118,6 +123,12 @@ def ClientCapabilities(): dict<any>
       },
       publishDiagnostics: {
 	relatedInformation: true,
+      },
+      diagnostic: {
+	dynamicRegistration: false,
+	# Only the file that was asked about is read out of a report, so a
+	# server has no reason to work out what it says about other files.
+	relatedDocumentSupport: false,
       },
       semanticTokens: {
 	dynamicRegistration: false,
@@ -237,9 +248,13 @@ export def Request(client: dict<any>, method: string, params: any,
       {callback: (ch: channel, reply: dict<any>) => {
 	if reply->has_key('error')
 	  var err = reply.error
+	  var code = err->get('code', 0)
+	  if code == CONTENT_MODIFIED || code == SERVER_CANCELLED
+	    return
+	  endif
 	  # A server may offer something and still turn down a part of it.
 	  # "method not found" reads like a fault at this end.
-	  if err->get('code', 0) == METHOD_NOT_FOUND
+	  if code == METHOD_NOT_FOUND
 	    util.WarningMsg(printf('the server does not answer %s', method))
 	  else
 	    util.ErrorMsg(printf('%s: %s', method, err->get('message', '')))

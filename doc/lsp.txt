@@ -383,12 +383,18 @@ are a step of their own.
 ==============================================================================
 6. Diagnostics						*lsp-diagnostics*
 
-A server reports what it thinks is wrong with a file on its own, without being
-asked.  What arrives is shown in three ways: a sign in the 'signcolumn' on
-every line that has something, a highlight over the text a report covers, and
-the message itself on the message line while the cursor is on that line.  A
-line without a diagnostic leaves the message line alone rather than clearing
-it, so this does not wipe out other messages.
+A server reports what it thinks is wrong with a file, either on its own or
+when it is asked; both end up in the same place, so which of the two a server
+does makes no difference here.  What arrives is shown in three ways: a sign in
+the 'signcolumn' on every line that has something, a highlight over the text a
+report covers, and the message itself on the message line while the cursor is
+on that line.  A line without a diagnostic leaves the message line alone
+rather than clearing it, so this does not wipe out other messages.
+
+A server that waits to be asked is asked once the typing has stopped for a
+moment.  It is handed back the "resultId" of what it said last time, which is
+how it can answer that nothing has changed instead of listing everything
+again.
 
 |:LspDiag| collects them into the location list, which is the way to walk
 through them with |:lnext| and |:lprevious|.

@@ -754,6 +754,41 @@ def g:Test_only_the_part_on_screen_without_a_full_request()
   assert_equal(1, asked.end.line)
 enddef
 
+def g:Test_the_diagnostics_are_asked_for_when_they_are_not_sent()
+  const REPORT = {
+    range: {start: {line: 0, character: 4}, end: {line: 0, character: 8}},
+    severity: 1,
+    message: 'a fault',
+  }
+  assert_true(t.StartServer({
+    capabilities: Offering({diagnosticProvider:
+			{identifier: 'test', interFileDependencies: false,
+			 workspaceDiagnostics: false}}),
+    sequence: {'textDocument/diagnostic': [
+      {kind: 'full', resultId: '1', items: [REPORT]},
+      {kind: 'unchanged', resultId: '1'},
+    ]},
+  }, ['int main(void)', '{', '}']))
+
+  assert_true(t.WaitFor(() => !prop_list(1)->empty()),
+	      'the report should be shown')
+  var first = t.Sent('textDocument/diagnostic')[0].params
+  assert_equal('test', first.identifier)
+  assert_false(first->has_key('previousResultId'),
+	       'there is nothing to hand back the first time')
+
+  # The answer to the second one says nothing changed, so what is on the
+  # screen is what was reported before.
+  setline(2, '{ ')
+  doautocmd TextChanged
+  assert_true(t.WaitFor(() =>
+		    len(t.Sent('textDocument/diagnostic')) == 2),
+	      'a change should be asked about')
+  assert_equal('1',
+	       t.Sent('textDocument/diagnostic')[1].params.previousResultId)
+  assert_false(prop_list(1)->empty(), 'the report should still stand')
+enddef
+
 def g:Test_folds_come_from_the_server()
   defer execute('unlet! g:lsp_client_config.folding')
   const RANGES = [

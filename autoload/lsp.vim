@@ -120,6 +120,7 @@ def DidOpen(cl: dict<any>, bufnr: number)
     CodeLenses()
     FoldingRanges()
     SemanticTokens()
+    PullDiagnostics()
   endif
 enddef
 
@@ -316,6 +317,7 @@ def HookBuffer()
     autocmd TextChanged,BufEnter <buffer> FoldingRanges()
     autocmd TextChanged,TextChangedI,TextChangedP,BufEnter <buffer>
 	  \ SemanticLater()
+    autocmd TextChanged,TextChangedI,TextChangedP,BufEnter <buffer> PullLater()
     autocmd TextChangedI,TextChangedP <buffer> OnTextChanged()
     autocmd CursorMovedI <buffer> OnCursorMovedI()
     autocmd InsertLeave <buffer> CloseSignature()
@@ -376,6 +378,7 @@ export def Detach(bufnr: number = bufnr('%'))
   endif
   DidClose(bufnr)
   diag.Clear(bufnr)
+  ForgetDiagnosticId(bufnr)
   hl.Clear(bufnr)
   StopHighlight()
   inlay.Clear(bufnr)
@@ -1915,6 +1918,75 @@ def OnCompleteDone()
   # After the event, to stay out of whatever the completion is still doing.
   var bufnr = bufnr('%')
   timer_start(0, (_) => ApplyTextEdits(bufnr, edits))
+enddef
+
+# A server may report on its own with "textDocument/publishDiagnostics", or
+# wait to be asked with "textDocument/diagnostic"; which one it does is what
+# "diagnosticProvider" says.  Both end up in the same place, so a server that
+# does one, the other or both is read the same way.
+
+# The "resultId" of the last report, by buffer: handing it back is what lets a
+# server answer "unchanged" instead of listing everything again.
+var diagnostic_ids: dict<string> = {}
+
+def ForgetDiagnosticId(bufnr: number)
+  var key = string(bufnr)
+  if diagnostic_ids->has_key(key)
+    remove(diagnostic_ids, key)
+  endif
+enddef
+
+def PullDiagnostics()
+  var cl = BufClient(bufnr('%'))
+  if cl->empty() || !cl.initialized
+	|| type(cl.capabilities->get('diagnosticProvider', 0)) != v:t_dict
+    return
+  endif
+  var bufnr = bufnr('%')
+  var uri = util.PathToUri(bufname(bufnr))
+  var params: dict<any> = {textDocument: {uri: uri}}
+  # A server that answers under a name wants it back, since it may report on
+  # the same file under more than one.
+  var identifier = cl.capabilities.diagnosticProvider->get('identifier', '')
+  if !identifier->empty()
+    params.identifier = identifier
+  endif
+  var previous = diagnostic_ids->get(string(bufnr), '')
+  if !previous->empty()
+    params.previousResultId = previous
+  endif
+  listener_flush(bufnr)
+  lspclient.Request(cl, 'textDocument/diagnostic', params, (result: any) => {
+    if type(result) != v:t_dict
+      return
+    endif
+    var id = result->get('resultId', '')
+    if id->empty()
+      ForgetDiagnosticId(bufnr)
+    else
+      diagnostic_ids[string(bufnr)] = id
+    endif
+    # "unchanged" means the last report still stands.
+    if result->get('kind', 'full') ==# 'full'
+      cl.diagnostics[uri] = result->get('items', [])
+      if bufexists(bufnr)
+	diag.Update(bufnr, cl.diagnostics[uri])
+      endif
+    endif
+  })
+enddef
+
+# Long enough that a burst of typing is answered once.
+const DIAGNOSTIC_DELAY = 200
+
+var diagnostic_timer = -1
+
+def PullLater()
+  if diagnostic_timer != -1
+    timer_stop(diagnostic_timer)
+    diagnostic_timer = -1
+  endif
+  diagnostic_timer = timer_start(DIAGNOSTIC_DELAY, (_) => PullDiagnostics())
 enddef
 
 export def Diagnostics()

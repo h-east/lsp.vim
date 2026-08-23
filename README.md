@@ -79,7 +79,8 @@ symbol search, no inlay hints and no call hierarchy.
 
 - Completion through `'omnifunc'`, including `completionItem/resolve` for the
   info popup
-- Diagnostics as signs, text highlights and a message on the cursor line
+- Diagnostics as signs, text highlights and a message on the cursor line,
+  whether the server sends them or waits to be asked
 - Signature help while a call is being typed
 - The other places the symbol under the cursor is used, marked in the buffer
 - Semantic tokens, the coloring a server works out from what it parsed, off
@@ -141,9 +142,7 @@ would be felt first:
 - [x] `textDocument/semanticTokens/full`, `/range` and `/full/delta`, the
       highlighting a server works out from what it parsed
 - [x] The token modifiers, `readonly` and `deprecated` among them
-- [ ] `textDocument/diagnostic`, the pull kind; only the pushed
-      `publishDiagnostics` is read, so a server offering nothing else
-      reports nothing at all
+- [x] `textDocument/diagnostic`, the pull kind
 - [ ] `textDocument/prepareRename`, to turn a rename down before it is sent
       and to start from the name the server names
 - [ ] Dynamic registration: `client/registerCapability` is answered without
