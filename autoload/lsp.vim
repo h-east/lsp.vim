@@ -77,10 +77,8 @@ def Folder(root: string): dict<string>
   return {uri: util.PathToUri(root), name: fnamemodify(root, ':t')}
 enddef
 
-# A server has to say both that it takes more than one folder and that it
-# wants to hear about them changing.  Without the second, a folder added
-# after it started would go unnoticed, which is worse than a server of its
-# own for that root.
+# Both halves are needed: without the second, a folder added after the
+# server started would go unnoticed.
 def TakesFolders(cl: dict<any>): bool
   var space = cl.capabilities->get('workspace', {})
   if type(space) != v:t_dict
@@ -613,10 +611,9 @@ const SIGNATURE_ZINDEX = 101
 # "resolve_seq".
 var signature_seq = 0
 
-# One edit is seen twice when the completion menu opens right after it: once
-# as TextChangedI with the menu hidden and once as TextChangedP with it shown.
-# The two events keep separate marks of |b:changedtick| on purpose, so what
-# was asked about is remembered here instead.
+# One edit is seen twice when the menu opens right after it, as TextChangedI
+# and again as TextChangedP, and the two keep separate marks of
+# |b:changedtick|; so what was asked about is remembered here instead.
 var signature_asked: list<any> = []
 
 def CloseSignature()
@@ -657,19 +654,13 @@ def ActiveRange(signature: dict<any>, index: number): list<number>
 enddef
 
 # The signature goes on the side of the cursor the completion menu is not
-# using.  "pos" says which corner "line" refers to; without it the popup lands
-# above either way.
-# The completion menu opens below the cursor when there is room, so the
-# signature goes above.  With nothing above -- right after "zt" -- it goes
-# under the menu instead, which is the one place left.
-#
-# screenrow() is not to be trusted from CompleteChanged, where it answers
-# about the menu rather than the cursor, so nothing here is worked out again
-# later: ClearOfMenu() only needs where the menu is.
-# How the signature popup is drawn, and what that costs it in rows and columns
-# beyond the text itself: a border all round, and a space either side.
+# using.  The menu opens below where there is room, so the signature goes
+# above; with nothing above, right after "zt", under the menu is the one
+# place left.
+
+# What the popup costs beyond its text: a border all round, a space either
+# side.
 const SIGNATURE_PADDING = [0, 1, 0, 1]	# top, right, bottom, left
-# One row for the border above and one below; likewise a column either side.
 const BORDER_ROWS = 1 + 1 + SIGNATURE_PADDING[0] + SIGNATURE_PADDING[2]
 const BORDER_COLS = 1 + 1 + SIGNATURE_PADDING[1] + SIGNATURE_PADDING[3]
 
@@ -844,12 +835,10 @@ export def Signature()
       })
 enddef
 
-# Asked for after a character the server named as a trigger, "(" and "," for a
-# C server, and asked again on every change while the popup is up.  What ends
-# the call is the server answering with no signature at all: it does that once
-# the cursor is no longer inside one, whether the ")" was typed or the "(" was
-# deleted.  TextChangedP is there because this has to work while the menu is
-# up.
+# Asked for after a character the server named as a trigger, and again on
+# every change while the popup is up: what ends the call is the server
+# answering with no signature at all.  TextChangedP is there because this has
+# to work while the menu is up.
 def OnTextChanged()
   if !Setting('signature_help')
     return
@@ -1183,10 +1172,9 @@ def AskAndRename(cl: dict<any>, newname: string, placeholder: string,
   })
 enddef
 
-# A server that offers "prepareProvider" is asked first.  It answers with
-# nothing where there is no name to rename, which is how a rename is turned
-# down before it is sent, and it names the text to start from, which reaches
-# further than |<cword>| does where 'iskeyword' and the language disagree.
+# A server that offers "prepareProvider" is asked first: it answers with
+# nothing where there is no name to rename, and otherwise names the text to
+# start from, which beats |<cword>| where 'iskeyword' and the language part.
 export def Rename(newname: string)
   var cl = ReadyClient()
   if cl->empty()
@@ -1262,10 +1250,8 @@ def DoAction(cl: dict<any>, action: dict<any>)
   })
 enddef
 
-# An action may be handed over without the edit it stands for, to save the
-# server working out an edit for something that is never picked.  Asking for
-# the rest of it is what "codeAction/resolve" is for; a bare Command has
-# nothing to fill in.
+# An action may be handed over without the edit it stands for, worked out
+# only for the one that is picked.  A bare Command has nothing to fill in.
 def RunAction(cl: dict<any>, action: dict<any>)
   if type(action->get('command', {})) == v:t_string
 	|| action->has_key('edit') || !Resolves(cl, 'codeActionProvider')
@@ -1342,10 +1328,8 @@ def InlayHints()
   })
 enddef
 
-# Once scrolling has come to rest.  Holding down CTRL-E fires WinScrolled
-# every few milliseconds, and the part on screen is only worth asking about
-# when it stops moving.  Hints are added above lines that are already drawn,
-# so a short wait is not felt.
+# Once scrolling has come to rest: holding down CTRL-E fires WinScrolled
+# every few milliseconds, and only where it stops is worth asking about.
 const INLAY_DELAY = 100
 
 var inlay_timer = -1
@@ -1363,12 +1347,9 @@ enddef
 
 # What the server worked out about the text, painted over the syntax
 # highlighting.  Off by default: this recolors the buffer rather than adding
-# to a corner of it.
-#
-# The whole buffer is asked about where the server offers that, and only the
-# part on screen where it does not.  A full answer that comes with a
-# "resultId" is followed by a delta the next time, so an edit is answered with
-# the tokens that moved rather than all of them.
+# to a corner of it.  The whole buffer is asked about where the server offers
+# that, the part on screen where it does not, and an answer with a "resultId"
+# is followed by a delta.
 
 # The |b:changedtick| a full answer was asked for, by buffer: without it a
 # buffer would be asked about again every time it is entered or scrolled.
@@ -1441,9 +1422,8 @@ def SemanticTokens()
 enddef
 
 # Longer than the wait for the inlay hints: a whole buffer is being asked
-# about, and what comes back is the coloring of text that is already on
-# screen and readable as it stands.  A change made in Insert mode counts, so
-# this is also what keeps a line from being asked about once per keystroke.
+# about, and a change made in Insert mode counts, so this is what keeps a
+# line from being asked about once per keystroke.
 const SEMANTIC_DELAY = 200
 
 var semantic_timer = -1
@@ -2059,9 +2039,8 @@ enddef
 const STOP_PAT = '\\[$}\\]\|\${\d\+:[^}]*}\|\${\d\+|[^|]*|}\|\${\d\+}\|\$\d\+'
 
 # A snippet is text with tab stops in it: "$1", "${2:a name}" and "$0", where
-# the cursor ends up last of all.  What a stop stands for is put in as it is,
-# ready to be typed over.  Returns the text and the stops in the order they
-# are stepped through, each one saying where in the text it is and how long.
+# the cursor ends up last of all.  Returns the text, with what the stops
+# stand for left in it, and the stops in the order they are stepped through.
 def ExpandSnippet(snippet: string): list<any>
   var out = ''
   var at = 0
@@ -2173,10 +2152,10 @@ export def OmniFunc(findstart: number, base: string): any
 	      ->mapnew((_, it) => ToCompleteItem(it))
 enddef
 
-# A server may leave the documentation out and only produce it for the item
-# actually looked at.  That takes a round trip, so the info popup is filled in
-# as the answers arrive; see |complete-popuphidden|.  The counter is bumped on
-# every selection change, to drop a reply for an item no longer selected.
+# A server may leave the documentation out and produce it only for the item
+# looked at, so the info popup is filled in as the answers arrive; see
+# |complete-popuphidden|.  The counter drops a reply for an item no longer
+# selected.
 var resolve_seq = 0
 
 def ResolveProvider(cl: dict<any>): bool
@@ -2252,10 +2231,9 @@ export def ClearSnippet(bufnr: number = bufnr('%'))
 enddef
 
 # The keys that step to the next stop of the snippet that was put in, or back
-# to the one before.  What a stop stands for is selected so that it is typed
-# over, and a stop that stands for nothing is only gone to.  An empty string
-# means there was nowhere to go, which is what lets a mapping fall back on
-# what its key does otherwise: >vim
+# to the one before.  What a stop stands for is selected, so that it is typed
+# over.  An empty string means there was nowhere to go, which lets a mapping
+# fall back on what its key does otherwise: >vim
 #	inoremap <expr> <Tab> lsp.SnippetKeys(1) ?? "\<Tab>"
 export def SnippetKeys(dir: number = 1): string
   if !stop_type_added
@@ -2298,10 +2276,9 @@ def TextPos(lnum: number, head: string, text: string, at: number): list<number>
 	  nl < 0 ? strlen(before) + 1 : strlen(before) - nl]
 enddef
 
-# Puts "text" in place of the bytes from "from" to "to" of line "lnum".  The
-# stops are marked and the cursor goes to the first of them, or to the end of
-# what was put in when there are none.  The change belongs to the keystroke
-# that took the item, hence the |:undojoin|.
+# Puts "text" in place of the bytes from "from" to "to" of line "lnum", marks
+# the stops, and leaves the cursor on the first of them.  The change belongs
+# to the keystroke that took the item, hence the |:undojoin|.
 def PutText(lnum: number, from: number, to: number, text: string,
 					      stops: list<dict<number>> = [])
   var line = getline(lnum)
@@ -2337,11 +2314,10 @@ def PutText(lnum: number, from: number, to: number, text: string,
   cursor(to_lnum, to_col)
 enddef
 
-# What a server answers with is written against the line as it was when it was
-# asked, which is with the word taken off: the request goes out from the
-# column completion starts at.  So an edit that starts there is the word and
-# no more, and one that starts before it reaches further back than completion
-# can, "obj->fie" becoming "obj.field" for instance.
+# A server answers against the line as it was when it was asked, and the
+# request goes out from the column completion starts at.  So an edit starting
+# there is the word and no more; one starting before it reaches further back
+# than completion can, "obj->fie" becoming "obj.field" for instance.
 def FixWiderEdit(item: dict<any>): bool
   var edit = item->get('textEdit', {})
   if started->empty() || type(edit) != v:t_dict || !edit->has_key('range')
@@ -2527,9 +2503,8 @@ enddef
 var write_existed = false
 
 # A server may want a say in what happens to a file as a whole: what refers
-# to it has to be put right when it is renamed, and a new file may want
-# something in it before it is written.  Which files it cares about is what
-# the filters say.
+# to it when it is renamed, what goes in a new one.  The filters say which
+# files it cares about.
 def FileOpFilters(cl: dict<any>, op: string): list<any>
   var space = cl.capabilities->get('workspace', {})
   if type(space) != v:t_dict
@@ -2667,9 +2642,8 @@ export def RenameFile(newname: string)
 enddef
 
 # A server may report on its own with "textDocument/publishDiagnostics", or
-# wait to be asked with "textDocument/diagnostic"; which one it does is what
-# "diagnosticProvider" says.  Both end up in the same place, so a server that
-# does one, the other or both is read the same way.
+# wait to be asked with "textDocument/diagnostic"; "diagnosticProvider" says
+# which.  Both end up in the same place.
 
 # The "resultId" of the last report, by buffer: handing it back is what lets a
 # server answer "unchanged" instead of listing everything again.
@@ -2769,9 +2743,6 @@ export def Log()
   setlocal buftype=nofile bufhidden=wipe noswapfile nomodified
 enddef
 
-# "workspace/applyEdit" is how a server hands over changes it worked out
-# itself; "window/workDoneProgress/create" only asks whether it may report
-# progress.  Anything else is turned down by the caller.
 # A message with answers to pick from.  Picking nothing is an answer of its
 # own, which is what a server gets when the menu is closed.
 def ShowMessageRequest(params: any, Answer: func(any))
@@ -2830,19 +2801,21 @@ def ShowDocument(params: any): bool
   return true
 enddef
 
+# What a server asks of the editor.  Anything not answered here is turned
+# down by the caller.
 def OnRequest(cl: dict<any>, method: string, params: any,
 	      Answer: func(any)): bool
   if method ==# 'window/workDoneProgress/create'
     Answer(v:null)
     return true
   endif
-  # What the server told us has gone out of date, usually because a file it
-  # depends on changed, so it is asked for again.  The answer goes first: the
-  # server is waiting on it while the asking is done.
   if method ==# 'workspace/workspaceFolders'
     Answer(cl.folders->mapnew((_, root) => Folder(root)))
     return true
   endif
+  # What the server told us has gone out of date, usually because a file it
+  # depends on changed, so it is asked for again.  The answer goes first: the
+  # server is waiting on it while the asking is done.
   if method ==# 'workspace/semanticTokens/refresh'
     Answer(v:null)
     semantic_asked = {}
@@ -2904,9 +2877,7 @@ enddef
 lspclient.SetNotifyHandler(OnNotify)
 lspclient.SetRequestHandler(OnRequest)
 
-# A :def function is compiled when it is first called, so what is wrong with
-# one that is never reached only shows up as E1091 later on.  test/run sets
-# this to have every function compiled here and now.
+# test/run sets this to have every :def compiled as the script is read.
 if $LSP_COMPILE_CHECK != ''
   defcompile
 endif

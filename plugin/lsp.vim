@@ -83,9 +83,7 @@ augroup lsp
   autocmd FileType * if HasServer() | lsp.Attach() | endif
 augroup END
 
-# A :def function is compiled when it is first called, so what is wrong with
-# one that is never reached only shows up as E1091 later on.  test/run sets
-# this to have every function compiled here and now.
+# test/run sets this to have every :def compiled as the script is read.
 if $LSP_COMPILE_CHECK != ''
   defcompile
 endif

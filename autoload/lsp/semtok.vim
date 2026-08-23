@@ -7,9 +7,8 @@ vim9script
 import './util.vim'
 
 # The token types the protocol names itself, each linked to the group Vim
-# already uses for that kind of thing.  A server is free to put others in its
-# legend; a token of a type that is not here is left to the syntax
-# highlighting.
+# already uses for that kind of thing.  A type that is not here is left to
+# the syntax highlighting.
 const LINKS = {
   namespace: 'Identifier',
   type: 'Type',
@@ -93,8 +92,7 @@ enddef
 
 # What a token is painted with: the first of LspSem<Type><Modifier>,
 # LspSem<Modifier> and LspSem<Type> that exists.  An empty string leaves the
-# token to the syntax highlighting, which is what a type this client has no
-# group for gets.
+# token to the syntax highlighting.
 def GroupFor(type_name: string, mods: list<string>): string
   var base = LINKS->has_key(type_name) ? Group(type_name) : ''
   if mods->empty()
@@ -250,9 +248,7 @@ export def Update(bufnr: number, legend: dict<any>, result: any): bool
   return true
 enddef
 
-# A :def function is compiled when it is first called, so what is wrong with
-# one that is never reached only shows up as E1091 later on.  test/run sets
-# this to have every function compiled here and now.
+# test/run sets this to have every :def compiled as the script is read.
 if $LSP_COMPILE_CHECK != ''
   defcompile
 endif

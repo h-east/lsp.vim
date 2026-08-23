@@ -63,10 +63,9 @@ export def UriToPath(uri: string): string
 enddef
 
 # LSP counts a position the way the server said it would at startup, Vim
-# counts bytes.  "utf-8" is the same thing and needs no conversion at all;
-# the other two are counted with a composing character on its own, which is
-# what both of them do.  Every direction rounds down to the start of a
-# character.
+# counts bytes.  "utf-8" is the same thing and needs no conversion; the other
+# two count a composing character on its own.  Every direction rounds down to
+# the start of a character.
 var encodings: dict<string> = {}
 
 export def SetEncoding(bufnr: number, encoding: string)
@@ -80,11 +79,11 @@ export def ForgetEncoding(bufnr: number)
   endif
 enddef
 
-# UTF-16 is what a server that says nothing means.
 export def ClearEncodings()
   encodings = {}
 enddef
 
+# UTF-16 is what a server that says nothing means.
 export def Encoding(bufnr: number): string
   return encodings->get(string(bufnr), 'utf-16')
 enddef
@@ -164,9 +163,7 @@ export def WarningMsg(msg: string)
   echohl None
 enddef
 
-# A :def function is compiled when it is first called, so what is wrong with
-# one that is never reached only shows up as E1091 later on.  test/run sets
-# this to have every function compiled here and now.
+# test/run sets this to have every :def compiled as the script is read.
 if $LSP_COMPILE_CHECK != ''
   defcompile
 endif
