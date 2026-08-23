@@ -330,6 +330,10 @@ def HookBuffer()
       autocmd VimLeavePre * Stop()
       autocmd WinScrolled * InlayLater()
       autocmd WinScrolled * SemanticLater()
+      autocmd BufWritePre * BeforeWrite(expand('<afile>:p'))
+      autocmd BufWritePost * AfterWrite(expand('<afile>:p'))
+      autocmd FileChangedShellPost *
+	    \ FileChanged(expand('<afile>:p'), WATCH_CHANGE, FILE_CHANGED)
     augroup END
     global_hooked = true
   endif
@@ -1974,6 +1978,125 @@ def OnCompleteDone()
   timer_start(0, (_) => ApplyTextEdits(bufnr, edits))
 enddef
 
+# A watcher says which changes it wants to hear about; without a "kind" it
+# wants all of them.
+const WATCH_CREATE = 1
+const WATCH_CHANGE = 2
+const WATCH_DELETE = 4
+const WATCH_ALL = WATCH_CREATE + WATCH_CHANGE + WATCH_DELETE
+
+# What a file did, as the protocol numbers it.
+const FILE_CREATED = 1
+const FILE_CHANGED = 2
+
+# Everything a server may ask to be told about at run time is declared as not
+# registerable, apart from the watched files, so this is where those end up.
+# The rest is kept only so that it can be given back.
+def Watchers(cl: dict<any>): list<dict<any>>
+  var out: list<dict<any>> = []
+  for item in cl.registrations->values()
+    if item->get('method', '') !=# 'workspace/didChangeWatchedFiles'
+      continue
+    endif
+    for watcher in item->get('registerOptions', {})->get('watchers', [])
+      if type(watcher) != v:t_dict
+	continue
+      endif
+      var pattern = watcher->get('globPattern', '')
+      var base = cl.root
+      # A pattern may come with a base of its own, either a folder or a bare
+      # URI.
+      if type(pattern) == v:t_dict
+	var uri = pattern->get('baseUri', '')
+	base = util.UriToPath(type(uri) == v:t_dict ? uri->get('uri', '') : uri)
+	pattern = pattern->get('pattern', '')
+      endif
+      if type(pattern) != v:t_string || pattern->empty()
+	continue
+      endif
+      out->add({base: base, pat: glob2regpat(pattern),
+		kind: watcher->get('kind', WATCH_ALL)})
+    endfor
+  endfor
+  return out
+enddef
+
+def Register(cl: dict<any>, params: any)
+  if type(params) != v:t_dict
+    return
+  endif
+  for item in params->get('registrations', [])
+    if type(item) == v:t_dict && !item->get('id', '')->empty()
+      cl.registrations[item.id] = item
+    endif
+  endfor
+  cl.watchers = Watchers(cl)
+enddef
+
+def Unregister(cl: dict<any>, params: any)
+  if type(params) != v:t_dict
+    return
+  endif
+  # The protocol spells it "unregisterations"; a server that spells it the
+  # other way is understood as well.
+  for item in params->get('unregisterations',
+			  params->get('unregistrations', []))
+    if type(item) == v:t_dict && cl.registrations->has_key(item->get('id', ''))
+      remove(cl.registrations, item.id)
+    endif
+  endfor
+  cl.watchers = Watchers(cl)
+enddef
+
+# A pattern is written against the root it was registered under, so the name
+# is tried both ways: what is under the root as a relative name, and anything
+# else as it stands.
+def Watched(cl: dict<any>, path: string, kind: number): bool
+  for watcher in cl.watchers
+    if and(watcher.kind, kind) == 0
+      continue
+    endif
+    if path =~# watcher.pat
+      return true
+    endif
+    var base = watcher.base .. '/'
+    if strpart(path, 0, strlen(base)) ==# base
+	  && strpart(path, strlen(base)) =~# watcher.pat
+      return true
+    endif
+  endfor
+  return false
+enddef
+
+# Vim has no way of watching a directory, so what a server hears about is what
+# Vim itself came across: a file it wrote, and a file it noticed had changed
+# underneath it.
+def FileChanged(path: string, kind: number, event: number)
+  if path->empty()
+    return
+  endif
+  var full = fnamemodify(path, ':p')
+  for cl in clients->values()
+    if cl.running && cl.initialized && Watched(cl, full, kind)
+      lspclient.Notify(cl, 'workspace/didChangeWatchedFiles',
+		    {changes: [{uri: util.PathToUri(full), type: event}]})
+    endif
+  endfor
+enddef
+
+# Whether the file was there before it was written, which is what tells a
+# change from a file coming into being.
+var write_existed = false
+
+def BeforeWrite(path: string)
+  write_existed = filereadable(path)
+enddef
+
+def AfterWrite(path: string)
+  FileChanged(path, write_existed ? WATCH_CHANGE : WATCH_CREATE,
+	      write_existed ? FILE_CHANGED : FILE_CREATED)
+enddef
+
 # A server may report on its own with "textDocument/publishDiagnostics", or
 # wait to be asked with "textDocument/diagnostic"; which one it does is what
 # "diagnosticProvider" says.  Both end up in the same place, so a server that
@@ -2083,6 +2206,16 @@ enddef
 def OnRequest(cl: dict<any>, method: string, params: any,
 	      Answer: func(any)): bool
   if method ==# 'window/workDoneProgress/create'
+    Answer(v:null)
+    return true
+  endif
+  if method ==# 'client/registerCapability'
+	|| method ==# 'client/unregisterCapability'
+    if method ==# 'client/registerCapability'
+      Register(cl, params)
+    else
+      Unregister(cl, params)
+    endif
     Answer(v:null)
     return true
   endif

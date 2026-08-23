@@ -830,6 +830,62 @@ def g:Test_the_diagnostics_are_asked_for_when_they_are_not_sent()
   assert_false(prop_list(1)->empty(), 'the report should still stand')
 enddef
 
+def g:Test_a_watched_file_being_written_is_reported()
+  defer popup_clear()
+  const HEADER = t.SRC->substitute('\.c$', '.h', '')
+  defer delete(HEADER)
+  const WATCH = {
+    id: 'w1',
+    method: 'workspace/didChangeWatchedFiles',
+    registerOptions: {watchers: [{globPattern: '**/*.h'}]},
+  }
+  assert_true(t.StartServer({
+    capabilities: Offering({hoverProvider: true, definitionProvider: true}),
+    replies: {'textDocument/hover': {contents: 'something'},
+	      'textDocument/definition': v:null},
+    # The server asks for the watch while answering a hover, and gives it up
+    # again while answering a definition.
+    ask: {
+      'textDocument/hover': [{id: 'reg', method: 'client/registerCapability',
+			      params: {registrations: [WATCH]}}],
+      'textDocument/definition': [{id: 'unreg',
+			      method: 'client/unregisterCapability',
+			      params: {unregisterations: [
+				  {id: 'w1', method: WATCH.method}]}}],
+    },
+  }, ['int one;']))
+
+  LspHover
+  assert_true(t.WaitFor(() =>
+		  t.Trace()->copy()
+		    ->filter((_, m) => string(m->get('id', '')) ==# "'reg'")
+		    ->len() == 1),
+	      'the registration should be answered')
+
+  # This one is not watched, so writing it says nothing.
+  write
+  execute 'edit ' .. fnameescape(HEADER)
+  setline(1, '// a header')
+  write
+  assert_true(t.WaitFor(() =>
+		  !t.Sent('workspace/didChangeWatchedFiles')->empty()),
+	      'writing a watched file should be reported')
+  var sent = t.Sent('workspace/didChangeWatchedFiles')
+  assert_equal(1, len(sent), 'only the watched one should be reported')
+  assert_match('Xsrc\.h$', sent[0].params.changes[0].uri)
+  assert_equal(1, sent[0].params.changes[0].type, 'the file was created')
+
+  # Once the watch is given up there is nothing left to report.
+  LspDefinition
+  assert_true(t.WaitFor(() => !t.Sent('textDocument/definition')->empty()),
+	      'the server should be asked')
+  sleep 100m
+  write
+  sleep 100m
+  assert_equal(1, len(t.Sent('workspace/didChangeWatchedFiles')),
+	       'a watch that was given up should say nothing')
+enddef
+
 def g:Test_folds_come_from_the_server()
   defer execute('unlet! g:lsp_client_config.folding')
   const RANGES = [

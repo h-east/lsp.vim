@@ -164,6 +164,13 @@ def ClientCapabilities(): dict<any>
       # A server that works a change out on its side hands it over this way,
       # which is how an action it runs itself comes back.
       applyEdit: true,
+      didChangeWatchedFiles: {
+	# The only thing a server is asked to register at run time; the rest
+	# of this dictionary says what it can count on from the start.
+	dynamicRegistration: true,
+	# A watcher may name a base of its own to match against.
+	relativePatternSupport: true,
+      },
     },
     window: {
       # A server only reports what it is busy with when told someone listens.
@@ -218,10 +225,7 @@ def OnMessage(client: dict<any>, ch: channel, msg: dict<any>)
     return
   endif
   if msg->has_key('id')
-    if method ==# 'client/registerCapability'
-	  || method ==# 'client/unregisterCapability'
-      Respond(client, msg.id, v:null)
-    elseif method ==# 'workspace/configuration'
+    if method ==# 'workspace/configuration'
       # No per-server configuration is kept, answer with a null for each item.
       var items = msg->get('params', {})->get('items', [])
       Respond(client, msg.id, items->mapnew((_, _) => v:null))
@@ -348,6 +352,10 @@ export def Start(config: dict<any>, root: string,
     log: [],
     documents: {},
     diagnostics: {},
+    # What the server asked to be told about at run time, and what that comes
+    # to; see |lsp-watched-files|.
+    registrations: {},
+    watchers: [],
   }
 
   var job = job_start(config.cmd, {

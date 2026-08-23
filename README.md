@@ -100,6 +100,8 @@ symbol search, no inlay hints and no call hierarchy.
   with
 - Changes the server works out on its own, including an action it carries out
   itself
+- Files the server asked to watch, reported when Vim writes one or notices
+  that it changed
 
 ## Commands
 
@@ -145,9 +147,8 @@ would be felt first:
 - [x] `textDocument/diagnostic`, the pull kind
 - [x] `textDocument/prepareRename`, to turn a rename down before it is sent
       and to start from the name the server names
-- [ ] Dynamic registration: `client/registerCapability` is answered without
-      being read, and `workspace/didChangeWatchedFiles` never sent, so a
-      change made outside Vim goes unnoticed
+- [x] Dynamic registration and `workspace/didChangeWatchedFiles`, as far as
+      Vim can tell that a file changed
 - [ ] Snippets, `insertTextFormat` 2; the label is used as it stands
 
 Worth having:

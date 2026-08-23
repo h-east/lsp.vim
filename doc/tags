@@ -41,4 +41,5 @@ lsp-limitations	lsp.txt	/*lsp-limitations*
 lsp-requirements	lsp.txt	/*lsp-requirements*
 lsp-semantic-tokens	lsp.txt	/*lsp-semantic-tokens*
 lsp-signature	lsp.txt	/*lsp-signature*
+lsp-watched-files	lsp.txt	/*lsp-watched-files*
 lsp.txt	lsp.txt	/*lsp.txt*

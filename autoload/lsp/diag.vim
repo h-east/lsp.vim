@@ -66,7 +66,12 @@ def StartLine(bufnr: number, item: dict<any>): number
   return util.PosFromLsp(bufnr, item->get('range', {})->get('start', {}))[0]
 enddef
 
+# Nothing has been drawn before the types are there, and asking to remove a
+# type that was never made is an error.
 def Erase(bufnr: number)
+  if !defined
+    return
+  endif
   sign_unplace(SIGN_GROUP, {buffer: bufnr})
   prop_remove({types: PROP_TYPES, bufnr: bufnr, all: true})
 enddef

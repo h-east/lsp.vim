@@ -18,8 +18,9 @@ CONTENTS							*lsp-contents*
 10. Folding		|lsp-folding|
 11. Code lens		|lsp-code-lens|
 12. Semantic tokens	|lsp-semantic-tokens|
-13. Limitations		|lsp-limitations|
-14. AI			|lsp-ai|
+13. Watched files	|lsp-watched-files|
+14. Limitations		|lsp-limitations|
+15. AI			|lsp-ai|
 
 ==============================================================================
 1. Introduction						*lsp-introduction*
@@ -582,7 +583,26 @@ A server names in its legend the token types and the modifiers it uses.  A
 type this client has no group for is left to the syntax highlighting.
 
 ==============================================================================
-13. Limitations						*lsp-limitations*
+13. Watched files					*lsp-watched-files*
+
+A server may ask to be told when files it is not being sent change, so that
+it can keep up with what goes on around the one being edited.  It asks at run
+time with "client/registerCapability", naming the patterns it cares about,
+and gives the watch up again with "client/unregisterCapability".
+
+Vim cannot watch a directory, so what reaches the server is what Vim itself
+came across: a file Vim wrote, and a file Vim noticed had changed underneath
+it, which is what 'autoread' and |:checktime| bring about.  A file that
+something else creates, changes or deletes while Vim has no buffer for it
+goes unnoticed.
+
+This is the only thing a server is asked to register at run time.  Everything
+else this client can do is declared at the start and does not change, so a
+server has no reason to ask for it; what it asks for anyway is answered and
+then left alone.
+
+==============================================================================
+14. Limitations						*lsp-limitations*
 
 A code action is asked for by line, never by a range within one, so a server
 with something to offer about the exact text under the cursor is not given the
@@ -594,7 +614,7 @@ line the cursor is on.  One reaching across lines is left to omni completion,
 which replaces the word before the cursor and no more.
 
 ==============================================================================
-14. AI								*lsp-ai*
+15. AI								*lsp-ai*
 
 This plugin is developed with the support of AI.
 
