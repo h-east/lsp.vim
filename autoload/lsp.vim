@@ -448,17 +448,26 @@ enddef
 
 # Connect the current buffer to the server for its 'filetype', starting the
 # server when this is the first buffer for that workspace.
-export def Attach()
+export def Attach(loud: bool = false)
   var bufnr = bufnr('%')
   if !getbufvar(bufnr, 'lsp_client_key', '')->empty()
+    if loud
+      echomsg 'lsp: this buffer already has a server'
+    endif
     return
   endif
   var name = bufname(bufnr)
   if name->empty() || &buftype != ''
+    if loud
+      util.WarningMsg('this buffer is not a file')
+    endif
     return
   endif
   var config = ServerFor(&filetype)
   if config->empty()
+    if loud
+      util.WarningMsg(printf('no server is set up for "%s"', &filetype))
+    endif
     return
   endif
 
@@ -480,6 +489,10 @@ export def Attach()
     DidOpen(cl, bufnr)
   else
     pending_open[key] = pending_open->get(key, []) + [bufnr]
+  endif
+  if loud
+    echomsg printf('lsp: %s has this buffer, rooted at %s',
+		   config.name, cl.root)
   endif
 enddef
 
@@ -513,7 +526,8 @@ export def Detach(bufnr: number = bufnr('%'))
   endif
 enddef
 
-export def Stop()
+export def Stop(loud: bool = false)
+  var running = len(clients)
   for cl in clients->values()
     lspclient.Stop(cl)
   endfor
@@ -523,6 +537,11 @@ export def Stop()
   # A buffer number is handed out again once the buffer is gone, so what was
   # said about the old one must not be left lying about.
   util.ClearEncodings()
+  if loud
+    echomsg running == 0 ? 'lsp: no server was running'
+			 : printf('lsp: %d server%s stopped', running,
+				  running == 1 ? '' : 's')
+  endif
 enddef
 
 export def Status()
@@ -1208,7 +1227,15 @@ enddef
 # A reply holds Commands, CodeActions, or a mix.  A Command is run by the
 # server; a CodeAction usually carries the edit it stands for.
 def ActionTitle(action: dict<any>): string
-  return action->get('title', action->get('command', ''))
+  var title = action->get('title', '')
+  if type(title) == v:t_string && !title->empty()
+    return title
+  endif
+  # Falling back on the name of what it runs, which a CodeAction keeps in a
+  # Dict of its own and a bare Command at the top level.
+  var cmd = action->get('command', '')
+  return type(cmd) == v:t_dict ? cmd->get('command', '')
+       : type(cmd) == v:t_string ? cmd : ''
 enddef
 
 # Whether the server fills the rest of an item in when it is handed back.
@@ -1247,6 +1274,7 @@ def DoAction(cl: dict<any>, action: dict<any>)
     arguments: wrapped ? cmd->get('arguments', [])
 		       : action->get('arguments', []),
   }, (_) => {
+    echomsg printf('lsp: %s', ActionTitle(action))
   })
 enddef
 
@@ -2633,12 +2661,17 @@ export def RenameFile(newname: string)
   if delete(old) != 0
     util.WarningMsg('could not remove ' .. old)
   endif
+  var heard = false
   if told
     Attach()
     if WantsFileOp(cl, 'didRename', new)
       lspclient.Notify(cl, 'workspace/didRenameFiles', {files: files})
+      heard = true
     endif
   endif
+  echomsg printf('lsp: %s is now %s%s', fnamemodify(old, ':t'),
+		 fnamemodify(new, ':t'),
+		 heard ? ', the server was told' : '')
 enddef
 
 # A server may report on its own with "textDocument/publishDiagnostics", or

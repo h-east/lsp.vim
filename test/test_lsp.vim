@@ -293,9 +293,23 @@ def g:Test_renaming_a_file_takes_what_refers_to_it_along()
 
   assert_true(t.WaitFor(() => !t.Sent('workspace/didRenameFiles')->empty()),
 	      'the server should be told it moved')
+  assert_match('Xsrc\.c is now Xsrc_moved\.c, the server was told',
+	       LastMessage())
   var told = t.Sent('workspace/didRenameFiles')[0].params.files[0]
   assert_match('Xsrc\.c$', told.oldUri)
   assert_match('_moved\.c$', told.newUri)
+enddef
+
+def g:Test_the_commands_say_what_they_did()
+  assert_true(t.StartServer({capabilities: SYNC}, ['int one;']))
+
+  LspStart
+  assert_match('already has a server', LastMessage())
+
+  LspStop
+  assert_match('1 server stopped', LastMessage())
+  LspStop
+  assert_match('no server was running', LastMessage())
 enddef
 
 def g:Test_a_file_that_is_there_is_not_written_over()

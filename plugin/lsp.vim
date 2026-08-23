@@ -30,8 +30,8 @@ if !exists('g:lsp_client_config')
   g:lsp_client_config = {}
 endif
 
-command! -bar LspStart      lsp.Attach()
-command! -bar LspStop       lsp.Stop()
+command! -bar LspStart      lsp.Attach(true)
+command! -bar LspStop       lsp.Stop(true)
 command! -bar LspStatus     lsp.Status()
 command! -bar LspHover      lsp.Hover()
 command! -bar LspDefinition lsp.Definition()
