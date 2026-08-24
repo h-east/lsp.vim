@@ -29,6 +29,7 @@
 :LspTypeDefinition	lsp.txt	/*:LspTypeDefinition*
 :LspWorkspaceFolderAdd	lsp.txt	/*:LspWorkspaceFolderAdd*
 :LspWorkspaceFolderRemove	lsp.txt	/*:LspWorkspaceFolderRemove*
+g:loaded_lsp_vim	lsp.txt	/*g:loaded_lsp_vim*
 g:lsp_client_config	lsp.txt	/*g:lsp_client_config*
 g:lsp_server_list	lsp.txt	/*g:lsp_server_list*
 lsp-ai	lsp.txt	/*lsp-ai*

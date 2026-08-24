@@ -66,8 +66,8 @@ first, and the write waits for the answer; "will_save" in
 
 Vim 9.2.970 or later, with the |+job| and |+channel| features.  That patch is
 what lets |listener_add()| ask for the text of a change, which is how a buffer
-is kept in step with the server.  Without it, or without the features, the
-plugin loads nothing and defines no command.
+is kept in step with the server.  Without it, or without the features, nothing
+of the plugin is set up and |:LspStatus| is left to say what is missing.
 
 A language server for the language you work in.  It has to be installed
 separately, none is shipped with Vim.
@@ -218,6 +218,18 @@ g:lsp_client_config
 		|:LspInlayHint|, |:LspCodeLens|, |:LspFolding| and
 		|:LspSemanticTokens| write into this Dictionary, so what they
 		turn on stays on for the rest of the session.
+
+							*g:loaded_lsp_vim*
+g:loaded_lsp_vim
+		Set to 1 while the plugin script is read.  Set it yourself in
+		your |vimrc| to keep the plugin from being loaded at all: >vim
+
+			let g:loaded_lsp_vim = 1
+<
+		It says the script has been read, not that there is anything
+		to use: on a Vim missing what |lsp-requirements| asks for the
+		script stops early, and only |:LspStatus| is defined.  Whether
+		the plugin has something to offer is `exists(':LspStart')`.
 
 ==============================================================================
 4. Commands							*lsp-commands*

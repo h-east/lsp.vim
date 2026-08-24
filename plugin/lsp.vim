@@ -8,6 +8,11 @@ vim9script
 # package loaded with "packadd! lsp.vim", and describe the servers to use in
 # g:lsp_server_list.  See |lsp.txt|.
 
+if exists('g:loaded_lsp_vim')
+  finish
+endif
+g:loaded_lsp_vim = 1
+
 # Patch 9.2.970 is what lets listener_add() ask for the text of a change,
 # which is how the buffer is kept in step with the server.
 if !has('job') || !has('channel') || !has('patch-9.2.970')
