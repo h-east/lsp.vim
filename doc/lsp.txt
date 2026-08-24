@@ -175,6 +175,14 @@ g:lsp_client_config
 				|:LspSignature|.  See |lsp-signature|.
 				Default: |v:true|
 
+		snippet		When true, the server is told this client
+				takes snippets, and it answers with them
+				where it has one.  Off by default: what a
+				snippet puts in is of use only with the
+				mappings of |lsp-snippet|, and this client
+				binds none of them for you.
+				Default: |v:false|
+
 		inlay_hint	When true, the names and types a server fills
 				in are shown in the window.  Off by default:
 				this puts text on screen that the file does
@@ -525,6 +533,11 @@ it is still reading the file.
 The kind of an item is shown as the single letter |complete-items| asks for.
 
 							*lsp-snippet*
+Set "snippet" in |g:lsp_client_config| to |v:true| for the server to be told
+that snippets are taken; with it off a function comes back as its name and
+nothing else, and what a server offers as a snippet alone, "for" in C for
+instance, is not offered at all.
+
 An item may be a snippet, which is text with tab stops in it: "$1", "${2:a
 name}", and "$0" for where the cursor ends up last of all.  Taking one puts
 the text in with the stops taken out and what they stand for left where it is,

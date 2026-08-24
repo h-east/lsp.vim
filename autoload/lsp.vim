@@ -42,6 +42,7 @@ const DEFAULTS = {
   document_highlight: true,
   highlight_delay: 300,
   signature_help: true,
+  snippet: false,
   inlay_hint: false,
   code_lens: false,
   folding: false,
@@ -475,7 +476,8 @@ export def Attach(loud: bool = false)
   var key = ClientFor(config.name, root)
   if key->empty()
     key = ClientKey(config.name, root)
-    var fresh = lspclient.Start(config, root, OnReady)
+    var fresh = lspclient.Start(config, root, OnReady,
+				Setting('snippet'))
     if fresh->empty()
       return
     endif

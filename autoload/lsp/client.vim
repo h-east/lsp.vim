@@ -36,7 +36,7 @@ export def SetRequestHandler(
   RequestHandler = Handler
 enddef
 
-def ClientCapabilities(): dict<any>
+def ClientCapabilities(snippet: bool): dict<any>
   return {
     general: {
       # UTF-8 first: that is what Vim counts in anyway, so a position needs
@@ -56,7 +56,9 @@ def ClientCapabilities(): dict<any>
 	dynamicRegistration: false,
 	contextSupport: false,
 	completionItem: {
-	  snippetSupport: true,
+	  # Off unless it was asked for: what a snippet puts in needs the
+	  # mappings of |lsp-snippet| to be of use.
+	  snippetSupport: snippet,
 	  documentationFormat: ['plaintext', 'markdown'],
 	  # Not asking for labelDetailsSupport on purpose: a server that has it
 	  # leaves a bare name in "label", while the menu reads better with the
@@ -351,7 +353,7 @@ def Initialize(client: dict<any>, OnReady: func(dict<any>))
     workspaceFolders: client.folders->mapnew((_, folder) =>
 	  ({uri: util.PathToUri(folder),
 	    name: fnamemodify(folder, ':t')})),
-    capabilities: ClientCapabilities(),
+    capabilities: ClientCapabilities(client.snippet),
     trace: 'off',
   }
   # The shape of this is up to the server, so it goes out as written.  Left
@@ -380,7 +382,7 @@ enddef
 
 # Returns an empty Dict when the server could not be started.
 export def Start(config: dict<any>, root: string,
-			      OnReady: func(dict<any>)): dict<any>
+		 OnReady: func(dict<any>), snippet: bool = false): dict<any>
   if !executable(config.cmd[0])
     util.ErrorMsg('cannot execute "' .. config.cmd[0] .. '"')
     return {}
@@ -389,6 +391,7 @@ export def Start(config: dict<any>, root: string,
   var client: dict<any> = {
     name: config.name,
     config: config,
+    snippet: snippet,
     root: root,
     running: false,
     stopping: false,

@@ -131,7 +131,8 @@ process per root.
 ## What it does
 
 - Completion through `'omnifunc'`, including `completionItem/resolve` for the
-  info popup and snippets whose stops can be stepped through
+  info popup, and snippets whose stops can be stepped through once `snippet`
+  is turned on
 - Diagnostics as signs, text highlights and a message on the cursor line,
   whether the server sends them or waits to be asked
 - Signature help while a call is being typed
@@ -214,7 +215,7 @@ would be felt first:
 - [x] Dynamic registration and `workspace/didChangeWatchedFiles`, as far as
       Vim can tell that a file changed
 - [x] Snippets, `insertTextFormat` 2, stepped through with
-      `<Plug>(lsp-snippet-next)`
+      `<Plug>(lsp-snippet-next)`, asked for with `snippet`
 
 Worth having:
 

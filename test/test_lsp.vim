@@ -25,6 +25,19 @@ def g:Test_the_plugin_can_be_read_again()
   assert_true(t.StartServer({capabilities: SYNC}, ['int one;']))
 enddef
 
+def g:Test_snippets_are_asked_for_only_when_they_are_wanted()
+  assert_true(t.StartServer({capabilities: SYNC}, ['int one;']))
+  var caps = t.Sent('initialize')[0].params.capabilities
+  assert_false(caps.textDocument.completion.completionItem.snippetSupport)
+
+  t.StopServer()
+  g:lsp_client_config = {snippet: true}
+  defer remove(g:, 'lsp_client_config')
+  assert_true(t.StartServer({capabilities: SYNC}, ['int one;']))
+  caps = t.Sent('initialize')[0].params.capabilities
+  assert_true(caps.textDocument.completion.completionItem.snippetSupport)
+enddef
+
 def g:Test_what_a_server_takes_at_startup_is_handed_over()
   const OPTIONS = {semanticTokens: true, analyses: {unusedparams: true}}
   assert_true(t.StartServer({capabilities: SYNC}, ['int one;'],
