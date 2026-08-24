@@ -500,6 +500,22 @@ it takes over, and the old value is restored when the buffer is detached.  Set
 "omnifunc" in |g:lsp_client_config| to |v:false| to keep what the 'filetype'
 plugin chose.
 
+						      *lsp#AutoComplete()*
+For 'autocomplete', where Vim asks on its own as the text is typed, put
+"Flsp#AutoComplete" in 'complete' rather than "o": >vim
+
+	setlocal complete^=Flsp#AutoComplete
+<
+That one asks the server where a word has begun, and where the character
+before the cursor is one the server named as a trigger, "." for instance.
+Nowhere else: nobody asked for a menu after a bracket or a space, and there is
+nothing to narrow it down with there either.  |i_CTRL-X_CTRL-O| goes through
+'omnifunc' and is asked for by hand, so that one still reaches the server
+wherever the cursor stands.
+
+Putting "o" in 'complete' names 'omnifunc' itself, which leaves Vim asking the
+server after every key.
+
 Unlike the other requests this one waits for its answer, because a completion
 function has to return the matches itself.  "completion_timeout" bounds how
 long a keystroke can block that way.  When the time runs out a message says so

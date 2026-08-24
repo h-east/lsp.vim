@@ -107,6 +107,59 @@ def g:Test_diagnostics_reach_the_location_list()
   lclose
 enddef
 
+const TRIGGERS = {resolveProvider: false, triggerCharacters: ['.']}
+
+# What Vim asks on its own, rather than 'omnifunc': "keys" is typed at the end
+# of "line", which is what drives the completion.  Only one character is
+# typed, so what goes out is what that character brought on.
+def TypeInto(line: string, keys: string): bool
+  var ok = t.StartServer({
+    capabilities: Offering({completionProvider: TRIGGERS}),
+    replies: {'textDocument/completion': {isIncomplete: false, items: []}},
+  }, ['int main(void)', '{', line, '}'])
+  setlocal complete=Flsp#AutoComplete
+  setlocal autocomplete
+  # Autocompletion holds off while a key is waiting, which is all feedkeys()
+  # ever leaves.
+  test_override('char_avail', 1)
+  cursor(3, 1)
+  feedkeys('A' .. keys .. "\<Esc>", 'tx')
+  return ok
+enddef
+
+def CleanUp()
+  test_override('ALL', 0)
+  setlocal noautocomplete
+  setlocal complete=.,w,b,u,t,i
+enddef
+
+def g:Test_nothing_is_asked_for_where_a_word_does_not_start()
+  assert_true(TypeInto('    ', '('))
+  assert_false(t.WaitFor(() =>
+			 !t.Sent('textDocument/completion')->empty(), 200),
+	       'the server should be left alone after a bracket')
+  CleanUp()
+enddef
+
+def g:Test_a_trigger_character_is_a_place_to_complete()
+  assert_true(TypeInto('    (', '.'))
+  assert_true(t.WaitFor(() => !t.Sent('textDocument/completion')->empty()),
+	      'the server should be asked after a trigger character')
+  CleanUp()
+enddef
+
+def g:Test_what_is_asked_for_by_hand_reaches_the_server_anywhere()
+  assert_true(t.StartServer({
+    capabilities: Offering({completionProvider: TRIGGERS}),
+    replies: {'textDocument/completion': {isIncomplete: false, items: []}},
+  }, ['int main(void)', '{', '    f(', '}']))
+
+  cursor(3, 1)
+  feedkeys("A\<C-X>\<C-O>\<Esc>", 'tx')
+  assert_true(t.WaitFor(() => !t.Sent('textDocument/completion')->empty()),
+	      'CTRL-X CTRL-O should ask even after a bracket')
+enddef
+
 def g:Test_the_edits_around_a_completed_word()
   const ITEM = {
     label: 'printf',

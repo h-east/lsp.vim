@@ -2237,8 +2237,25 @@ def ItemMatches(item: dict<any>, base: string): bool
   return against->tolower()->stridx(base->tolower()) == 0
 enddef
 
-# 'omnifunc' for a buffer with a server, see |complete-functions|.
+def CompletionTrigger(cl: dict<any>, typed: string): bool
+  var provider = cl.capabilities->get('completionProvider', {})
+  return type(provider) == v:t_dict
+	  && index(provider->get('triggerCharacters', []), typed) >= 0
+enddef
+
+# 'omnifunc' for a buffer with a server, see |complete-functions|.  Asked for
+# by hand, so it goes to the server wherever the cursor stands.
 export def OmniFunc(findstart: number, base: string): any
+  return Complete(findstart, base, false)
+enddef
+
+# For 'complete', where Vim asks on its own as the text is typed.  See
+# |lsp-completion|.
+export def AutoComplete(findstart: number, base: string): any
+  return Complete(findstart, base, true)
+enddef
+
+def Complete(findstart: number, base: string, unasked: bool): any
   var cl = BufClient(bufnr('%'))
   if cl->empty() || !cl.initialized
     return findstart ? -3 : []
@@ -2253,6 +2270,12 @@ export def OmniFunc(findstart: number, base: string): any
     }
     var before = strpart(started.line, 0, started.cursor)
     started.word = strlen(before) - strlen(matchstr(before, '\k*$'))
+    # Nobody asked for this one: a word to go on, or a character the server
+    # named as a trigger, is what makes it a place to complete.
+    if unasked && started.word == started.cursor
+	  && !CompletionTrigger(cl, before->slice(-1))
+      return -3
+    endif
     return started.word
   endif
 

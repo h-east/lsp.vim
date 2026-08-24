@@ -81,8 +81,10 @@ to, so a few options decide whether much of this shows up at all:
 
 ```vim
 def LspBuffer()
-  # 'autocomplete' offers what 'complete' names, so "o" has to be in it.
-  setlocal complete^=o
+  # 'autocomplete' offers what 'complete' names.  This one asks the server
+  # where a word has begun or after a character the server calls a trigger,
+  # rather than after every key the way "o" would.
+  setlocal complete^=Flsp#AutoComplete
   setlocal autocomplete
   # "menuone" for a single match, "popup" for the resolved documentation.
   setlocal completeopt=menuone,popup
