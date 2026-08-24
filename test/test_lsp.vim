@@ -276,6 +276,43 @@ def g:Test_the_stops_of_a_snippet_are_stepped_through()
   assert_equal('    demo(A, B)!', getline(3))
 enddef
 
+def g:Test_the_next_snippet_starts_at_its_own_first_stop()
+  const ITEM = {
+    label: 'demo',
+    filterText: 'demo',
+    insertTextFormat: 2,
+    kind: 3,
+    textEdit: {
+      range: {start: {line: 2, character: 4}, end: {line: 2, character: 4}},
+      newText: 'demo(${1:int a}, ${2:int b})',
+    },
+  }
+  assert_true(t.StartServer({
+    capabilities: Offering({completionProvider: {resolveProvider: false}}),
+    replies: {'textDocument/completion': {isIncomplete: false, items: [ITEM]}},
+  }, ['int main(void)', '{', '    dem', '}']))
+
+  imap <buffer> <F5> <Plug>(lsp-snippet-next)
+  smap <buffer> <F5> <Plug>(lsp-snippet-next)
+
+  # Step into the first one, so that there is something to be left behind.
+  cursor(3, 7)
+  feedkeys("A\<C-X>\<C-O>\<C-Y>", 'tx')
+  feedkeys("i\<F5>\<F5>\<Esc>", 'tx')
+
+  # Another one, with a line of its own above it: taking an item with CTRL-Y
+  # while the cursor is moved from CompleteDone copies a character from the
+  # line above, which an empty one has none of.
+  append(3, ['', '    dem'])
+  cursor(5, 7)
+  feedkeys("A\<C-X>\<C-O>\<C-Y>", 'tx')
+  assert_equal('    demo(int a, int b)', getline(5))
+
+  # Stepping on reaches the first stop of the new one, rather than carrying
+  # on from where the one before was left.
+  assert_match('cursor(5, 10)', lsp#SnippetKeys(1))
+enddef
+
 def Answered(id: string): list<dict<any>>
   return t.Trace()->filter((_, m) => string(m->get('id', '')) ==# "'" .. id
 								      .. "'")

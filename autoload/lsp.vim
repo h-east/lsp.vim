@@ -2439,6 +2439,8 @@ def PutText(lnum: number, from: number, to: number, text: string,
   endif
 
   ClearSnippet()
+  # The stops of the one before are gone, and so is how far it was stepped.
+  b:lsp_snippet_at = 0
   if !stops->empty()
     AddStopType()
   endif
