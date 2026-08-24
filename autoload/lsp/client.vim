@@ -234,25 +234,12 @@ def OnStderr(client: dict<any>, ch: channel, msg: string)
   endif
 enddef
 
-# Vim frames a message itself, but it only answers a request whose id is a
-# Number.  A server naming its requests with a string is answered by writing
-# the message out here instead.
-def Send(client: dict<any>, msg: dict<any>)
-  if type(msg.id) == v:t_number
-    ch_sendexpr(client.channel, msg)
-    return
-  endif
-  var body = extend({jsonrpc: '2.0'}, msg)->json_encode()
-  ch_sendraw(client.channel,
-	     printf("Content-Length: %d\r\n\r\n%s", strlen(body), body))
-enddef
-
 def Respond(client: dict<any>, id: any, result: any)
-  Send(client, {id: id, result: result})
+  ch_sendexpr(client.channel, {id: id, result: result})
 enddef
 
 def RespondError(client: dict<any>, id: any, code: number, message: string)
-  Send(client, {id: id, error: {code: code, message: message}})
+  ch_sendexpr(client.channel, {id: id, error: {code: code, message: message}})
 enddef
 
 # A message that is not a reply to one of our requests: a notification, or a

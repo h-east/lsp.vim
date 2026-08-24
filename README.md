@@ -13,9 +13,10 @@ a plugin its author leans on all day.
 
 ## Requirements
 
-- Vim 9.2.970 or later, with the `+job` and `+channel` features.  That patch
-  is what lets `listener_add()` ask for the text of a change, which is how a
-  buffer is kept in step with the server.
+- Vim 9.2.0997 or later, with the `+job` and `+channel` features.  That patch
+  is what lets `ch_sendexpr()` answer a request the server named with a
+  string, and 9.2.0970 before it is what lets `listener_add()` ask for the
+  text of a change, which is how a buffer is kept in step with the server.
 - A language server for the language you work in, installed separately
 
 ## Installation

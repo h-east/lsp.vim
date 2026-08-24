@@ -64,10 +64,12 @@ first, and the write waits for the answer; "will_save" in
 ==============================================================================
 2. Requirements						*lsp-requirements*
 
-Vim 9.2.970 or later, with the |+job| and |+channel| features.  That patch is
-what lets |listener_add()| ask for the text of a change, which is how a buffer
-is kept in step with the server.  Without it, or without the features, nothing
-of the plugin is set up and |:LspStatus| is left to say what is missing.
+Vim 9.2.0997 or later, with the |+job| and |+channel| features.  That patch is
+what lets |ch_sendexpr()| answer a request the server named with a string, and
+9.2.0970 before it is what lets |listener_add()| ask for the text of a change,
+which is how a buffer is kept in step with the server.  Without them, or
+without the features, nothing of the plugin is set up and |:LspStatus| is left
+to say what is missing.
 
 A language server for the language you work in.  It has to be installed
 separately, none is shipped with Vim.
