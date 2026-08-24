@@ -1,4 +1,4 @@
-vim9script
+vim9script noclear
 
 # LSP client for Vim
 # Maintainer: Hirohito Higashi <h.east.727@gmail.com>

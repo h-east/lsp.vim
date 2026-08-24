@@ -15,6 +15,16 @@ def Offering(what: dict<any>): dict<any>
   return extend(SYNC->copy(), what)
 enddef
 
+# The guard finishes before anything is defined again, so a second read must
+# leave what the first one put there alone.
+def g:Test_the_plugin_can_be_read_again()
+  const PLUGIN = fnamemodify(t.SRC, ':h:h') .. '/plugin/lsp.vim'
+  execute 'source ' .. fnameescape(PLUGIN)
+
+  # Attaching runs a script-local function of that script.
+  assert_true(t.StartServer({capabilities: SYNC}, ['int one;']))
+enddef
+
 def g:Test_what_a_server_takes_at_startup_is_handed_over()
   const OPTIONS = {semanticTokens: true, analyses: {unusedparams: true}}
   assert_true(t.StartServer({capabilities: SYNC}, ['int one;'],
