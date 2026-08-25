@@ -1,0 +1,38 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build Vim
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libncurses-dev
+          git clone --depth 1 https://github.com/vim/vim.git "$RUNNER_TEMP/vim"
+          cd "$RUNNER_TEMP/vim"
+          ./configure --prefix="$HOME/vim" \
+              --enable-gui=no --without-x --disable-nls
+          make -j"$(nproc)"
+          make install
+          echo "$HOME/vim/bin" >> "$GITHUB_PATH"
+
+      - name: Run the tests
+        run: |
+          vim --version | head -1
+          cd test && ./run
