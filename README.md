@@ -1,5 +1,8 @@
 # lsp.vim
 
+[![Test](https://github.com/h-east/lsp.vim/actions/workflows/test.yml/badge.svg)](https://github.com/h-east/lsp.vim/actions/workflows/test.yml)
+[![Update doc/tags](https://github.com/h-east/lsp.vim/actions/workflows/update-doc-tags.yml/badge.svg)](https://github.com/h-east/lsp.vim/actions/workflows/update-doc-tags.yml)
+
 A Language Server Protocol client for Vim, written in Vim9 script.
 
 Vim frames the protocol messages and matches replies to requests itself, so
