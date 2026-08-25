@@ -2,6 +2,7 @@
 
 [![Test](https://github.com/h-east/lsp.vim/actions/workflows/test.yml/badge.svg)](https://github.com/h-east/lsp.vim/actions/workflows/test.yml)
 [![Update doc/tags](https://github.com/h-east/lsp.vim/actions/workflows/update-doc-tags.yml/badge.svg)](https://github.com/h-east/lsp.vim/actions/workflows/update-doc-tags.yml)
+[![Vim 9.2.0997+](https://img.shields.io/badge/Vim-9.2.0997%2B-015b01?logo=vim&logoColor=white)](#requirements)
 
 A Language Server Protocol client for Vim, written in Vim9 script.
 
