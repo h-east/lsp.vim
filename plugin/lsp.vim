@@ -13,14 +13,13 @@ if exists('g:loaded_lsp_vim')
 endif
 g:loaded_lsp_vim = 1
 
-# Patch 9.2.0997 is what lets ch_sendexpr() answer a request the server named
-# with a string; 9.2.0970 before it is what lets listener_add() ask for the
-# text of a change, which is how the buffer is kept in step with the server.
-if !has('job') || !has('channel') || !has('patch-9.2.0997')
+# Patch 9.2.1004 is what lets a completion function tell whether Vim asked on
+# its own or a key asked for a menu.
+if !has('job') || !has('channel') || !has('patch-9.2.1004')
   # Nothing is said on startup, so leave one command to ask.
   def Unsupported()
     echohl WarningMsg
-    echomsg 'lsp: needs Vim 9.2.0997 with +job and +channel'
+    echomsg 'lsp: needs Vim 9.2.1004 with +job and +channel'
     echohl None
   enddef
   command! -bar LspStatus Unsupported()

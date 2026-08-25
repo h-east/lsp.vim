@@ -20,7 +20,7 @@ execute 'source ' .. fnameescape(PLUGIN .. '/plugin/lsp.vim')
 # every test failing on a missing command.  Say what is wrong instead.
 if !exists(':LspStart')
   writefile(['This Vim cannot run the plugin, so nothing was tested.',
-	     'It needs 9.2.0997 or later with +job and +channel; this one is '
+	     'It needs 9.2.1004 or later with +job and +channel; this one is '
 	     .. v:versionlong .. (has('job') ? '' : ' without +job')
 	     .. (has('channel') ? '' : ' without +channel') .. '.',
 	     'Name another with $VIMPROG:',

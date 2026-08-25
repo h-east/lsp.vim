@@ -130,7 +130,7 @@ def TypeInto(line: string, keys: string): bool
     capabilities: Offering({completionProvider: TRIGGERS}),
     replies: {'textDocument/completion': {isIncomplete: false, items: []}},
   }, ['int main(void)', '{', line, '}'])
-  setlocal complete=Flsp#AutoComplete
+  setlocal complete=o
   setlocal autocomplete
   # Autocompletion holds off while a key is waiting, which is all feedkeys()
   # ever leaves.
@@ -171,6 +171,22 @@ def g:Test_what_is_asked_for_by_hand_reaches_the_server_anywhere()
   feedkeys("A\<C-X>\<C-O>\<Esc>", 'tx')
   assert_true(t.WaitFor(() => !t.Sent('textDocument/completion')->empty()),
 	      'CTRL-X CTRL-O should ask even after a bracket')
+enddef
+
+# A key asking through the entry in 'complete' is not held to a place worth
+# completing at, the way what Vim asks on its own is.
+def g:Test_a_key_asking_through_complete_reaches_the_server_too()
+  assert_true(t.StartServer({
+    capabilities: Offering({completionProvider: TRIGGERS}),
+    replies: {'textDocument/completion': {isIncomplete: false, items: []}},
+  }, ['int main(void)', '{', '    f(', '}']))
+
+  setlocal complete=o
+  cursor(3, 1)
+  feedkeys("A\<C-N>\<Esc>", 'tx')
+  assert_true(t.WaitFor(() => !t.Sent('textDocument/completion')->empty()),
+	      'CTRL-N should ask even after a bracket')
+  CleanUp()
 enddef
 
 def g:Test_the_edits_around_a_completed_word()

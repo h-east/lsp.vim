@@ -32,7 +32,7 @@
 g:loaded_lsp_vim	lsp.txt	/*g:loaded_lsp_vim*
 g:lsp_client_config	lsp.txt	/*g:lsp_client_config*
 g:lsp_server_list	lsp.txt	/*g:lsp_server_list*
-lsp#AutoComplete()	lsp.txt	/*lsp#AutoComplete()*
+lsp#OmniFunc()	lsp.txt	/*lsp#OmniFunc()*
 lsp-ai	lsp.txt	/*lsp-ai*
 lsp-code-lens	lsp.txt	/*lsp-code-lens*
 lsp-commands	lsp.txt	/*lsp-commands*

@@ -2,7 +2,7 @@
 
 [![Test](https://github.com/h-east/lsp.vim/actions/workflows/test.yml/badge.svg)](https://github.com/h-east/lsp.vim/actions/workflows/test.yml)
 [![Update doc/tags](https://github.com/h-east/lsp.vim/actions/workflows/update-doc-tags.yml/badge.svg)](https://github.com/h-east/lsp.vim/actions/workflows/update-doc-tags.yml)
-[![Vim 9.2.0997+](https://img.shields.io/badge/Vim-9.2.0997%2B-015b01?logo=vim&logoColor=white)](#requirements)
+[![Vim 9.2.1004+](https://img.shields.io/badge/Vim-9.2.1004%2B-015b01?logo=vim&logoColor=white)](#requirements)
 
 A Language Server Protocol client for Vim, written in Vim9 script.
 
@@ -17,9 +17,10 @@ a plugin its author leans on all day.
 
 ## Requirements
 
-- Vim 9.2.0997 or later, with the `+job` and `+channel` features.  That patch
-  is what lets `ch_sendexpr()` answer a request the server named with a
-  string, and 9.2.0970 before it is what lets `listener_add()` ask for the
+- Vim 9.2.1004 or later, with the `+job` and `+channel` features.  That patch
+  is what lets a completion function tell whether Vim asked on its own,
+  9.2.0997 before it is what lets `ch_sendexpr()` answer a request the server
+  named with a string, and 9.2.0970 what lets `listener_add()` ask for the
   text of a change, which is how a buffer is kept in step with the server.
 - A language server for the language you work in, installed separately
 
@@ -85,10 +86,9 @@ to, so a few options decide whether much of this shows up at all:
 
 ```vim
 def LspBuffer()
-  # 'autocomplete' offers what 'complete' names.  This one asks the server
-  # where a word has begun or after a character the server calls a trigger,
-  # rather than after every key the way "o" would.
-  setlocal complete^=Flsp#AutoComplete
+  # 'autocomplete' offers what 'complete' names, and "o" names 'omnifunc',
+  # which the plugin has set.
+  setlocal complete^=o
   setlocal autocomplete
   # "menuone" for a single match, "popup" for the resolved documentation.
   setlocal completeopt=menuone,popup

@@ -64,12 +64,13 @@ first, and the write waits for the answer; "will_save" in
 ==============================================================================
 2. Requirements						*lsp-requirements*
 
-Vim 9.2.0997 or later, with the |+job| and |+channel| features.  That patch is
-what lets |ch_sendexpr()| answer a request the server named with a string, and
-9.2.0970 before it is what lets |listener_add()| ask for the text of a change,
-which is how a buffer is kept in step with the server.  Without them, or
-without the features, nothing of the plugin is set up and |:LspStatus| is left
-to say what is missing.
+Vim 9.2.1004 or later, with the |+job| and |+channel| features.  That patch is
+what lets a completion function tell whether Vim asked on its own, 9.2.0997
+before it is what lets |ch_sendexpr()| answer a request the server named with
+a string, and 9.2.0970 what lets |listener_add()| ask for the text of a
+change, which is how a buffer is kept in step with the server.  Without them,
+or without the features, nothing of the plugin is set up and |:LspStatus| is
+left to say what is missing.
 
 A language server for the language you work in.  It has to be installed
 separately, none is shipped with Vim.
@@ -511,21 +512,22 @@ it takes over, and the old value is restored when the buffer is detached.  Set
 "omnifunc" in |g:lsp_client_config| to |false| to keep what the 'filetype'
 plugin chose.
 
-						      *lsp#AutoComplete()*
-For 'autocomplete', where Vim asks on its own as the text is typed, put
-"Flsp#AutoComplete" in 'complete' rather than "o": >vim9
+							*lsp#OmniFunc()*
+For 'autocomplete', where Vim asks on its own as the text is typed, put "o"
+in 'complete', which names the 'omnifunc' the plugin has set: >vim9
 
-	setlocal complete^=Flsp#AutoComplete
+	setlocal complete^=o
 <
-That one asks the server where a word has begun, and where the character
-before the cursor is one the server named as a trigger, "." for instance.
-Nowhere else: nobody asked for a menu after a bracket or a space, and there is
-nothing to narrow it down with there either.  |i_CTRL-X_CTRL-O| goes through
-'omnifunc' and is asked for by hand, so that one still reaches the server
-wherever the cursor stands.
+"Flsp#OmniFunc" names it directly, for a buffer where 'omnifunc' was left to
+the 'filetype' plugin.
 
-Putting "o" in 'complete' names 'omnifunc' itself, which leaves Vim asking the
-server after every key.
+Where Vim asked on its own, the server is reached where a word has begun, and
+where the character before the cursor is one the server named as a trigger,
+"." for instance.  Nowhere else: nobody asked for a menu after a bracket or a
+space, and there is nothing to narrow it down with there either.
+
+Where a key asked for the menu, |i_CTRL-X_CTRL-O| or |i_CTRL-N|, the server is
+reached wherever the cursor stands.
 
 Unlike the other requests this one waits for its answer, because a completion
 function has to return the matches itself.  "completion_timeout" bounds how
