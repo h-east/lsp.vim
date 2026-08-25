@@ -1,0 +1,48 @@
+name: Update doc/tags
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'doc/*.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-doc-tags
+  cancel-in-progress: false
+
+jobs:
+  update-doc-tags:
+    if: github.repository == 'h-east/lsp.vim'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Vim
+        run: |
+          if ! command -v vim >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends vim
+          fi
+
+      - name: Generate help tags
+        run: |
+          vim --clean -es \
+            -c 'try | helptags doc | catch | call writefile([v:exception], "/dev/stderr") | cquit | endtry' \
+            -c 'qa!' < /dev/null
+          test -s doc/tags
+
+      - name: Commit and push when changed
+        run: |
+          if git diff --quiet -- doc/tags; then
+            echo 'doc/tags is already up to date'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Update doc/tags' -- doc/tags
+          git push
