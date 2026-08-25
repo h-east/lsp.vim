@@ -4,6 +4,10 @@ vim9script
 const HERE = expand('<sfile>:p:h')
 const SCENARIO = HERE .. '/Xscenario.json'
 const TRACE = HERE .. '/Xtrace.jsonl'
+# What runs fakeserver.py.  Windows installs "python", elsewhere it is
+# "python3"; $PYTHON names another one.
+const PYTHON = !empty($PYTHON) ? $PYTHON
+	    : !empty(exepath('python3')) ? 'python3' : 'python'
 
 # Waits for something to become true, checking often enough that a test does
 # not spend its time asleep.
@@ -38,7 +42,7 @@ export def StartServer(scenario: dict<any>, lines: list<string>,
   g:lsp_server_list = [extend({
     name: 'fake',
     filetypes: ['c'],
-    cmd: ['python3', HERE .. '/fakeserver.py'],
+    cmd: [PYTHON, HERE .. '/fakeserver.py'],
     rootPatterns: ['.git'],
   }, server)]
 

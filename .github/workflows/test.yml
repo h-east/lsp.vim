@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -35,4 +35,39 @@ jobs:
       - name: Run the tests
         run: |
           vim --version | head -1
+          cd test && ./run
+
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # The tests write files and read them back, so they have to come out
+      # the way they went in.
+      - name: Leave the line endings alone
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v5
+
+      # Building Vim here would want MSVC; these are the same sources,
+      # already built, and new enough for the plugin.
+      - name: Take the newest Vim built for Windows
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          url=$(gh api repos/vim/vim-win32-installer/releases/latest \
+                --jq '.assets[]
+                      | select(.name | test("^gvim_.*_x64\\.zip$"))
+                      | .browser_download_url')
+          echo "$url"
+          curl -sSLo "$HOME/gvim.zip" "$url"
+          unzip -q "$HOME/gvim.zip" -d "$HOME/vim-win"
+          # vim-launcher holds a stub that looks for an installed Vim.
+          echo "VIMPROG=$(find "$HOME/vim-win" -name vim.exe \
+              -not -path '*/vim-launcher/*' | head -n 1)" >> "$GITHUB_ENV"
+
+      - name: Run the tests
+        run: |
+          "$VIMPROG" --version | head -1
           cd test && ./run
