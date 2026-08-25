@@ -592,7 +592,10 @@ enddef
 # A path as the folders are held: absolute, and without the trailing slash
 # that would keep it from matching.
 def AsFolder(path: string): string
-  return fnamemodify(path, ':p')->substitute('/\+$', '', '')
+  # ":p" ends a directory with a separator, a backslash on Windows.  What is
+  # left has to be the folder itself: its tail is the name sent to a server.
+  return fnamemodify(path, ':p')
+	    ->substitute(has('win32') ? '[\\/]\+$' : '/\+$', '', '')
 enddef
 
 export def WorkspaceFolderAdd(path: string)
