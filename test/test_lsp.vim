@@ -1183,6 +1183,27 @@ def g:Test_the_signature_goes_with_the_call_it_describes()
   assert_equal(3, len(t.Sent('textDocument/signatureHelp')))
 enddef
 
+def g:Test_the_signature_stands_over_the_call_it_describes()
+  popup_clear()
+  defer popup_clear()
+  assert_true(t.StartServer({
+    capabilities: Offering({signatureHelpProvider:
+					      {triggerCharacters: ['(']}}),
+    replies: {'textDocument/signatureHelp': {signatures: [
+		    {label: 'clear_oparg(oparg_T *oap) -> void',
+		     parameters: [{label: 'oparg_T *oap'}]}]}},
+  }, ['    clear_oparg(x)']))
+
+  # As if the "(" had just been typed, with the cursor right after it.
+  cursor(1, 17)
+  doautocmd TextChangedI
+  assert_true(t.WaitFor(() => !popup_list()->empty()),
+	      'the signature should be shown')
+  # The name in the signature over the name of the call, not over the cursor.
+  assert_equal(screenpos(win_getid(), 1, 5).col,
+	       popup_getpos(popup_list()[0]).core_col)
+enddef
+
 def g:Test_inlay_hints_are_put_in_the_window()
   g:lsp_client_config.inlay_hint = true
   defer execute('unlet g:lsp_client_config.inlay_hint')
@@ -1698,6 +1719,133 @@ def g:Test_a_part_the_server_turns_down()
 	      'the turn-down should be reported')
   assert_match('the server does not answer callHierarchy/outgoingCalls',
 	       execute('messages'))
+enddef
+
+# "ascii" rather than a box-drawing style, so that what is drawn does not
+# turn on 'encoding' and 'ambiwidth'.
+def g:Test_a_popup_is_drawn_the_way_it_was_asked_for()
+  assert_true(t.StartServer({
+    capabilities: Offering({hoverProvider: true}),
+    replies: {'textDocument/hover': {contents: 'x'}},
+  }, ['int x;']))
+  defer popup_clear()
+
+  g:lsp_client_config.hover_popup = {
+    opt: 'border:ascii,opacity:80',
+    highlights: 'PopupBorder:ErrorMsg',
+  }
+  defer execute('unlet g:lsp_client_config.hover_popup')
+
+  LspHover
+  assert_true(t.WaitFor(() => !popup_list()->empty()),
+	      'the server should answer with a popup')
+  var opts = popup_getoptions(popup_list()[0])
+  assert_equal(['-', '|', '-', '|', '+', '+', '+', '+'], opts.borderchars)
+  assert_equal(80, opts.opacity)
+  assert_equal('PopupBorder:ErrorMsg', opts.highlights)
+enddef
+
+# A popup nothing was said about takes the border 'pumopt' names, and keeps
+# the one it has always had where 'pumopt' names none.
+def g:Test_a_popup_with_nothing_said_follows_pumopt()
+  assert_true(t.StartServer({
+    capabilities: Offering({hoverProvider: true}),
+    replies: {'textDocument/hover': {contents: 'x'}},
+  }, ['int x;']))
+  defer popup_clear()
+  defer execute('set pumopt=')
+
+  set pumopt=border:ascii
+  LspHover
+  assert_true(t.WaitFor(() => !popup_list()->empty()),
+	      'the server should answer with a popup')
+  assert_equal(['-', '|', '-', '|', '+', '+', '+', '+'],
+	       popup_getoptions(popup_list()[0]).borderchars)
+
+  popup_clear()
+  set pumopt=
+  LspHover
+  assert_true(t.WaitFor(() => !popup_list()->empty()),
+	      'and answer a second time')
+  var opts = popup_getoptions(popup_list()[0])
+  assert_true(opts->has_key('border'),
+	      'the border it has always had, where "pumopt" names none')
+  assert_false(opts->has_key('borderchars'),
+	       'and the characters Vim draws a border with')
+
+  # Only saying so takes it away.
+  popup_clear()
+  g:lsp_client_config.hover_popup = {opt: ''}
+  defer execute('unlet g:lsp_client_config.hover_popup')
+  LspHover
+  assert_true(t.WaitFor(() => !popup_list()->empty()),
+	      'and answer a third time')
+  assert_false(popup_getoptions(popup_list()[0])->has_key('border'),
+	       'no border where the popup was asked for without one')
+enddef
+
+def g:Test_a_popup_asked_for_in_a_way_that_cannot_be_read()
+  # Said as the buffer is taken on, without waiting for the popup itself.
+  g:lsp_client_config.signature_popup = {opt: 'popup:round'}
+  messages clear
+  assert_true(t.StartServer({
+    capabilities: Offering({hoverProvider: true}),
+    replies: {'textDocument/hover': {contents: 'x'}},
+  }, ['int x;']))
+  defer popup_clear()
+  assert_match('g:lsp_client_config.signature_popup: cannot read "popup:round"',
+	       execute('messages'))
+  # And kept, since what a server says as it starts washes it away.
+  assert_match('g:lsp_client_config.signature_popup: cannot read "popup:round"',
+	       execute('LspStatus'))
+  # :LspConfigCheck says the same however often it is asked.
+  for _ in [1, 2]
+    assert_match('g:lsp_client_config.signature_popup: cannot read "popup:round"',
+		 execute('LspConfigCheck'))
+  endfor
+  unlet g:lsp_client_config.signature_popup
+  assert_match('the configuration is good', execute('LspConfigCheck'))
+
+  # The whole of what is configured, not the popups alone.
+  var saved = g:lsp_server_list
+  defer execute('g:lsp_server_list = ' .. string(saved))
+  g:lsp_client_config.hilight_delay = 100
+  defer execute('unlet g:lsp_client_config.hilight_delay')
+  g:lsp_client_config.omnifunc = 'yes'
+  defer execute('g:lsp_client_config.omnifunc = true')
+  g:lsp_server_list = [{name: 1, filetypes: []}]
+  var said = execute('LspConfigCheck')
+  assert_match('has no such key as "hilight_delay"', said)
+  assert_match('"omnifunc" takes true or false', said)
+  assert_match('g:lsp_server_list\[0\]: has no "cmd"', said)
+  assert_match('g:lsp_server_list\[0\]: "name" takes a String', said)
+  assert_match('g:lsp_server_list\[0\]: "filetypes" is empty', said)
+
+  # "popup:" is no key of 'pumopt' and "height:" is one a popup has no use
+  # for; both are said so, and the rest of the string is read all the same.
+  messages clear
+  g:lsp_client_config.hover_popup = {opt: 'popup:round,height:9,opacity:60'}
+  defer execute('unlet g:lsp_client_config.hover_popup')
+  LspHover
+  assert_true(t.WaitFor(() => !popup_list()->empty()),
+	      'the server should answer with a popup')
+  assert_match('cannot read "popup:round"', execute('messages'))
+  assert_match('"height:9" is for the completion menu alone',
+	       execute('messages'))
+  assert_equal(60, popup_getoptions(popup_list()[0]).opacity)
+
+  # The same keys in 'pumopt' are the menu's own, so borrowing them says
+  # nothing.
+  popup_clear()
+  unlet g:lsp_client_config.hover_popup
+  messages clear
+  set pumopt=height:9,margin,border:ascii
+  defer execute('set pumopt=')
+  LspHover
+  assert_true(t.WaitFor(() => !popup_list()->empty()),
+	      'and answer a second time')
+  assert_notmatch('height', execute('messages'))
+  assert_notmatch('margin', execute('messages'))
 enddef
 
 def g:Test_hover_needs_the_server_to_offer_it()

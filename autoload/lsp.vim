@@ -21,7 +21,6 @@ const SYNC_INCREMENTAL = 2
 # How a hover reply is shown.
 const POPUP_OPTIONS = {
   moved: 'any',
-  border: [],
   padding: [0, 1, 0, 1],
   maxwidth: 78,
 }
@@ -30,9 +29,18 @@ const POPUP_OPTIONS = {
 # because a dictionary written inside a lambda block is not accepted there.
 const MENU_OPTIONS = {
   title: ' code action ',
-  border: [],
   padding: [0, 1, 0, 1],
   maxwidth: 78,
+}
+
+# The characters each 'pumopt' border style is drawn with, in the order
+# |popup_create-arguments| takes them: top, right, bottom, left, and the four
+# corners.
+const BORDER_STYLES = {
+  single: ['─', '│', '─', '│', '┌', '┐', '┘', '└'],
+  double: ['═', '║', '═', '║', '╔', '╗', '╝', '╚'],
+  round:  ['─', '│', '─', '│', '╭', '╮', '╯', '╰'],
+  ascii:  ['-', '|', '-', '|', '+', '+', '+', '+'],
 }
 
 # What can be asked for in g:lsp_client_config, and what it is when it is not.
@@ -48,10 +56,104 @@ const DEFAULTS = {
   folding: false,
   semantic_tokens: false,
   will_save: true,
+  hover_popup: {},
+  menu_popup: {},
+  signature_popup: {},
 }
+
+# The popups the plugin puts up.
+const POPUPS = ['hover_popup', 'menu_popup', 'signature_popup']
+
+# What a popup takes, and what a g:lsp_server_list entry takes.
+const POPUP_KEYS = {opt: v:t_string, highlights: v:t_string}
+const SERVER_KEYS = {
+  name: v:t_string,
+  cmd: v:t_list,
+  filetypes: v:t_list,
+  rootPatterns: v:t_list,
+  initializationOptions: v:t_dict,
+}
+const SERVER_NEEDED = ['name', 'cmd', 'filetypes']
 
 def Setting(name: string): any
   return get(g:, 'lsp_client_config', {})->get(name, DEFAULTS[name])
+enddef
+
+# The characters a 'pumopt' border style names.  Empty for a style there is
+# no such thing as.
+def BorderChars(style: string): list<string>
+  if style =~ '^custom:'
+    var chars = split(style[7 : ], ';', true)
+    return len(chars) == 8 ? chars : []
+  endif
+  if !BORDER_STYLES->has_key(style)
+    return []
+  endif
+  # Box-drawing asks the same of 'encoding' and 'ambiwidth' that 'pumopt'
+  # asks; without it there is still "ascii" to draw with.
+  if style !=# 'ascii' && !(&encoding ==# 'utf-8' && &ambiwidth ==# 'single')
+    return BORDER_STYLES.ascii
+  endif
+  return BORDER_STYLES[style]
+enddef
+
+# What 'pumopt' takes that says nothing about a popup.
+const PUMOPT_MENU_ONLY = ['height:', 'width:', 'maxwidth:', 'shadow', 'margin']
+
+# A popup goes up over and over, so a setting is complained about once rather
+# than every time.
+var complained: dict<bool> = {}
+
+def Complain(name: string, msg: string)
+  var said = name .. ': ' .. msg
+  if !complained->has_key(said)
+    complained[said] = true
+    util.WarningMsg(said)
+  endif
+enddef
+
+# What one of the popups is to look like; see |lsp-popup|.  What is written
+# in "opt" is held to meaning something, while 'pumopt', borrowed where
+# nothing was written, is read for what a popup can use.
+def PopupStyle(name: string): dict<any>
+  var where = 'g:lsp_client_config.' .. name
+  var conf: dict<any> = Setting(name)
+  var said = conf->has_key('opt')
+  var opts: dict<any> = {}
+  for token in split(said ? conf.opt : &pumopt, ',')
+    if token =~# '^border:'
+      var chars = BorderChars(token[7 : ])
+      if chars->empty()
+	Complain(where, printf('cannot read "%s"', token))
+      else
+	opts.border = []
+	opts.borderchars = chars
+      endif
+    elseif token =~# '^opacity:'
+      var percent = str2nr(token[8 : ])
+      if token[8 : ] !~ '^\d\+$' || percent > 100
+	Complain(where, printf('cannot read "%s"', token))
+      else
+	opts.opacity = percent
+      endif
+    elseif !said
+      # The menu's own, borrowed with the rest of 'pumopt'.
+    elseif index(PUMOPT_MENU_ONLY, matchstr(token, '^\a\+:\=')) >= 0
+      Complain(where, printf('"%s" is for the completion menu alone', token))
+    else
+      Complain(where, printf('cannot read "%s"', token))
+    endif
+  endfor
+  # A border of its own where nobody named one, so that leaving both this and
+  # 'pumopt' alone leaves the popups as they were.
+  if !said && !opts->has_key('border')
+    opts.border = []
+  endif
+  var highlights = conf->get('highlights', '')
+  if !highlights->empty()
+    opts.highlights = highlights
+  endif
+  return opts
 enddef
 
 def SetSetting(name: string, value: any)
@@ -450,6 +552,11 @@ enddef
 # Connect the current buffer to the server for its 'filetype', starting the
 # server when this is the first buffer for that workspace.
 export def Attach(loud: bool = false)
+  # Read here as well as where a popup goes up, so that what cannot be read
+  # is said as the buffer is taken on.
+  for popup in POPUPS
+    PopupStyle(popup)
+  endfor
   var bufnr = bufnr('%')
   if !getbufvar(bufnr, 'lsp_client_key', '')->empty()
     if loud
@@ -546,7 +653,116 @@ export def Stop(loud: bool = false)
   endif
 enddef
 
+def TypeName(want: number): string
+  return {[v:t_string]: 'a String', [v:t_number]: 'a Number',
+	  [v:t_bool]: 'true or false', [v:t_list]: 'a List',
+	  [v:t_dict]: 'a Dictionary'}->get(want, 'something else')
+enddef
+
+# True when "value" is of the type "want", with a Number taken where true or
+# false is wanted.
+def IsType(value: any, want: number): bool
+  return type(value) == want
+      || (want == v:t_bool && type(value) == v:t_number)
+enddef
+
+def CheckList(where: string, key: string, value: list<any>, needed: bool)
+  if needed && value->empty()
+    Complain(where, printf('"%s" is empty', key))
+  endif
+  for item in value
+    if type(item) != v:t_string
+      Complain(where, printf('"%s" holds what is not a String', key))
+      break
+    endif
+  endfor
+enddef
+
+def CheckClientConfig()
+  const WHERE = 'g:lsp_client_config'
+  var conf = get(g:, 'lsp_client_config', {})
+  if type(conf) != v:t_dict
+    Complain(WHERE, 'is not a Dictionary')
+    return
+  endif
+  for [key, value] in conf->items()
+    if !DEFAULTS->has_key(key)
+      Complain(WHERE, printf('has no such key as "%s"', key))
+    elseif !IsType(value, type(DEFAULTS[key]))
+      Complain(WHERE, printf('"%s" takes %s', key,
+			     TypeName(type(DEFAULTS[key]))))
+    endif
+  endfor
+  for name in POPUPS
+    var popup = conf->get(name, {})
+    if type(popup) != v:t_dict
+      continue		# said already
+    endif
+    for [key, value] in popup->items()
+      if !POPUP_KEYS->has_key(key)
+	Complain(WHERE .. '.' .. name,
+		 printf('has no such key as "%s"', key))
+      elseif type(value) != POPUP_KEYS[key]
+	Complain(WHERE .. '.' .. name, printf('"%s" takes %s', key,
+					      TypeName(POPUP_KEYS[key])))
+      endif
+    endfor
+    # And what "opt" holds.
+    if type(popup->get('opt', '')) == v:t_string
+      PopupStyle(name)
+    endif
+  endfor
+enddef
+
+def CheckServerList()
+  var list = get(g:, 'lsp_server_list', [])
+  if type(list) != v:t_list
+    Complain('g:lsp_server_list', 'is not a List')
+    return
+  endif
+  for i in range(len(list))
+    var where = printf('g:lsp_server_list[%d]', i)
+    var config = list[i]
+    if type(config) != v:t_dict
+      Complain(where, 'is not a Dictionary')
+      continue
+    endif
+    for key in SERVER_NEEDED
+      if !config->has_key(key)
+	Complain(where, printf('has no "%s"', key))
+      endif
+    endfor
+    for [key, value] in config->items()
+      if !SERVER_KEYS->has_key(key)
+	Complain(where, printf('has no such key as "%s"', key))
+      elseif type(value) != SERVER_KEYS[key]
+	Complain(where, printf('"%s" takes %s', key,
+			       TypeName(SERVER_KEYS[key])))
+      elseif SERVER_KEYS[key] == v:t_list
+	CheckList(where, key, value, key !=# 'rootPatterns')
+      endif
+    endfor
+  endfor
+enddef
+
+# What is asked of the plugin, read again and said in full.  The record of
+# what has been said is emptied first, so that this says the same thing every
+# time it is asked.
+export def ConfigCheck()
+  complained = {}
+  CheckClientConfig()
+  CheckServerList()
+  if complained->empty()
+    echo 'lsp: the configuration is good'
+  endif
+enddef
+
 export def Status()
+  # A word about a setting is easily lost among what a server says as it
+  # starts.
+  for said in complained->keys()->sort()
+    echo 'lsp: ' .. said
+  endfor
   if clients->empty()
     echo 'lsp: no server running'
     return
@@ -703,7 +919,7 @@ export def Hover()
 	  util.WarningMsg('no information')
 	  return
 	endif
-	popup_atcursor(lines, POPUP_OPTIONS)
+	popup_atcursor(lines, POPUP_OPTIONS->extendnew(PopupStyle('hover_popup')))
       })
 enddef
 
@@ -766,11 +982,21 @@ enddef
 # above; with nothing above, right after "zt", under the menu is the one
 # place left.
 
-# What the popup costs beyond its text: a border all round, a space either
-# side.
+# What the popup costs beyond its text: a space either side, and a border all
+# round where one was asked for.
 const SIGNATURE_PADDING = [0, 1, 0, 1]	# top, right, bottom, left
-const BORDER_ROWS = 1 + 1 + SIGNATURE_PADDING[0] + SIGNATURE_PADDING[2]
-const BORDER_COLS = 1 + 1 + SIGNATURE_PADDING[1] + SIGNATURE_PADDING[3]
+
+def SignatureBorder(): number
+  return PopupStyle('signature_popup')->has_key('border') ? 1 : 0
+enddef
+
+def BorderRows(): number
+  return SignatureBorder() * 2 + SIGNATURE_PADDING[0] + SIGNATURE_PADDING[2]
+enddef
+
+def BorderCols(): number
+  return SignatureBorder() * 2 + SIGNATURE_PADDING[1] + SIGNATURE_PADDING[3]
+enddef
 
 # The screen row the cursor was on when the signature was asked for.
 # screenrow() answers about the menu rather than the cursor when called from
@@ -793,13 +1019,13 @@ def ClearOfMenu(pum: dict<any>, need: number): dict<any>
   var bottom = mbot > 0 && mbot < row ? mtop - 1 : row - 1
   if bottom >= need
     return {line: bottom, col: 'cursor', pos: 'botleft',
-	    maxheight: bottom - BORDER_ROWS}
+	    maxheight: bottom - BorderRows()}
   endif
   # Below: "top" to the last row, starting past the menu when it is there.
   var top = mtop > row ? mbot + 1 : row + 1
   if last - top + 1 >= need
     return {line: top, col: 'cursor', pos: 'topleft',
-	    maxheight: last - top + 1 - BORDER_ROWS}
+	    maxheight: last - top + 1 - BorderRows()}
   endif
   return {}
 enddef
@@ -808,21 +1034,49 @@ enddef
 # border.
 def SignatureRows(text: string): number
   var width = SignatureWidth()
-  return (strdisplaywidth(text) + width - 1) / width + BORDER_ROWS
+  return (strdisplaywidth(text) + width - 1) / width + BorderRows()
 enddef
 
 def SignatureWidth(): number
   # Never nothing, however narrow the window is.
-  return max([1, &columns - BORDER_COLS])
+  return max([1, &columns - BorderCols()])
 enddef
 
 # Above or below the cursor, with the room that side has.
 def Side(up: bool, above: number, below: number): dict<any>
   return up
       ? {line: 'cursor-1', col: 'cursor', pos: 'botleft',
-	 maxheight: max([1, above - BORDER_ROWS])}
+	 maxheight: max([1, above - BorderRows()])}
       : {line: 'cursor+1', col: 'cursor', pos: 'topleft',
-	 maxheight: max([1, below - BORDER_ROWS])}
+	 maxheight: max([1, below - BorderRows()])}
+enddef
+
+# The screen column to start the popup at, so that the name in the signature
+# stands over the name of the call being typed.  Zero where there is no name
+# on this line to line up with, leaving the cursor to say where it goes.
+def SignatureCol(): number
+  var open = searchpairpos('(', '', ')', 'bnW')
+  if open[0] != line('.')
+    return 0
+  endif
+  var name = matchstr(strpart(getline('.'), 0, open[1] - 1), '\k*$')
+  if name->empty()
+    return 0
+  endif
+  var pos = screenpos(win_getid(), open[0], open[1] - strlen(name))
+  if pos->get('col', 0) == 0
+    return 0
+  endif
+  # The text starts past what the popup is drawn with, so the popup starts
+  # that much further left.
+  return max([1, pos.col - SignatureBorder() - SIGNATURE_PADDING[3]])
+enddef
+
+# Both ways of placing it leave the column to this, so that the popup stands
+# over the call however it got there.
+def AtCall(where: dict<any>): dict<any>
+  var col = SignatureCol()
+  return where->empty() || col <= 0 ? where : where->extendnew({col: col})
 enddef
 
 def SignatureWhere(text: string): dict<any>
@@ -831,20 +1085,23 @@ def SignatureWhere(text: string): dict<any>
   var above = signature_row - 1
   var below = &lines - &cmdheight - signature_row
 
+  var where: dict<any>
   var pum = pum_getpos()
   if !pum->empty()
-    var clear = ClearOfMenu(pum, need)
-    if !clear->empty()
-      return clear
-    endif
-    # The menu leaves room for none of it.  Part of it beats none while the
-    # call is being typed, and MoveSignature() takes it away once the menu is
-    # touched.
+    where = ClearOfMenu(pum, need)
+    # An empty answer means the menu leaves room for none of it.  Part of it
+    # beats none while the call is being typed, and MoveSignature() takes it
+    # away once the menu is touched.
   endif
-  # Above when the whole of it fits there, below when it fits there instead,
-  # and the roomier side when neither does.  Where the menu will open is not
-  # worth guessing at; MoveSignature() moves out of its way once it is up.
-  return Side(above >= need || (below < need && above >= below), above, below)
+  if where->empty()
+    # Above when the whole of it fits there, below when it fits there
+    # instead, and the roomier side when neither does.  Where the menu will
+    # open is not worth guessing at; MoveSignature() moves out of its way
+    # once it is up.
+    where = Side(above >= need || (below < need && above >= below),
+		 above, below)
+  endif
+  return AtCall(where)
 enddef
 
 # The menu may open after the signature is up.  Moving out of its way needs
@@ -860,7 +1117,7 @@ def MoveSignature()
   # Always placed again rather than only when it looks like an overlap: the
   # menu has just moved or grown, and where it ends up is what decides.
   var text = getbufline(winbufnr(signature_popup), 1)->get(0, '')
-  var where = ClearOfMenu(pum, SignatureRows(text))
+  var where = AtCall(ClearOfMenu(pum, SignatureRows(text)))
   if where->empty()
     # Nowhere left: the menu is the one being typed into.
     CloseSignature()
@@ -917,10 +1174,9 @@ def ShowSignature(help: any)
       maxheight: where.maxheight,
       moved: [0, 0, 0],
       zindex: SIGNATURE_ZINDEX,
-      border: [],
       padding: SIGNATURE_PADDING,
       maxwidth: SignatureWidth(),
-    })
+    }->extend(PopupStyle('signature_popup')))
   endif
 enddef
 
@@ -1407,7 +1663,7 @@ export def CodeAction(first: number, last: number)
     endif
     # The reply arrives whenever the server is done, which is no moment to
     # wait for an answer on the command line.
-    var options = MENU_OPTIONS->copy()
+    var options = MENU_OPTIONS->extendnew(PopupStyle('menu_popup'))
     options.callback = (_, idx) => {
       if idx > 0 && idx <= len(actions)
 	RunAction(cl, actions[idx - 1])
@@ -1688,7 +1944,7 @@ export def InlayHintInfo()
       util.WarningMsg('the hint has nothing more to say')
       return
     endif
-    popup_atcursor(lines, POPUP_OPTIONS)
+    popup_atcursor(lines, POPUP_OPTIONS->extendnew(PopupStyle('hover_popup')))
   })
 enddef
 
@@ -1786,7 +2042,7 @@ export def RunCodeLens()
     RunAction(cl, found[0])
     return
   endif
-  var options = MENU_OPTIONS->copy()
+  var options = MENU_OPTIONS->extendnew(PopupStyle('menu_popup'))
   options.title = ' code lens '
   options.callback = (_, idx) => {
     if idx > 0 && idx <= len(found)
@@ -2900,7 +3156,7 @@ def ShowMessageRequest(params: any, Answer: func(any))
     Answer(v:null)
     return
   endif
-  var options = MENU_OPTIONS->copy()
+  var options = MENU_OPTIONS->extendnew(PopupStyle('menu_popup'))
   options.title = ' ' .. params->get('message', '')
 			      ->substitute('\n', ' ', 'g') .. ' '
   options.callback = (_, idx) =>

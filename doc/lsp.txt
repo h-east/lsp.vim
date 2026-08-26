@@ -222,6 +222,12 @@ g:lsp_client_config
 				written without.
 				Default: |true|
 
+		hover_popup
+		menu_popup
+		signature_popup
+				How each popup is drawn; see |lsp-popup|.
+				Default: an empty Dictionary
+
 		Example: >vim9
 
 			g:lsp_client_config = {
@@ -245,6 +251,55 @@ g:loaded_lsp_vim
 		script stops early, and only |:LspStatus| is defined.  Whether
 		the plugin has something to offer is `exists(':LspStart')`.
 
+								*lsp-popup*
+Three of the things the plugin puts up are popups: what |:LspHover| answers,
+the list |:LspCodeAction| offers, and the signature of the call being typed.
+Each is asked for on its own, under "hover_popup", "menu_popup" and
+"signature_popup" in |g:lsp_client_config|.  Each takes a Dictionary with:
+
+	opt		A String read the way 'pumopt' is.  Only "border:"
+			and "opacity:" mean anything here; the rest of
+			'pumopt' is about the menu alone.  As with
+			'pumopt', what is not named goes back to what it is
+			by default, so a String without "border:" in it
+			leaves the popup with no border.
+	highlights	A String read the way 'winhighlight' is, handed to
+			|popup_create()| as it stands.  |hl-PopupBorder| is
+			the group the border is drawn in.
+
+Where "opt" is left out, the border 'pumopt' names is taken, so setting that
+is enough for all four to match.  Where 'pumopt' names none, the popup keeps
+a border of its own; only saying so in "opt" takes it away.  Examples: >vim9
+
+	# Everything the same, the completion menu included.
+	set pumopt=border:round
+
+	# The signature with no border, half see-through.
+	g:lsp_client_config = {
+	  signature_popup: {opt: 'opacity:60'},
+	}
+
+	# The hover popup told apart from the rest.
+	g:lsp_client_config = {
+	  hover_popup: {opt: 'border:double',
+			highlights: 'PopupBorder:Question'},
+	}
+<
+A border style drawn with box-drawing characters ("single", "double",
+"round") asks the same of 'encoding' and 'ambiwidth' that 'pumopt' asks;
+where that is not so, "ascii" is drawn instead.
+
+Everything in "opt" is held to meaning something: a key 'pumopt' has no such
+thing as, and a key of it a popup has no use for ("height:", "width:",
+"maxwidth:", "shadow", "margin"), are both said so as the buffer is taken on,
+and the rest of the string is read all the same.  |:LspConfigCheck| says them
+again at any time.  'pumopt', borrowed where "opt" was left out, is the
+menu's own and is read without a word about what a popup cannot use.
+
+Turning the border off leaves the signature popup room for another line of
+text: it is placed clear of the completion menu, and what the border costs is
+counted before it goes up.
+
 ==============================================================================
 4. Commands							*lsp-commands*
 
@@ -263,6 +318,19 @@ The server ~
 		up, how many buffers it has, and how many diagnostics are
 		known for the current buffer.  A server that was given more
 		than one workspace folder lists them under its own line.
+		Anything in |g:lsp_client_config| that could not be read is
+		listed first; |:LspConfigCheck| goes over it all.
+
+							*:LspConfigCheck*
+:LspConfigCheck	Read |g:lsp_client_config| and |g:lsp_server_list| and say
+		what cannot be read, or that the configuration is good.  A
+		key there is no such thing as, one holding what it does not
+		take, a server described without a name, a command or a
+		filetype: each is named where it is.  It says the same every
+		time it is asked, so that a look is worth taking whether or
+		not it has come up already.  What is read is what this Vim
+		holds; a |vimrc| put right is taken in by sourcing it again
+		or by starting over.
 
 						  *:LspWorkspaceFolderAdd*
 :LspWorkspaceFolderAdd [{dir}]
@@ -633,12 +701,15 @@ be given a look of its own with |:highlight|:
 7. Signature help						*lsp-signature*
 
 While a call is being typed the server is asked what it takes, and the answer
-appears in a popup next to the cursor with the parameter being filled in
-highlighted.  The server says which characters start this, "(" and "," for a
-C server.  From there on every change and every move of the cursor is asked
-about, and the popup goes when the answer holds no signature: that is what a
-server says once the cursor is out of the call, whether the closing paren was
-typed, the call deleted or the cursor moved away.  Leaving Insert mode closes
+appears in a popup a line away, with the parameter being filled in
+highlighted.  It stands over the name of the call rather than over the
+cursor, so the two names read as one; where there is no name on the line to
+line up with, the cursor says where it goes.  The server says which
+characters start this, "(" and "," for a C server.  From there on every
+change and every move of the cursor is asked about, and the popup goes when
+the answer holds no signature: that is what a server says once the cursor is
+out of the call, whether the closing paren was typed, the call deleted or the
+cursor moved away.  Leaving Insert mode closes
 it as well.  |:LspSignature| asks at any other moment, and setting
 "signature_help" to |false| leaves the asking to that command alone.
 

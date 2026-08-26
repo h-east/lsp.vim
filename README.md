@@ -76,6 +76,16 @@ g:lsp_client_config = {
 Every key that can go in there, and what it is when it is left out, is
 listed under `:help lsp-configuration`.
 
+The hover, code action and signature popups take the border `'pumopt'` names
+for the completion menu, so setting that is enough for all four to match:
+
+```vim
+set pumopt=border:round
+```
+
+Each popup can be asked for on its own instead, in `'pumopt'` and
+`'winhighlight'` format; see `:help lsp-popup`.
+
 A buffer is connected to the server for its `'filetype'` when it is opened.
 The server is started once per workspace root.
 
@@ -174,6 +184,7 @@ process per root.
 | Server | `:LspStart` | Connect this buffer to the server for its filetype |
 |  | `:LspStop` | Shut down every running server |
 |  | `:LspStatus` | List the running servers |
+|  | `:LspConfigCheck` | Say what in `g:lsp_client_config` or `g:lsp_server_list` cannot be read |
 |  | `:LspWorkspaceFolderAdd [{dir}]` | Hand a directory to this server as another workspace folder |
 |  | `:LspWorkspaceFolderRemove {dir}` | Take a workspace folder back from this server |
 |  | `:LspLog` | Open what the server has logged |

@@ -1,6 +1,7 @@
 :LspCodeAction	lsp.txt	/*:LspCodeAction*
 :LspCodeLens	lsp.txt	/*:LspCodeLens*
 :LspCodeLensRun	lsp.txt	/*:LspCodeLensRun*
+:LspConfigCheck	lsp.txt	/*:LspConfigCheck*
 :LspDeclaration	lsp.txt	/*:LspDeclaration*
 :LspDefinition	lsp.txt	/*:LspDefinition*
 :LspDiag	lsp.txt	/*:LspDiag*
@@ -45,6 +46,7 @@ lsp-highlight	lsp.txt	/*lsp-highlight*
 lsp-inlay-hint	lsp.txt	/*lsp-inlay-hint*
 lsp-introduction	lsp.txt	/*lsp-introduction*
 lsp-limitations	lsp.txt	/*lsp-limitations*
+lsp-popup	lsp.txt	/*lsp-popup*
 lsp-requirements	lsp.txt	/*lsp-requirements*
 lsp-semantic-tokens	lsp.txt	/*lsp-semantic-tokens*
 lsp-signature	lsp.txt	/*lsp-signature*

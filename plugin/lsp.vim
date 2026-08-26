@@ -42,6 +42,7 @@ enddef
 command! -bar LspStart      lsp.Attach(true)
 command! -bar LspStop       lsp.Stop(true)
 command! -bar LspStatus     lsp.Status()
+command! -bar LspConfigCheck lsp.ConfigCheck()
 command! -bar -nargs=? -complete=dir LspWorkspaceFolderAdd
 	\ lsp.WorkspaceFolderAdd(<q-args>)
 command! -bar -nargs=1 -complete=customlist,FolderNames LspWorkspaceFolderRemove
