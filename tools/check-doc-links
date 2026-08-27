@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""Report |references| in doc/lsp.txt that no tag answers to.
+
+:helptags builds the tags file from *tag* definitions and never looks at the
+references, so a link to a tag that was never written goes unnoticed.  A tag
+is answered to by doc/tags here or by the tags of the Vim being used.
+
+    ./tools/check-doc-links            # the Vim on $PATH says where its tags are
+    VIMRUNTIME=... ./tools/check-doc-links
+"""
+
+import os
+import re
+import subprocess
+import sys
+import tempfile
+
+DOC = "doc/lsp.txt"
+TAGS = "doc/tags"
+
+
+def tags_from(path):
+    names = set()
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fp:
+            for line in fp:
+                names.add(line.split("\t")[0])
+    except OSError as err:
+        print("cannot read %s: %s" % (path, err), file=sys.stderr)
+    return names
+
+
+def runtime_tags():
+    runtime = os.environ.get("VIMRUNTIME")
+    if not runtime:
+        # Ask Vim where its runtime is.  It has to write the answer to a
+        # file: silent ex mode keeps :echo to itself.
+        vim = os.environ.get("VIMPROG", "vim")
+        with tempfile.TemporaryDirectory() as tmp:
+            answer = os.path.join(tmp, "runtime")
+            try:
+                subprocess.run(
+                    [vim, "--clean", "-es",
+                     "-c", "call writefile([$VIMRUNTIME], %r)" % answer,
+                     "-c", "qa!"],
+                    timeout=30, stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                with open(answer, encoding="utf-8") as fp:
+                    runtime = fp.read().strip()
+            except (OSError, subprocess.SubprocessError):
+                runtime = ""
+    if not runtime:
+        print("cannot tell where the Vim runtime is", file=sys.stderr)
+        return set()
+    return tags_from(os.path.join(runtime, "doc", "tags"))
+
+
+def main():
+    known = tags_from(TAGS) | runtime_tags()
+    if not known:
+        return 2
+    dangling = 0
+    with open(DOC, encoding="utf-8") as fp:
+        for lnum, line in enumerate(fp, 1):
+            for match in re.finditer(r"\|([^|\s]+)\|", line):
+                if match.group(1) not in known:
+                    print("%s:%d: |%s| answers to no tag" %
+                          (DOC, lnum, match.group(1)))
+                    dangling += 1
+    if dangling:
+        print("%d reference(s) answer to no tag" % dangling)
+        return 1
+    print("every reference answers to a tag")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

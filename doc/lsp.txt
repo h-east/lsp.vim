@@ -725,7 +725,7 @@ be given a look of its own with |:highlight|:
 	LspDiagError		sign of an error, |hl-ErrorMsg|
 	LspDiagWarning		sign of a warning, |hl-WarningMsg|
 	LspDiagInfo		sign of an information item, |hl-Directory|
-	LspDiagHint		sign of a hint, |hl-Comment|
+	LspDiagHint		sign of a hint, |group-name|
 	LspDiagErrorText	text an error covers, |hl-SpellBad|
 	LspDiagWarningText	text a warning covers, |hl-SpellCap|
 	LspDiagInfoText		text an info item covers, |hl-SpellRare|
@@ -801,7 +801,7 @@ nearest the cursor on its line.  A server is allowed to leave those out of
 the answer and work them out only when a hint is acted on, so acting on one
 is what asks for the rest of it.
 
-These are the groups, each linked to |hl-Comment| so the hints stay quieter
+These are the groups, each linked to |group-name| so the hints stay quieter
 than the file, and free to be given a look of their own with |:highlight|:
 
 	LspInlayType		the type of something declared without one
@@ -850,7 +850,7 @@ on rather than only reading.  |:LspCodeLensRun| runs the one above the
 current line; when a line gathered more than one, they are shown side by side
 separated by a bar and the command asks which to run.
 
-The text is put in the group LspCodeLens, linked to |hl-Comment| so it stays
+The text is put in the group LspCodeLens, linked to |group-name| so it stays
 quieter than the file.
 
 ==============================================================================
@@ -879,7 +879,7 @@ opened, so a file full of them costs one request.
 |:LspDocumentLinkInfo| shows what the server says about the link under the
 cursor, for a server that says anything.
 
-The mark is the group LspDocumentLink, linked to |hl-Underlined|.
+The mark is the group LspDocumentLink, linked to |group-name|.
 
 ==============================================================================
 13. Selecting						*lsp-selection*
@@ -957,7 +957,7 @@ group it is painted with is the first of these that exists:
 
 Two modifier groups come with the plugin: LspSemDeprecated, drawn with a line
 through the text so it shows whatever the colors are, and LspSemReadonly,
-linked to |hl-Constant|.  Any other one is yours to make: >vim9
+linked to |group-name|.  Any other one is yours to make: >vim9
 
 	highlight link LspSemVariableStatic Special
 <

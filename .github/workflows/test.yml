@@ -37,6 +37,10 @@ jobs:
           vim --version | head -1
           cd test && ./run
 
+      # :helptags never looks at the references, only at the tags.
+      - name: Check the help links
+        run: ./tools/check-doc-links
+
   windows:
     runs-on: windows-latest
     defaults:
