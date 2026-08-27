@@ -1090,6 +1090,30 @@ def g:Test_a_jump_can_be_stepped_back_from()
   assert_equal([1, 5], [line('.'), col('.')])
 enddef
 
+def g:Test_a_jump_can_open_a_window_of_its_own()
+  assert_true(t.StartServer({
+    capabilities: Offering({definitionProvider: true}),
+    replies: {'textDocument/definition': {uri: 'file://' .. t.SRC,
+	      range: {start: {line: 2, character: 4},
+		      end: {line: 2, character: 9}}}},
+  }, ['int one;', 'int two;', 'int three;']))
+
+  only
+  defer execute('only')
+  cursor(1, 5)
+  vertical LspDefinition
+  assert_true(t.WaitFor(() => winnr('$') == 2), 'a window should open')
+  assert_equal('row', winlayout()[0], 'beside the one it came from')
+  assert_equal([3, 5], [line('.'), col('.')], 'the cursor should be in it')
+
+  # A modifier that says nothing about a window opens none.
+  only
+  cursor(1, 5)
+  silent LspDefinition
+  assert_true(t.WaitFor(() => line('.') == 3), 'the cursor should move')
+  assert_equal(1, winnr('$'), 'in the window it was already in')
+enddef
+
 def g:Test_a_request_the_server_does_not_offer()
   assert_true(t.StartServer({capabilities: SYNC}, ['int one;']))
 

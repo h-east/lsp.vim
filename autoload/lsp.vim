@@ -1293,8 +1293,12 @@ def LocationItems(result: any): list<dict<any>>
   return items
 enddef
 
+# The command modifiers that ask for a window of the jump's own.
+const SPLIT_MODS = '\<\(aboveleft\|belowright\|botright\|horizontal'
+		.. '\|leftabove\|rightbelow\|tab\|topleft\|vertical\)\>'
+
 # Four requests have this shape: what comes back is a place to go to.
-def JumpTo(method: string, provider: string, what: string)
+def JumpTo(method: string, provider: string, what: string, mods: string)
   var cl = ReadyClient()
   if cl->empty()
     return
@@ -1315,8 +1319,10 @@ def JumpTo(method: string, provider: string, what: string)
 			      from: [bufnr('%'), line('.'), col('.'), 0]}]}, 't')
     normal! m'
     var path = util.UriToPath(loc.uri)
-    if fnamemodify(path, ':p') != fnamemodify(bufname('%'), ':p')
-      execute 'edit' fnameescape(path)
+    if mods =~# SPLIT_MODS
+      execute mods 'split' fnameescape(path)
+    elseif fnamemodify(path, ':p') != fnamemodify(bufname('%'), ':p')
+      execute mods 'edit' fnameescape(path)
     endif
     var [lnum, col] = util.PosFromLsp(bufnr('%'),
 			  loc->get('range', {})->get('start', {}))
@@ -1325,23 +1331,24 @@ def JumpTo(method: string, provider: string, what: string)
   })
 enddef
 
-export def Definition()
-  JumpTo('textDocument/definition', 'definitionProvider', 'the definition')
+export def Definition(mods: string = '')
+  JumpTo('textDocument/definition', 'definitionProvider', 'the definition',
+	 mods)
 enddef
 
-export def Declaration()
+export def Declaration(mods: string = '')
   JumpTo('textDocument/declaration', 'declarationProvider',
-	 'the declaration')
+	 'the declaration', mods)
 enddef
 
-export def TypeDefinition()
+export def TypeDefinition(mods: string = '')
   JumpTo('textDocument/typeDefinition', 'typeDefinitionProvider',
-	 'the type definition')
+	 'the type definition', mods)
 enddef
 
-export def Implementation()
+export def Implementation(mods: string = '')
   JumpTo('textDocument/implementation', 'implementationProvider',
-	 'the implementation')
+	 'the implementation', mods)
 enddef
 
 def BufLineCount(bufnr: number): number

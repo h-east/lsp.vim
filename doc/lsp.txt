@@ -409,6 +409,9 @@ Jumping ~
 		the definition is in another file it is opened in the current
 		window.  Where the jump began goes on the |tag-stack| and in
 		the |jumplist|, so CTRL-T and CTRL-O lead back.
+		A command modifier that names a window splits one for the
+		definition instead, as in ":vertical LspDefinition" or
+		":tab LspDefinition".  See |:command-modifiers|.
 
 							*:LspDeclaration*
 :LspDeclaration	Jump to the declaration of the symbol under the cursor, which
