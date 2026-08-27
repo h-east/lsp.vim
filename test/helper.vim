@@ -50,7 +50,9 @@ export def StartServer(scenario: dict<any>, lines: list<string>,
   execute 'edit! ' .. fnameescape(SRC)
   setfiletype c
 
-  var ready = WaitFor(() => execute('LspStatus') =~# 'ready')
+  # Starting Python for the first time is slow on a cold machine, so this
+  # waits longer than anything else does.
+  var ready = WaitFor(() => execute('LspStatus') =~# 'ready', 30000)
   if !ready
     # Say what the server did instead, there is no guessing from "false".
     add(v:errors, 'the server did not come up; status: '
