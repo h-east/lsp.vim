@@ -41,11 +41,17 @@ enddef
 def RunOne(name: string)
   ran += 1
   v:errors = []
+  v:errmsg = ''
   try
     execute 'call g:' .. name .. '()'
   catch
     add(v:errors, v:throwpoint .. ': ' .. v:exception)
   endtry
+  # An error Vim reported without stopping the test, a compile check among
+  # them, would otherwise be lost.
+  if v:errmsg != ''
+    add(v:errors, 'an error went unreported: ' .. v:errmsg)
+  endif
   helper.StopServer()
   # The quickfix stack outlives a buffer, so the next test would find what
   # this one left there and take it for its own.

@@ -2105,7 +2105,7 @@ def g:Test_a_popup_asked_for_in_a_way_that_cannot_be_read()
   # for; both are said so, and the rest of the string is read all the same.
   messages clear
   g:lsp_client_config.hover_popup = {opt: 'popup:round,height:9,opacity:60'}
-  defer execute('unlet g:lsp_client_config.hover_popup')
+  defer execute('unlet! g:lsp_client_config.hover_popup')
   LspHover
   assert_true(t.WaitFor(() => !popup_list()->empty()),
 	      'the server should answer with a popup')
