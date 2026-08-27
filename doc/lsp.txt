@@ -407,7 +407,8 @@ Jumping ~
 							*:LspDefinition*
 :LspDefinition	Jump to the definition of the symbol under the cursor.  When
 		the definition is in another file it is opened in the current
-		window.
+		window.  Where the jump began goes on the |tag-stack| and in
+		the |jumplist|, so CTRL-T and CTRL-O lead back.
 
 							*:LspDeclaration*
 :LspDeclaration	Jump to the declaration of the symbol under the cursor, which

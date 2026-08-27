@@ -1058,6 +1058,38 @@ def g:Test_a_jump_to_the_declaration()
   assert_equal(5, col('.'))
 enddef
 
+def g:Test_a_jump_can_be_stepped_back_from()
+  assert_true(t.StartServer({
+    capabilities: Offering({definitionProvider: true}),
+    replies: {'textDocument/definition': {uri: 'file://' .. t.SRC,
+	      range: {start: {line: 2, character: 4},
+		      end: {line: 2, character: 9}}}},
+  }, ['int one;', 'int two;', 'int three;']))
+
+  settagstack(win_getid(), {items: []})
+  defer settagstack(win_getid(), {items: []})
+  clearjumps
+  defer execute('clearjumps')
+
+  cursor(1, 5)
+  LspDefinition
+  assert_true(t.WaitFor(() => line('.') == 3), 'the cursor should move')
+
+  const STACK = gettagstack(win_getid())
+  assert_equal(1, STACK.length, 'the jump should go on the tag stack')
+  assert_equal('one', STACK.items[0].tagname)
+
+  # CTRL-O leads back, though the jump stayed in the file.
+  feedkeys("\<C-O>", 'tx')
+  assert_equal([1, 5], [line('.'), col('.')])
+  feedkeys("\<C-I>", 'tx')
+  assert_equal([3, 5], [line('.'), col('.')])
+
+  # So does CTRL-T.
+  feedkeys("\<C-T>", 'tx')
+  assert_equal([1, 5], [line('.'), col('.')])
+enddef
+
 def g:Test_a_request_the_server_does_not_offer()
   assert_true(t.StartServer({capabilities: SYNC}, ['int one;']))
 

@@ -1309,6 +1309,11 @@ def JumpTo(method: string, provider: string, what: string)
       util.WarningMsg(what .. ' not found')
       return
     endif
+    # Where the jump began, so CTRL-T leads back, and CTRL-O too where the
+    # jump stays in the file.
+    settagstack(win_getid(), {items: [{tagname: expand('<cword>'),
+			      from: [bufnr('%'), line('.'), col('.'), 0]}]}, 't')
+    normal! m'
     var path = util.UriToPath(loc.uri)
     if fnamemodify(path, ':p') != fnamemodify(bufname('%'), ':p')
       execute 'edit' fnameescape(path)
