@@ -158,6 +158,8 @@ process per root.
 - Code lenses above the line they are about, off until asked for
 - Document links, the parts of a file that lead somewhere else, off until
   asked for
+- Growing the selection out to the next range the file is built from, and
+  back in, through `<Plug>(lsp-selection-expand)` and its shrink
 - Hover, and jumps to a definition, declaration, type or implementation
 - Every mention of a symbol, the symbols in a file, and a workspace-wide
   symbol search
@@ -252,7 +254,7 @@ Worth having:
 Smaller:
 
 - [x] `textDocument/documentLink` and its resolve
-- [ ] `textDocument/selectionRange`
+- [x] `textDocument/selectionRange`
 - [ ] `textDocument/linkedEditingRange`
 - [ ] `textDocument/onTypeFormatting`
 - [ ] `textDocument/documentColor` and `colorPresentation`

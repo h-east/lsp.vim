@@ -11,6 +11,7 @@ import autoload './lsp/hl.vim'
 import autoload './lsp/inlay.vim'
 import autoload './lsp/lens.vim'
 import autoload './lsp/link.vim'
+import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
@@ -2120,6 +2121,52 @@ export def DocumentLinkInfo()
     endif
     popup_atcursor(lines, POPUP_OPTIONS->extendnew(PopupStyle('hover_popup')))
   })
+enddef
+
+# The ranges the file is built from, innermost first, so a selection can be
+# grown to the next one out.  The chain is asked for once and stepped through
+# from there; see |lsp-selection|.
+var selection_asked = false
+
+def SelectionStep(by: number)
+  if select.Step(by) || selection_asked
+    return
+  endif
+  if by < 0
+    util.WarningMsg('there is nothing narrower')
+    return
+  endif
+  var cl = ReadyClient()
+  if cl->empty()
+    return
+  endif
+  if !cl.capabilities->get('selectionRangeProvider', false)
+    util.WarningMsg('the server does not offer selection ranges')
+    return
+  endif
+  var bufnr = bufnr('%')
+  var params = CursorParams()
+  selection_asked = true
+  lspclient.Request(cl, 'textDocument/selectionRange',
+      {textDocument: params.textDocument, positions: [params.position]},
+      (result: any) => {
+    selection_asked = false
+    if bufnr != bufnr('%')
+      return
+    endif
+    select.Remember(bufnr, type(result) == v:t_list ? result->get(0, {}) : {})
+    if !select.Start()
+      util.WarningMsg('the server found nothing to select here')
+    endif
+  })
+enddef
+
+export def SelectionExpand()
+  SelectionStep(1)
+enddef
+
+export def SelectionShrink()
+  SelectionStep(-1)
 enddef
 
 # A lens carries the command it stands for, so running it is running that.

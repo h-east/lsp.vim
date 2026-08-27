@@ -1131,6 +1131,71 @@ def g:Test_a_document_link_the_server_finishes_later()
   execute 'edit ' .. fnameescape(t.SRC)
 enddef
 
+def g:Test_the_selection_grows_the_way_the_file_is_built()
+  # innermost first, each holding the one before it
+  const CHAIN = {
+    range: {start: {line: 2, character: 8}, end: {line: 2, character: 11}},
+    parent: {
+      range: {start: {line: 2, character: 4}, end: {line: 2, character: 14}},
+      parent: {
+	range: {start: {line: 1, character: 0}, end: {line: 3, character: 1}},
+      },
+    },
+  }
+  assert_true(t.StartServer({
+    capabilities: Offering({selectionRangeProvider: true}),
+    replies: {'textDocument/selectionRange': [CHAIN]},
+  }, ['int main(void)', '{', '    one = two;', '}']))
+
+  # On "two", which is what the innermost holds.
+  cursor(3, 11)
+  call feedkeys("\<Plug>(lsp-selection-expand)", 'x')
+  assert_true(t.WaitFor(() => mode() =~# '^v'),
+	      'the innermost should be selected')
+  assert_equal([3, 9, 3, 11], [line('v'), col('v'), line('.'), col('.')])
+
+  # Out to the statement, then to the block, and no further.
+  call feedkeys("\<Plug>(lsp-selection-expand)", 'x')
+  assert_equal([3, 5, 3, 14], [line('v'), col('v'), line('.'), col('.')])
+  call feedkeys("\<Plug>(lsp-selection-expand)", 'x')
+  assert_equal([2, 1, 4, 1], [line('v'), col('v'), line('.'), col('.')])
+  call feedkeys("\<Plug>(lsp-selection-expand)", 'x')
+  assert_equal([2, 1, 4, 1], [line('v'), col('v'), line('.'), col('.')])
+  assert_match('nothing wider', execute('messages'))
+
+  # And back in the way it came.
+  call feedkeys("\<Plug>(lsp-selection-shrink)", 'x')
+  assert_equal([3, 5, 3, 14], [line('v'), col('v'), line('.'), col('.')])
+  call feedkeys("\<Plug>(lsp-selection-shrink)", 'x')
+  assert_equal([3, 9, 3, 11], [line('v'), col('v'), line('.'), col('.')])
+  # All the way in is where it began: no selection, cursor where it was.
+  call feedkeys("\<Plug>(lsp-selection-shrink)", 'x')
+  assert_equal('n', mode())
+  assert_equal([3, 11], [line('.'), col('.')])
+
+  # The chain is asked for once, however often it is stepped through.
+  assert_equal(1, len(t.Sent('textDocument/selectionRange')))
+enddef
+
+# A server may answer with a range holding nothing, which clangd does where
+# the cursor is outside anything it can name.
+def g:Test_a_range_with_nothing_in_it_selects_nothing()
+  const EMPTY = {range: {start: {line: 0, character: 3},
+			 end: {line: 0, character: 3}}}
+  assert_true(t.StartServer({
+    capabilities: Offering({selectionRangeProvider: true}),
+    replies: {'textDocument/selectionRange': [EMPTY]},
+  }, ['int one;', 'int two;']))
+
+  cursor(1, 4)
+  call feedkeys("\<Plug>(lsp-selection-expand)", 'x')
+  assert_true(t.WaitFor(() =>
+		    execute('messages') =~# 'nothing to select'),
+	      'the server should be said to have found nothing')
+  assert_equal('n', mode())
+  assert_equal([1, 4], [line('.'), col('.')])
+enddef
+
 def g:Test_a_code_lens_sits_above_its_line()
   g:lsp_client_config.code_lens = true
   defer execute('unlet g:lsp_client_config.code_lens')

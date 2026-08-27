@@ -18,10 +18,11 @@ CONTENTS							*lsp-contents*
 10. Folding		|lsp-folding|
 11. Code lens		|lsp-code-lens|
 12. Document links	|lsp-document-link|
-13. Semantic tokens	|lsp-semantic-tokens|
-14. Watched files	|lsp-watched-files|
-15. Limitations		|lsp-limitations|
-16. AI			|lsp-ai|
+13. Selecting		|lsp-selection|
+14. Semantic tokens	|lsp-semantic-tokens|
+15. Watched files	|lsp-watched-files|
+16. Limitations		|lsp-limitations|
+17. AI			|lsp-ai|
 
 ==============================================================================
 1. Introduction						*lsp-introduction*
@@ -571,6 +572,7 @@ What is shown ~
 		Show what the server says about the link under the cursor, in
 		a popup.
 
+
 						*:LspInlayHint*
 :LspInlayHint	Turn the inlay hints on when they are off and off when they
 		are on, and say which it now is.  Turning them off takes
@@ -872,7 +874,41 @@ cursor, for a server that says anything.
 The mark is the group LspDocumentLink, linked to |hl-Underlined|.
 
 ==============================================================================
-13. Semantic tokens					*lsp-semantic-tokens*
+13. Selecting						*lsp-selection*
+
+A server knows how the file is built: which name is inside which call, which
+call inside which statement.
+					     *<Plug>(lsp-selection-expand)*
+"(lsp-selection-expand)" takes the selection out to the next of those, from
+the cursor where there is none yet.
+					     *<Plug>(lsp-selection-shrink)*
+"(lsp-selection-shrink)" takes it back in.  In from the innermost is where
+the run began, cursor and selection as they were.
+
+Both are wanted while the selection is up, where a command cannot reach, so
+they come as mappings and nothing is bound to them.  Map them where they
+belong: >vim9
+
+	nmap <C-k> <Plug>(lsp-selection-expand)
+	xmap <C-k> <Plug>(lsp-selection-expand)
+	xmap <C-j> <Plug>(lsp-selection-shrink)
+<
+The whole chain, from the innermost out to the file, arrives in one answer
+and is stepped through from there, so only the first of a run of them costs a
+request.  Stepping all the way in leaves things as they were before the first
+step out.  What is remembered goes when the buffer changes, when another
+buffer is entered, or when the selection is no longer the one it put there.
+
+A server may answer with a range holding nothing, which is what clangd does
+where the cursor is outside anything it can name.  There is nothing to select
+in that, and it says so.
+
+The answer is waited for the way every other one is, so the first step
+follows the key rather than going with it.  The rest are as quick as the
+keys.
+
+==============================================================================
+14. Semantic tokens					*lsp-semantic-tokens*
 
 A server that parsed the file knows what a name stands for, which is more
 than the highlighting worked out from the text alone can tell: a type from a
@@ -921,7 +957,7 @@ A server names in its legend the token types and the modifiers it uses.  A
 type this client has no group for is left to the syntax highlighting.
 
 ==============================================================================
-14. Watched files					*lsp-watched-files*
+15. Watched files					*lsp-watched-files*
 
 A server may ask to be told when files it is not being sent change, so that
 it can keep up with what goes on around the one being edited.  It asks at run
@@ -940,7 +976,7 @@ server has no reason to ask for it; what it asks for anyway is answered and
 then left alone.
 
 ==============================================================================
-15. Limitations						*lsp-limitations*
+16. Limitations						*lsp-limitations*
 
 A code action is asked for by line, never by a range within one, so a server
 with something to offer about the exact text under the cursor is not given the
@@ -952,7 +988,7 @@ line the cursor is on.  One reaching across lines is left to omni completion,
 which replaces the word before the cursor and no more.
 
 ==============================================================================
-16. AI								*lsp-ai*
+17. AI								*lsp-ai*
 
 This plugin is developed with the support of AI.
 
