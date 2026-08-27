@@ -255,10 +255,12 @@ Smaller:
 
 - [x] `textDocument/documentLink` and its resolve
 - [x] `textDocument/selectionRange`
-- [ ] `textDocument/linkedEditingRange`
-- [ ] `textDocument/onTypeFormatting`
-- [ ] `textDocument/documentColor` and `colorPresentation`
-- [ ] `textDocument/inlineValue`, `moniker` and `inlineCompletion`
+- ~~`textDocument/linkedEditingRange`~~: neither clangd nor gopls offers it
+- ~~`textDocument/onTypeFormatting`~~: clangd answers by removing the indent
+- ~~`textDocument/documentColor` and `colorPresentation`~~: neither server
+  offers it
+- ~~`textDocument/inlineValue`, `moniker` and `inlineCompletion`~~: neither
+  server offers it
 - [x] More than one workspace folder for a server that takes them
 - [x] A `positionEncoding` other than UTF-16, UTF-8 for choice
 - [x] The completion `context`, and asking again for a list that came back
