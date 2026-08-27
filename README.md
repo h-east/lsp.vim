@@ -223,48 +223,131 @@ process per root.
 
 See `:help lsp.txt` for the options and the details.
 
-## TODO
+## Protocol coverage
 
-Where this client stands against what a server can offer.  The ones that
-would be felt first:
+What this client does with each of the 95 requests and notifications in
+the LSP 3.18 meta model: 71 are answered, 4 more are worth having, and
+20 are left out for the reason given.
 
-- [x] `textDocument/semanticTokens/full`, `/range` and `/full/delta`, the
-      highlighting a server works out from what it parsed
-- [x] The token modifiers, `readonly` and `deprecated` among them
-- [x] `textDocument/diagnostic`, the pull kind
-- [x] `textDocument/prepareRename`, to turn a rename down before it is sent
-      and to start from the name the server names
-- [x] Dynamic registration and `workspace/didChangeWatchedFiles`, as far as
-      Vim can tell that a file changed
-- [x] Snippets, `insertTextFormat` 2, stepped through with
-      `<Plug>(lsp-snippet-next)`, asked for with `snippet`
+### Lifecycle
 
-Worth having:
+| Method | State | Note |
+| --- | --- | --- |
+| `initialize` | yes |  |
+| `initialized` | yes |  |
+| `shutdown` | yes |  |
+| `exit` | yes |  |
+| `client/registerCapability` | yes | what a server asks for at run time |
+| `client/unregisterCapability` | yes |  |
+| `$/cancelRequest` | yes |  |
+| `$/progress` | yes | both the server's work and its own requests |
+| `$/setTrace` | no | `:LspLog` shows what the server logs anyway |
+| `$/logTrace` | no | nothing asks for a trace |
 
-- [x] `codeAction/resolve`, `codeLens/resolve` and `workspaceSymbol/resolve`
-- [x] `inlayHint/resolve`, with `:LspInlayHintInfo` and
-      `:LspInlayHintApply` to act on a hint
-- [x] `window/showMessageRequest` and `window/showDocument`
-- [x] `textDocument/willSave` and `textDocument/willSaveWaitUntil`
-- [x] The file operations, with `:LspRenameFile`; nothing here deletes a
-      file, so `willDeleteFiles` and `didDeleteFiles` are declared off
-- [x] The refresh requests for code lenses, inlay hints, semantic tokens
-      and diagnostics
+### Keeping the server in step with the buffer
 
-Smaller:
+| Method | State | Note |
+| --- | --- | --- |
+| `textDocument/didOpen` | yes |  |
+| `textDocument/didChange` | yes | incremental, through `listener_add()` |
+| `textDocument/didSave` | yes |  |
+| `textDocument/didClose` | yes |  |
+| `textDocument/willSave` | yes |  |
+| `textDocument/willSaveWaitUntil` | yes | waited for before the write |
+| `notebookDocument/didOpen` | no | Vim has no notebook to open |
+| `notebookDocument/didChange` | no |  |
+| `notebookDocument/didSave` | no |  |
+| `notebookDocument/didClose` | no |  |
 
-- [x] `textDocument/documentLink` and its resolve
-- [x] `textDocument/selectionRange`
-- ~~`textDocument/linkedEditingRange`~~: neither clangd nor gopls offers it
-- ~~`textDocument/onTypeFormatting`~~: clangd answers by removing the indent
-- ~~`textDocument/documentColor` and `colorPresentation`~~: neither server
-  offers it
-- ~~`textDocument/inlineValue`, `moniker` and `inlineCompletion`~~: neither
-  server offers it
-- [x] More than one workspace folder for a server that takes them
-- [x] A `positionEncoding` other than UTF-16, UTF-8 for choice
-- [x] The completion `context`, and asking again for a list that came back
-      incomplete
+### Language features
+
+| Method | State | Note |
+| --- | --- | --- |
+| `textDocument/completion` | yes | with the context and `isIncomplete` |
+| `completionItem/resolve` | yes | for the documentation popup |
+| `textDocument/hover` | yes | `:LspHover` |
+| `textDocument/signatureHelp` | yes | `:LspSignature` |
+| `textDocument/declaration` | yes | `:LspDeclaration` |
+| `textDocument/definition` | yes | `:LspDefinition` |
+| `textDocument/typeDefinition` | yes | `:LspTypeDefinition` |
+| `textDocument/implementation` | yes | `:LspImplementation` |
+| `textDocument/references` | yes | `:LspReferences` |
+| `textDocument/documentHighlight` | yes | the other uses of the symbol |
+| `textDocument/documentSymbol` | yes | `:LspOutline` |
+| `textDocument/codeAction` | yes | `:LspCodeAction` |
+| `codeAction/resolve` | yes |  |
+| `textDocument/codeLens` | yes | `:LspCodeLens` |
+| `codeLens/resolve` | yes |  |
+| `textDocument/documentLink` | yes | `:LspDocumentLink` |
+| `documentLink/resolve` | yes |  |
+| `textDocument/foldingRange` | yes | `:LspFolding` |
+| `textDocument/selectionRange` | yes | `<Plug>(lsp-selection-expand)` |
+| `textDocument/prepareCallHierarchy` | yes |  |
+| `callHierarchy/incomingCalls` | yes | `:LspIncomingCalls` |
+| `callHierarchy/outgoingCalls` | yes | `:LspOutgoingCalls` |
+| `textDocument/prepareTypeHierarchy` | yes |  |
+| `typeHierarchy/supertypes` | yes | `:LspSuperTypes` |
+| `typeHierarchy/subtypes` | yes | `:LspSubTypes` |
+| `textDocument/semanticTokens/full` | yes | `:LspSemanticTokens` |
+| `textDocument/semanticTokens/full/delta` | yes |  |
+| `textDocument/semanticTokens/range` | yes |  |
+| `textDocument/inlayHint` | yes | `:LspInlayHint` |
+| `inlayHint/resolve` | yes | `:LspInlayHintInfo`, `:LspInlayHintApply` |
+| `textDocument/publishDiagnostics` | yes | what a server sends unasked |
+| `textDocument/diagnostic` | yes | what a server waits to be asked for |
+| `textDocument/formatting` | yes | `:LspFormat` |
+| `textDocument/rangeFormatting` | yes | `:{range}LspFormat` |
+| `textDocument/rangesFormatting` | no | Vim has one range at a time |
+| `textDocument/onTypeFormatting` | no | clangd answers by removing the indent |
+| `textDocument/rename` | yes | `:LspRename` |
+| `textDocument/prepareRename` | yes | turns a rename down before it is sent |
+| `textDocument/linkedEditingRange` | no | clangd and gopls do not offer it |
+| `textDocument/documentColor` | no | clangd and gopls do not offer it |
+| `textDocument/colorPresentation` | no |  |
+| `textDocument/inlineValue` | no | for a debugger, which this is not |
+| `textDocument/inlineCompletion` | no | clangd and gopls do not offer it |
+| `textDocument/moniker` | no | clangd and gopls do not offer it |
+
+### Workspace
+
+| Method | State | Note |
+| --- | --- | --- |
+| `workspace/symbol` | yes | `:LspSymbol` |
+| `workspaceSymbol/resolve` | yes |  |
+| `workspace/configuration` | yes | answered from `g:lsp_server_list` |
+| `workspace/didChangeConfiguration` | planned | nothing tells the server the settings changed |
+| `workspace/workspaceFolders` | yes |  |
+| `workspace/didChangeWorkspaceFolders` | yes | `:LspWorkspaceFolderAdd`, `:LspWorkspaceFolderRemove` |
+| `workspace/didChangeWatchedFiles` | yes | for the files a server asks to watch |
+| `workspace/executeCommand` | yes | for a code action or lens the server runs |
+| `workspace/applyEdit` | yes | changes the server works out on its own |
+| `workspace/diagnostic` | planned | diagnostics are pulled a buffer at a time |
+| `workspace/willCreateFiles` | yes |  |
+| `workspace/didCreateFiles` | yes |  |
+| `workspace/willRenameFiles` | yes | `:LspRenameFile` |
+| `workspace/didRenameFiles` | yes |  |
+| `workspace/willDeleteFiles` | no | nothing here deletes a file |
+| `workspace/didDeleteFiles` | no |  |
+| `workspace/codeLens/refresh` | yes |  |
+| `workspace/inlayHint/refresh` | yes |  |
+| `workspace/semanticTokens/refresh` | yes |  |
+| `workspace/diagnostic/refresh` | yes |  |
+| `workspace/foldingRange/refresh` | planned | the folds are asked for again on a change |
+| `workspace/inlineValue/refresh` | no |  |
+| `workspace/textDocumentContent` | no | for a document the server makes up |
+| `workspace/textDocumentContent/refresh` | no |  |
+
+### Window
+
+| Method | State | Note |
+| --- | --- | --- |
+| `window/showMessage` | yes |  |
+| `window/showMessageRequest` | yes | an answer is picked from a menu |
+| `window/logMessage` | yes | `:LspLog` |
+| `window/showDocument` | yes | opens it here, or hands a URI to `:URLOpen` |
+| `window/workDoneProgress/create` | yes |  |
+| `window/workDoneProgress/cancel` | planned | nothing calls a server's work off |
+| `telemetry/event` | no | there is nowhere to send it |
 
 ## Tests
 
