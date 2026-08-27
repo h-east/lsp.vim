@@ -62,6 +62,12 @@ export def UriToPath(uri: string): string
   return simplify(path)
 enddef
 
+# The name to open a file under.  A server names it in full; Vim shows one
+# under the current directory by the short name.
+export def OpenName(path: string): string
+  return fnamemodify(path, ':.')
+enddef
+
 # LSP counts a position the way the server said it would at startup, Vim
 # counts bytes.  "utf-8" is the same thing and needs no conversion; the other
 # two count a composing character on its own.  Every direction rounds down to

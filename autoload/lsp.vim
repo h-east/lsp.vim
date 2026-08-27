@@ -1318,7 +1318,7 @@ def JumpTo(method: string, provider: string, what: string, mods: string)
     settagstack(win_getid(), {items: [{tagname: expand('<cword>'),
 			      from: [bufnr('%'), line('.'), col('.'), 0]}]}, 't')
     normal! m'
-    var path = util.UriToPath(loc.uri)
+    var path = util.UriToPath(loc.uri)->util.OpenName()
     if mods =~# SPLIT_MODS
       execute mods 'split' fnameescape(path)
     elseif fnamemodify(path, ':p') != fnamemodify(bufname('%'), ':p')
@@ -1457,7 +1457,7 @@ enddef
 
 # A rename reaches files the user never opened.
 def LoadedBufnr(path: string): number
-  var bufnr = bufadd(path)
+  var bufnr = bufadd(util.OpenName(path))
   if !bufloaded(bufnr)
     bufload(bufnr)
   endif
@@ -2117,7 +2117,7 @@ export def OpenDocumentLink()
       return
     endif
     if target =~? '^file://'
-      execute 'edit ' .. fnameescape(util.UriToPath(target))
+      execute 'edit ' .. fnameescape(util.UriToPath(target)->util.OpenName())
     else
       execute 'URLOpen ' .. target
     endif
@@ -3377,7 +3377,7 @@ def ShowDocument(params: any): bool
     # Not a file, so there is no window to put it in.
     return OpenExternal(uri)
   endif
-  execute 'edit ' .. fnameescape(path)
+  execute 'edit ' .. fnameescape(util.OpenName(path))
   var where = params->get('selection', {})
   if type(where) == v:t_dict && type(where->get('start', 0)) == v:t_dict
     cursor(util.PosFromLsp(bufnr('%'), where.start))

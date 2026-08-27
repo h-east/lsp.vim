@@ -1090,6 +1090,24 @@ def g:Test_a_jump_can_be_stepped_back_from()
   assert_equal([1, 5], [line('.'), col('.')])
 enddef
 
+def g:Test_a_file_is_opened_by_the_short_name()
+  const OTHER = t.SRC->substitute('\.c$', '_more.c', '')
+  writefile(['int one;', 'int two;'], OTHER)
+  defer delete(OTHER)
+  assert_true(t.StartServer({
+    capabilities: Offering({definitionProvider: true}),
+    replies: {'textDocument/definition': {uri: 'file://' .. OTHER,
+	      range: {start: {line: 1, character: 4},
+		      end: {line: 1, character: 7}}}},
+  }, ['int here;']))
+
+  LspDefinition
+  assert_true(t.WaitFor(() => bufname('%') =~# '_more\.c$'),
+	      'the other file should open')
+  # Not the full path the server named.
+  assert_equal(fnamemodify(OTHER, ':.'), bufname('%'))
+enddef
+
 def g:Test_a_jump_can_open_a_window_of_its_own()
   assert_true(t.StartServer({
     capabilities: Offering({definitionProvider: true}),
