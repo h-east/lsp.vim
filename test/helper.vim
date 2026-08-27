@@ -75,7 +75,17 @@ export def Trace(): list<dict<any>>
   if !filereadable(TRACE)
     return []
   endif
-  return readfile(TRACE)->mapnew((_, l) => json_decode(l))
+  var messages: list<dict<any>> = []
+  for line in readfile(TRACE)
+    # The server may be part way through writing the last line.  It is whole
+    # by the next read, which is what the caller is waiting for anyway.
+    try
+      messages->add(json_decode(line))
+    catch
+      break
+    endtry
+  endfor
+  return messages
 enddef
 
 export def Sent(method: string): list<dict<any>>
