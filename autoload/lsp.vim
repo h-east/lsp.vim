@@ -2647,6 +2647,25 @@ def CompletionTrigger(cl: dict<any>, typed: string): bool
 enddef
 
 # 'omnifunc' for a buffer with a server, see |complete-functions|.
+# Whether the last answer was cut short.
+var completion_incomplete = false
+
+# Why the server is being asked, as the protocol counts it.
+const TRIGGER_INVOKED = 1
+const TRIGGER_CHARACTER = 2
+const TRIGGER_INCOMPLETE = 3
+
+def CompletionContext(cl: dict<any>, before: string): dict<any>
+  if completion_incomplete
+    return {triggerKind: TRIGGER_INCOMPLETE}
+  endif
+  var typed = before->slice(-1)
+  if complete_info(['auto']).auto && CompletionTrigger(cl, typed)
+    return {triggerKind: TRIGGER_CHARACTER, triggerCharacter: typed}
+  endif
+  return {triggerKind: TRIGGER_INVOKED}
+enddef
+
 export def OmniFunc(findstart: number, base: string): any
   var cl = BufClient(bufnr('%'))
   if cl->empty() || !cl.initialized
@@ -2666,6 +2685,7 @@ export def OmniFunc(findstart: number, base: string): any
     # named as a trigger is what makes it a place to complete.
     if complete_info(['auto']).auto && started.word == started.cursor
 	  && !CompletionTrigger(cl, before->slice(-1))
+      completion_incomplete = false
       return -3
     endif
     return started.word
@@ -2673,17 +2693,25 @@ export def OmniFunc(findstart: number, base: string): any
 
   listener_flush(bufnr('%'))
   var timeout = Setting('completion_timeout')
+  var before = strpart(started->get('line', ''), 0, started->get('cursor', 0))
+  var params = CursorParams()
+  params.context = CompletionContext(cl, before)
   var result = lspclient.RequestSync(cl, 'textDocument/completion',
-					   CursorParams(), timeout)
+					   params, timeout)
   var items: list<any> = []
+  var incomplete = false
   if type(result) == v:t_dict
     items = result->get('items', [])
+    incomplete = result->get('isIncomplete', false)
   elseif type(result) == v:t_list
     items = result
   endif
-  return items->filter((_, it) => type(it) == v:t_dict
+  completion_incomplete = incomplete
+  var words = items->filter((_, it) => type(it) == v:t_dict
 					      && ItemMatches(it, base))
-	      ->mapnew((_, it) => ToCompleteItem(it))
+		   ->mapnew((_, it) => ToCompleteItem(it))
+  # What was cut short is asked for again as the word grows.
+  return incomplete ? {words: words, refresh: 'always'} : words
 enddef
 
 # A server may leave the documentation out and produce it only for the item
@@ -2899,6 +2927,8 @@ enddef
 
 def OnCompleteDone()
   resolve_seq += 1
+  # The next completion is its own, whatever the server said about this one.
+  completion_incomplete = false
 
   # An item may come with edits elsewhere in the file, usually an include to
   # add.  Omni completion puts in the word and knows nothing of the rest.

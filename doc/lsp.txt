@@ -623,6 +623,14 @@ space, and there is nothing to narrow it down with there either.
 Where a key asked for the menu, |i_CTRL-X_CTRL-O| or |i_CTRL-N|, the server is
 reached wherever the cursor stands.
 
+The server is told which of the two it was, and which character brought the
+menu on where one did, so that it can answer differently.
+
+A server may cut its answer short, saying so with "isIncomplete".  What came
+back then fits the word as it stood, so it is asked for again as each
+character is typed rather than narrowed down here.  clangd cuts one short at
+a hundred items.
+
 Unlike the other requests this one waits for its answer, because a completion
 function has to return the matches itself.  "completion_timeout" bounds how
 long a keystroke can block that way.  When the time runs out a message says so

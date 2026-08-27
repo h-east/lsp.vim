@@ -54,7 +54,7 @@ def ClientCapabilities(snippet: bool): dict<any>
       },
       completion: {
 	dynamicRegistration: false,
-	contextSupport: false,
+	contextSupport: true,
 	completionItem: {
 	  # Off unless it was asked for: what a snippet puts in needs the
 	  # mappings of |lsp-snippet| to be of use.

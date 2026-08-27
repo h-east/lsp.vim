@@ -154,6 +154,64 @@ def g:Test_nothing_is_asked_for_where_a_word_does_not_start()
   CleanUp()
 enddef
 
+# The server is told why it is being asked; see |completion-context|.
+def g:Test_the_server_is_told_why_it_was_asked()
+  assert_true(TypeInto('    (', '.'))
+  assert_true(t.WaitFor(() => !t.Sent('textDocument/completion')->empty()),
+	      'the server should be asked after a trigger character')
+  assert_equal({triggerKind: 2, triggerCharacter: '.'},
+	       t.Sent('textDocument/completion')[0].params.context)
+  CleanUp()
+enddef
+
+# A list the server cut short is asked for again as the word grows, rather
+# than narrowed down here.
+def g:Test_a_list_the_server_cut_short_is_asked_for_again()
+  assert_true(t.StartServer({
+    capabilities: Offering({completionProvider: TRIGGERS}),
+    replies: {'textDocument/completion': {isIncomplete: true, items: [
+		    {label: 'alpha'}, {label: 'alphabet'}]}},
+  }, ['int main(void)', '{', '    al', '}']))
+
+  cursor(3, 7)
+  call('lsp#OmniFunc', [1, ''])
+  var answer = call('lsp#OmniFunc', [0, 'al'])
+  assert_equal(v:t_dict, type(answer))
+  assert_equal('always', answer.refresh)
+  assert_equal(['alpha', 'alphabet'],
+	       answer.words->mapnew((_, w) => w.word))
+  assert_equal(1, t.Sent('textDocument/completion')[0].params.context.triggerKind)
+
+  # The next round says it is asking again about the same list.
+  call('lsp#OmniFunc', [0, 'alp'])
+  assert_equal(3,
+	       t.Sent('textDocument/completion')[1].params.context.triggerKind)
+  doautocmd CompleteDone
+enddef
+
+# What the server said about one list does not carry into the next.
+def g:Test_a_list_cut_short_does_not_outlive_its_completion()
+  assert_true(t.StartServer({
+    capabilities: Offering({completionProvider: TRIGGERS}),
+    replies: {'textDocument/completion': {isIncomplete: true, items: [
+		    {label: 'alpha'}, {label: 'alphabet'}]}},
+  }, ['int main(void)', '{', '    al', '}']))
+
+  cursor(3, 7)
+  call('lsp#OmniFunc', [1, ''])
+  call('lsp#OmniFunc', [0, 'al'])
+  call('lsp#OmniFunc', [1, ''])
+  call('lsp#OmniFunc', [0, 'alp'])
+  doautocmd CompleteDone
+  call('lsp#OmniFunc', [1, ''])
+  call('lsp#OmniFunc', [0, 'al'])
+
+  # Asked, asked again about the same list, and asked afresh.
+  assert_equal([1, 3, 1], t.Sent('textDocument/completion')
+	->mapnew((_, m) => m.params.context.triggerKind))
+  doautocmd CompleteDone
+enddef
+
 def g:Test_a_trigger_character_is_a_place_to_complete()
   assert_true(TypeInto('    (', '.'))
   assert_true(t.WaitFor(() => !t.Sent('textDocument/completion')->empty()),
@@ -171,6 +229,9 @@ def g:Test_what_is_asked_for_by_hand_reaches_the_server_anywhere()
   feedkeys("A\<C-X>\<C-O>\<Esc>", 'tx')
   assert_true(t.WaitFor(() => !t.Sent('textDocument/completion')->empty()),
 	      'CTRL-X CTRL-O should ask even after a bracket')
+  # Nothing brought it on, a key asked for it.
+  assert_equal({triggerKind: 1},
+	       t.Sent('textDocument/completion')[0].params.context)
 enddef
 
 # A key asking through the entry in 'complete' is not held to a place worth
