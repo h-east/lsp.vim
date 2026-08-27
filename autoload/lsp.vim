@@ -1429,8 +1429,9 @@ export def Format(first: number, last: number)
   var provider = whole ? 'documentFormattingProvider'
 		       : 'documentRangeFormattingProvider'
   if !cl.capabilities->has_key(provider)
-    util.WarningMsg(whole ? 'the server does not offer formatting'
-			  : 'the server does not offer formatting a range')
+    var said = whole ? 'the server does not offer formatting'
+		     : 'the server does not offer formatting a range'
+    util.WarningMsg(said)
     return
   endif
   # The reply describes the buffer as it was asked about.
@@ -2402,8 +2403,7 @@ def CallHierarchy(incoming: bool)
 		      {item: items[0]}, (calls: any) => {
       var qf = LocationItems(CallLocations(calls, incoming, here))
       if qf->empty()
-	util.WarningMsg(incoming ? 'nothing calls this'
-				 : 'this calls nothing')
+	util.WarningMsg(incoming ? 'nothing calls this' : 'this calls nothing')
 	return
       endif
       setqflist([], ' ', {title: 'LSP ' .. what .. ' calls: '
@@ -2461,8 +2461,9 @@ def TypeHierarchy(up: bool)
 		      (types: any) => {
       var qf = LocationItems(TypeLocations(types))
       if qf->empty()
-	util.WarningMsg(up ? 'nothing is above this one'
-			   : 'nothing is below this one')
+	var said = up ? 'nothing is above this one'
+		      : 'nothing is below this one'
+	util.WarningMsg(said)
 	return
       endif
       setqflist([], ' ', {title: 'LSP ' .. what .. ': '
