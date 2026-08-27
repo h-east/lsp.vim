@@ -10,6 +10,7 @@ import autoload './lsp/fold.vim'
 import autoload './lsp/hl.vim'
 import autoload './lsp/inlay.vim'
 import autoload './lsp/lens.vim'
+import autoload './lsp/link.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
@@ -53,6 +54,7 @@ const DEFAULTS = {
   snippet: false,
   inlay_hint: false,
   code_lens: false,
+  document_link: false,
   folding: false,
   semantic_tokens: false,
   will_save: true,
@@ -279,6 +281,7 @@ def DidOpen(cl: dict<any>, bufnr: number)
   if bufnr == bufnr('%')
     InlayHints()
     CodeLenses()
+    DocumentLinks()
     FoldingRanges()
     SemanticTokens()
     PullDiagnostics()
@@ -524,6 +527,7 @@ def HookBuffer()
     autocmd InsertEnter <buffer> StopHighlight()
     autocmd TextChanged,BufEnter <buffer> InlayHints()
     autocmd TextChanged,BufEnter <buffer> CodeLenses()
+    autocmd TextChanged,BufEnter <buffer> DocumentLinks()
     autocmd TextChanged,BufEnter <buffer> FoldingRanges()
     autocmd TextChanged,TextChangedI,TextChangedP,BufEnter <buffer>
 	  \ SemanticLater()
@@ -620,6 +624,7 @@ export def Detach(bufnr: number = bufnr('%'))
   inlay.Clear(bufnr)
   inlay.Forget(bufnr)
   lens.Clear(bufnr)
+  link.Clear(bufnr)
   semtok.Clear(bufnr)
   semtok.Forget(bufnr)
   ForgetSemanticAsked(bufnr)
@@ -2025,6 +2030,96 @@ export def ToggleCodeLens()
     endfor
   endif
   echo 'lsp: code lens ' .. (on ? 'on' : 'off')
+enddef
+
+# Where a file leads somewhere else, marked so it can be gone to.  Off by
+# default: the whole file is asked about, the way the code lenses are.
+def DocumentLinks()
+  if !Setting('document_link')
+    return
+  endif
+  var cl = BufClient(bufnr('%'))
+  if cl->empty() || !cl.initialized
+	|| !cl.capabilities->has_key('documentLinkProvider')
+	|| lspclient.Declined(cl, 'textDocument/documentLink')
+    return
+  endif
+  var bufnr = bufnr('%')
+  lspclient.Request(cl, 'textDocument/documentLink',
+      {textDocument: {uri: util.PathToUri(bufname(bufnr))}}, (result: any) => {
+    if bufnr == bufnr('%')
+      link.Update(bufnr, type(result) == v:t_list ? result : [])
+    endif
+  })
+enddef
+
+export def ToggleDocumentLink()
+  var on = !Setting('document_link')
+  SetSetting('document_link', on)
+  if on
+    DocumentLinks()
+  else
+    # Every buffer, not just this one: they were marked while it was on.
+    for info in getbufinfo({bufloaded: 1})
+      link.Clear(info.bufnr)
+    endfor
+  endif
+  echo 'lsp: document links ' .. (on ? 'on' : 'off')
+enddef
+
+# The link under the cursor, with what the server left out asked for first.
+def WithLink(want: string, Use: func(dict<any>))
+  var cl = ReadyClient()
+  if cl->empty()
+    return
+  endif
+  if !Setting('document_link')
+    util.WarningMsg('the document links are off')
+    return
+  endif
+  var bufnr = bufnr('%')
+  var found = link.At(bufnr, line('.'), col('.'))
+  if found->empty()
+    util.WarningMsg('nothing here leads anywhere')
+    return
+  endif
+  if found->has_key(want) || !Resolves(cl, 'documentLinkProvider')
+    Use(found)
+    return
+  endif
+  lspclient.Request(cl, 'documentLink/resolve', found, (result: any) => {
+    var full = type(result) == v:t_dict && !result->empty() ? result : found
+    link.Resolved(bufnr, found, full)
+    Use(full)
+  })
+enddef
+
+# A target is a URI: a file is opened here, anything else is left to
+# |:URLOpen|.
+export def OpenDocumentLink()
+  WithLink('target', (found: dict<any>) => {
+    var target = found->get('target', '')
+    if target->empty()
+      util.WarningMsg('the server did not say where this leads')
+      return
+    endif
+    if target =~? '^file://'
+      execute 'edit ' .. fnameescape(util.UriToPath(target))
+    else
+      execute 'URLOpen ' .. target
+    endif
+  })
+enddef
+
+export def DocumentLinkInfo()
+  WithLink('tooltip', (found: dict<any>) => {
+    var lines = HoverText(found->get('tooltip', ''))
+    if lines->empty()
+      util.WarningMsg('the link has nothing more to say')
+      return
+    endif
+    popup_atcursor(lines, POPUP_OPTIONS->extendnew(PopupStyle('hover_popup')))
+  })
 enddef
 
 # A lens carries the command it stands for, so running it is running that.

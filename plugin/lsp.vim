@@ -63,6 +63,9 @@ command! -bar LspInlayHintApply lsp.InlayHintApply()
 command! -bar LspInlayHintInfo lsp.InlayHintInfo()
 command! -bar LspCodeLens   lsp.ToggleCodeLens()
 command! -bar LspCodeLensRun lsp.RunCodeLens()
+command! -bar LspDocumentLink lsp.ToggleDocumentLink()
+command! -bar LspDocumentLinkOpen lsp.OpenDocumentLink()
+command! -bar LspDocumentLinkInfo lsp.DocumentLinkInfo()
 command! -bar LspFolding    lsp.ToggleFolding()
 command! -bar LspSemanticTokens lsp.ToggleSemanticTokens()
 command! -bar -nargs=1 LspSymbol lsp.Symbol(<q-args>)
@@ -79,6 +82,9 @@ inoremap <expr> <Plug>(lsp-snippet-next) lsp.SnippetKeys(1)
 inoremap <expr> <Plug>(lsp-snippet-prev) lsp.SnippetKeys(-1)
 snoremap <expr> <Plug>(lsp-snippet-next) lsp.SnippetKeys(1)
 snoremap <expr> <Plug>(lsp-snippet-prev) lsp.SnippetKeys(-1)
+
+# Nor to this one; see |lsp-document-link|.
+nnoremap <silent> <Plug>(lsp-document-link) <Cmd>LspDocumentLinkOpen<CR>
 
 # Kept out of the autoload script, because reaching that script is what this
 # decides: a file nothing is configured for leaves the plugin asleep.

@@ -1059,6 +1059,78 @@ def g:Test_the_marks_are_left_alone_when_turned_off()
   assert_equal([], prop_list(1))
 enddef
 
+def g:Test_a_document_link_leads_where_the_server_says()
+  g:lsp_client_config.document_link = true
+  defer execute('unlet g:lsp_client_config.document_link')
+  const HEADER = t.SRC->substitute('\.c$', '.h', '')
+  writefile(['int one;'], HEADER)
+  defer delete(HEADER)
+  const LINKS = [
+    {range: {start: {line: 0, character: 10}, end: {line: 0, character: 17}},
+     target: 'file://' .. HEADER, tooltip: 'the header'},
+  ]
+  assert_true(t.StartServer({
+    capabilities: Offering({documentLinkProvider: {resolveProvider: false}}),
+    replies: {'textDocument/documentLink': LINKS},
+  }, ['#include "Xsrc.h"', 'int two;']))
+
+  doautocmd BufEnter
+  assert_true(t.WaitFor(() => !prop_list(1)->empty()),
+	      'the link should be marked')
+  var shown = prop_list(1)[0]
+  assert_equal([11, 7, 'LspDocumentLink'],
+	       [shown.col, shown.length, shown.type])
+
+  # What the link says about itself, where it is.
+  cursor(1, 12)
+  popup_clear()
+  defer popup_clear()
+  LspDocumentLinkInfo
+  assert_true(t.WaitFor(() => !popup_list()->empty()),
+	      'the tooltip should be shown')
+  assert_equal('the header',
+	       getbufline(winbufnr(popup_list()[0]), 1)->get(0, ''))
+
+  # And where it leads.
+  LspDocumentLinkOpen
+  assert_equal(fnamemodify(HEADER, ':t'), expand('%:t'))
+  execute 'edit ' .. fnameescape(t.SRC)
+
+  # Off again takes the mark out.
+  LspDocumentLink
+  assert_equal([], prop_list(1))
+enddef
+
+def g:Test_a_document_link_the_server_finishes_later()
+  g:lsp_client_config.document_link = true
+  defer execute('unlet g:lsp_client_config.document_link')
+  const HEADER = t.SRC->substitute('\.c$', '.h', '')
+  writefile(['int one;'], HEADER)
+  defer delete(HEADER)
+  const RANGE = {start: {line: 0, character: 10},
+		 end: {line: 0, character: 17}}
+  assert_true(t.StartServer({
+    capabilities: Offering({documentLinkProvider: {resolveProvider: true}}),
+    replies: {'textDocument/documentLink': [{range: RANGE, data: 'x'}],
+	      'documentLink/resolve': {range: RANGE, data: 'x',
+				       target: 'file://' .. HEADER}},
+  }, ['#include "Xsrc.h"', 'int two;']))
+
+  doautocmd BufEnter
+  assert_true(t.WaitFor(() => !prop_list(1)->empty()),
+	      'the link should be marked')
+
+  # A link with no target is asked about when it is opened, not before.
+  assert_true(t.Sent('documentLink/resolve')->empty(),
+	      'the server should be left alone until then')
+  cursor(1, 12)
+  LspDocumentLinkOpen
+  assert_true(t.WaitFor(() =>
+		    expand('%:t') ==# fnamemodify(HEADER, ':t')),
+	      'the link should lead to the header')
+  execute 'edit ' .. fnameescape(t.SRC)
+enddef
+
 def g:Test_a_code_lens_sits_above_its_line()
   g:lsp_client_config.code_lens = true
   defer execute('unlet g:lsp_client_config.code_lens')

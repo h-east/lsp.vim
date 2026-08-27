@@ -5,6 +5,9 @@
 :LspDeclaration	lsp.txt	/*:LspDeclaration*
 :LspDefinition	lsp.txt	/*:LspDefinition*
 :LspDiag	lsp.txt	/*:LspDiag*
+:LspDocumentLink	lsp.txt	/*:LspDocumentLink*
+:LspDocumentLinkInfo	lsp.txt	/*:LspDocumentLinkInfo*
+:LspDocumentLinkOpen	lsp.txt	/*:LspDocumentLinkOpen*
 :LspFolding	lsp.txt	/*:LspFolding*
 :LspFormat	lsp.txt	/*:LspFormat*
 :LspHover	lsp.txt	/*:LspHover*
@@ -41,6 +44,7 @@ lsp-completion	lsp.txt	/*lsp-completion*
 lsp-configuration	lsp.txt	/*lsp-configuration*
 lsp-contents	lsp.txt	/*lsp-contents*
 lsp-diagnostics	lsp.txt	/*lsp-diagnostics*
+lsp-document-link	lsp.txt	/*lsp-document-link*
 lsp-folding	lsp.txt	/*lsp-folding*
 lsp-highlight	lsp.txt	/*lsp-highlight*
 lsp-inlay-hint	lsp.txt	/*lsp-inlay-hint*

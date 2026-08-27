@@ -156,6 +156,8 @@ process per root.
 - Inlay hints, the names and types a server fills in, off until asked for
 - Folds worked out by the server, off until asked for
 - Code lenses above the line they are about, off until asked for
+- Document links, the parts of a file that lead somewhere else, off until
+  asked for
 - Hover, and jumps to a definition, declaration, type or implementation
 - Every mention of a symbol, the symbols in a file, and a workspace-wide
   symbol search
@@ -212,6 +214,9 @@ process per root.
 |  | `:LspFolding` | Turn the folds from the server on or off |
 |  | `:LspCodeLens` | Turn the code lenses on or off |
 |  | `:LspCodeLensRun` | Run the lens above this line |
+|  | `:LspDocumentLink` | Turn the document links on or off |
+|  | `:LspDocumentLinkOpen` | Go where the link under the cursor leads |
+|  | `:LspDocumentLinkInfo` | What the server says about that link |
 |  | `:LspSemanticTokens` | Turn the coloring from the server on or off |
 
 See `:help lsp.txt` for the options and the details.
@@ -246,7 +251,7 @@ Worth having:
 
 Smaller:
 
-- [ ] `textDocument/documentLink` and its resolve
+- [x] `textDocument/documentLink` and its resolve
 - [ ] `textDocument/selectionRange`
 - [ ] `textDocument/linkedEditingRange`
 - [ ] `textDocument/onTypeFormatting`

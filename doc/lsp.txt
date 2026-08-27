@@ -17,10 +17,11 @@ CONTENTS							*lsp-contents*
 9. Inlay hints		|lsp-inlay-hint|
 10. Folding		|lsp-folding|
 11. Code lens		|lsp-code-lens|
-12. Semantic tokens	|lsp-semantic-tokens|
-13. Watched files	|lsp-watched-files|
-14. Limitations		|lsp-limitations|
-15. AI			|lsp-ai|
+12. Document links	|lsp-document-link|
+13. Semantic tokens	|lsp-semantic-tokens|
+14. Watched files	|lsp-watched-files|
+15. Limitations		|lsp-limitations|
+16. AI			|lsp-ai|
 
 ==============================================================================
 1. Introduction						*lsp-introduction*
@@ -198,6 +199,12 @@ g:lsp_client_config
 				something is used or what can be run.  Off by
 				default, for the same reason.  See
 				|lsp-code-lens|.
+				Default: |false|
+
+		document_link	When true, the parts of the file that lead
+				somewhere else are underlined.  Off by
+				default, for the same reason.  See
+				|lsp-document-link|.
 				Default: |false|
 
 		folding		When true, the folds are the ones the server
@@ -547,6 +554,23 @@ What is shown ~
 		Run what the lens above the current line stands for.  When
 		the line has more than one, a menu asks which.
 
+						      *:LspDocumentLink*
+:LspDocumentLink
+		Turn the document links on when they are off and off when
+		they are on, and say which it now is.  Turning them off takes
+		away the marks already made, in every buffer.  See
+		|lsp-document-link|.
+
+						  *:LspDocumentLinkOpen*
+:LspDocumentLinkOpen
+		Go where the link under the cursor leads.  A file is opened
+		here, anything else is handed to |:URLOpen|.
+
+						  *:LspDocumentLinkInfo*
+:LspDocumentLinkInfo
+		Show what the server says about the link under the cursor, in
+		a popup.
+
 						*:LspInlayHint*
 :LspInlayHint	Turn the inlay hints on when they are off and off when they
 		are on, and say which it now is.  Turning them off takes
@@ -820,7 +844,35 @@ The text is put in the group LspCodeLens, linked to |hl-Comment| so it stays
 quieter than the file.
 
 ==============================================================================
-12. Semantic tokens					*lsp-semantic-tokens*
+12. Document links					*lsp-document-link*
+
+A server knows which parts of a file lead somewhere else: the name of a
+header in an "#include" line, a path in a build file.  Set "document_link" in
+|g:lsp_client_config| to |true| to have those underlined: >vim9
+
+	g:lsp_client_config = {document_link: true}
+<
+The whole file is asked about, the way the code lenses are, and again
+whenever the buffer changes.  |:LspDocumentLink| turns them on and off
+without leaving Vim.
+
+|:LspDocumentLinkOpen| goes where the one under the cursor leads.  A link to
+a file is opened here, anything else is handed to |:URLOpen|.  Nothing is
+bound to that command, so map it where it belongs: >vim9
+
+	nmap gx <Plug>(lsp-document-link)
+<
+A link may arrive as a place in the file and nothing more, with where it
+leads worked out only when it is asked for.  That is left until the link is
+opened, so a file full of them costs one request.
+
+|:LspDocumentLinkInfo| shows what the server says about the link under the
+cursor, for a server that says anything.
+
+The mark is the group LspDocumentLink, linked to |hl-Underlined|.
+
+==============================================================================
+13. Semantic tokens					*lsp-semantic-tokens*
 
 A server that parsed the file knows what a name stands for, which is more
 than the highlighting worked out from the text alone can tell: a type from a
@@ -869,7 +921,7 @@ A server names in its legend the token types and the modifiers it uses.  A
 type this client has no group for is left to the syntax highlighting.
 
 ==============================================================================
-13. Watched files					*lsp-watched-files*
+14. Watched files					*lsp-watched-files*
 
 A server may ask to be told when files it is not being sent change, so that
 it can keep up with what goes on around the one being edited.  It asks at run
@@ -888,7 +940,7 @@ server has no reason to ask for it; what it asks for anyway is answered and
 then left alone.
 
 ==============================================================================
-14. Limitations						*lsp-limitations*
+15. Limitations						*lsp-limitations*
 
 A code action is asked for by line, never by a range within one, so a server
 with something to offer about the exact text under the cursor is not given the
@@ -900,7 +952,7 @@ line the cursor is on.  One reaching across lines is left to omni completion,
 which replaces the word before the cursor and no more.
 
 ==============================================================================
-15. AI								*lsp-ai*
+16. AI								*lsp-ai*
 
 This plugin is developed with the support of AI.
 
