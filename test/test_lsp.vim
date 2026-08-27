@@ -1132,6 +1132,14 @@ def g:Test_a_jump_can_open_a_window_of_its_own()
   assert_equal(1, winnr('$'), 'in the window it was already in')
 enddef
 
+def g:Test_the_status_names_the_version()
+  const LINES = execute('LspStatus')->split("\n")
+			      ->filter((_, l) => l =~# '^lsp\.vim ')
+  assert_equal(1, len(LINES))
+  assert_match('^lsp\.vim \d\+\.\d\+\.\d\+  (Vim \d\+\.\d\+\.\d\+)$',
+	       LINES[0])
+enddef
+
 def g:Test_a_request_the_server_does_not_offer()
   assert_true(t.StartServer({capabilities: SYNC}, ['int one;']))
 

@@ -322,12 +322,13 @@ The server ~
 		when it is opened again.
 
 								*:LspStatus*
-:LspStatus	List the running servers, whether each one finished starting
-		up, how many buffers it has, and how many diagnostics are
-		known for the current buffer.  A server that was given more
-		than one workspace folder lists them under its own line.
-		Anything in |g:lsp_client_config| that could not be read is
-		listed first; |:LspConfigCheck| goes over it all.
+:LspStatus	Name the version of the plugin and of Vim, then list the
+		running servers, whether each one finished starting up, how
+		many buffers it has, and how many diagnostics are known for
+		the current buffer.  A server that was given more than one
+		workspace folder lists them under its own line.  Anything
+		in |g:lsp_client_config| that could not be read is listed
+		first; |:LspConfigCheck| goes over it all.
 
 							*:LspConfigCheck*
 :LspConfigCheck	Read |g:lsp_client_config| and |g:lsp_server_list| and say
