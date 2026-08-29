@@ -135,7 +135,7 @@ def ClientCapabilities(snippet: bool): dict<any>
       },
       rename: {
 	dynamicRegistration: false,
-	# Ask before renaming: it says whether there is anything to rename
+	# Ask before renaming: it reports whether there is anything to rename
 	# here, and what the name to start from is.
 	prepareSupport: true,
       },
@@ -145,7 +145,7 @@ def ClientCapabilities(snippet: bool): dict<any>
       diagnostic: {
 	dynamicRegistration: false,
 	# Only the file that was asked about is read out of a report, so a
-	# server has no reason to work out what it says about other files.
+	# server has no reason to work out what it holds for other files.
 	relatedDocumentSupport: false,
       },
       semanticTokens: {
@@ -159,7 +159,7 @@ def ClientCapabilities(snippet: bool): dict<any>
 		     'macro', 'keyword', 'modifier', 'comment', 'string',
 		     'number', 'regexp', 'operator', 'decorator'],
 	# The bits in a token are read against this list, so a server needs it
-	# to know what it can say.
+	# to know what it can send.
 	tokenModifiers: ['declaration', 'definition', 'readonly', 'static',
 			 'deprecated', 'abstract', 'async', 'modification',
 			 'documentation', 'defaultLibrary'],
@@ -167,7 +167,7 @@ def ClientCapabilities(snippet: bool): dict<any>
 	overlappingTokenSupport: false,
 	multilineTokenSupport: false,
 	# Vim keeps highlighting the file the way it always did, and what the
-	# server says is put on top of that.
+	# server reports is put on top of that.
 	augmentsSyntaxTokens: true,
       },
     },
@@ -183,7 +183,7 @@ def ClientCapabilities(snippet: bool): dict<any>
       # A server that works a change out on its side hands it over this way,
       # which is how an action it runs itself comes back.
       applyEdit: true,
-      # A server that finds what it said is out of date can ask for it to be
+      # A server that finds its report is out of date can ask for it to be
       # asked for again.
       semanticTokens: {refreshSupport: true},
       codeLens: {refreshSupport: true},
@@ -202,7 +202,7 @@ def ClientCapabilities(snippet: bool): dict<any>
       },
       didChangeWatchedFiles: {
 	# The only thing a server is asked to register at run time; the rest
-	# of this dictionary says what it can count on from the start.
+	# of this dictionary holds what it can count on from the start.
 	dynamicRegistration: true,
 	# A watcher may name a base of its own to match against.
 	relativePatternSupport: true,
@@ -315,8 +315,8 @@ export def RequestSync(client: dict<any>, method: string, params: any,
   var reply = ch_evalexpr(client.channel, {method: method, params: params},
 							{timeout: timeout})
   if type(reply) != v:t_dict || reply->empty()
-    # An empty reply is what running out of time looks like; without saying
-    # so the user is left guessing.
+    # An empty reply is what running out of time looks like; without a word
+    # the user is left guessing.
     util.WarningMsg(printf('%s: no answer within %dms', method, timeout))
     return v:null
   endif
@@ -405,7 +405,7 @@ export def Start(config: dict<any>, root: string,
     # The roots this one covers; a server that takes workspace folders can be
     # given more than the one it started with.
     folders: [root],
-    # How the server counts a position, which it says at startup.
+    # How the server counts a position, which it picks at startup.
     encoding: 'utf-16',
     # What the server asked to be told about at run time, and what that comes
     # to; see |lsp-watched-files|.

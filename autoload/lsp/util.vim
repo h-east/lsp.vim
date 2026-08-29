@@ -68,7 +68,7 @@ export def OpenName(path: string): string
   return fnamemodify(path, ':.')
 enddef
 
-# LSP counts a position the way the server said it would at startup, Vim
+# LSP counts a position the way the server chose at startup, Vim
 # counts bytes.  "utf-8" is the same thing and needs no conversion; the other
 # two count a composing character on its own.  Every direction rounds down to
 # the start of a character.
@@ -89,7 +89,7 @@ export def ClearEncodings()
   encodings = {}
 enddef
 
-# UTF-16 is what a server that says nothing means.
+# UTF-16 is what a server that names none means.
 export def Encoding(bufnr: number): string
   return encodings->get(string(bufnr), 'utf-16')
 enddef

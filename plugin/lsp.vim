@@ -16,7 +16,7 @@ g:loaded_lsp_vim = 1
 # Patch 9.2.1004 is what lets a completion function tell whether Vim asked on
 # its own or a key asked for a menu.
 if !has('job') || !has('channel') || !has('patch-9.2.1004')
-  # Nothing is said on startup, so leave one command to ask.
+  # Nothing is reported on startup, so leave one command to ask.
   def Unsupported()
     echohl WarningMsg
     echomsg 'lsp: needs Vim 9.2.1004 with +job and +channel'

@@ -38,7 +38,7 @@ export def Clear(bufnr: number)
   prop_remove({bufnr: bufnr, types: TYPES->values(), all: true})
 enddef
 
-# A label is a string, or the pieces of one that a server can say more about.
+# A label is a string, or the pieces of one a server can report more about.
 def LabelText(hint: dict<any>): string
   var label = hint->get('label', '')
   if type(label) == v:t_string

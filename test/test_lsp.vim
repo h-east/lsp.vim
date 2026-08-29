@@ -182,14 +182,14 @@ def g:Test_a_list_the_server_cut_short_is_asked_for_again()
 	       answer.words->mapnew((_, w) => w.word))
   assert_equal(1, t.Sent('textDocument/completion')[0].params.context.triggerKind)
 
-  # The next round says it is asking again about the same list.
+  # The next round asks again about the same list.
   call('lsp#OmniFunc', [0, 'alp'])
   assert_equal(3,
 	       t.Sent('textDocument/completion')[1].params.context.triggerKind)
   doautocmd CompleteDone
 enddef
 
-# What the server said about one list does not carry into the next.
+# What the server returned for one list does not carry into the next.
 def g:Test_a_list_cut_short_does_not_outlive_its_completion()
   assert_true(t.StartServer({
     capabilities: Offering({completionProvider: TRIGGERS}),
@@ -491,7 +491,7 @@ def g:Test_renaming_a_file_takes_what_refers_to_it_along()
 
   execute 'LspRenameFile ' .. fnameescape(OTHER)
 
-  # What the server said had to change is in before the file moves.
+  # What the server asked to change is in before the file moves.
   assert_equal('// moved', getline(1))
   assert_match('_moved\.c$', bufname('%'), 'the buffer should follow')
   assert_true(filereadable(OTHER), 'the file should be there under its new name')
@@ -1134,7 +1134,7 @@ def g:Test_a_jump_can_open_a_window_of_its_own()
   assert_equal('row', winlayout()[0], 'beside the one it came from')
   assert_equal([3, 5], [line('.'), col('.')], 'the cursor should be in it')
 
-  # A modifier that says nothing about a window opens none.
+  # A modifier that names no window opens none.
   only
   cursor(1, 5)
   silent LspDefinition
@@ -1153,7 +1153,7 @@ enddef
 def g:Test_a_request_the_server_does_not_offer()
   assert_true(t.StartServer({capabilities: SYNC}, ['int one;']))
 
-  # Nothing is asked for when the server never said it could answer.
+  # Nothing is asked for when the server never offered to answer.
   LspTypeDefinition
   sleep 100m
   assert_true(t.Sent('textDocument/typeDefinition')->empty(),
@@ -1234,7 +1234,7 @@ def g:Test_a_document_link_leads_where_the_server_says()
   assert_equal([11, 7, 'LspDocumentLink'],
 	       [shown.col, shown.length, shown.type])
 
-  # What the link says about itself, where it is.
+  # What the link reports about itself, where it is.
   cursor(1, 12)
   popup_clear()
   defer popup_clear()
@@ -1344,7 +1344,7 @@ def g:Test_a_range_with_nothing_in_it_selects_nothing()
   call feedkeys("\<Plug>(lsp-selection-expand)", 'x')
   assert_true(t.WaitFor(() =>
 		    execute('messages') =~# 'nothing to select'),
-	      'the server should be said to have found nothing')
+	      'the server should be reported to have found nothing')
   assert_equal('n', mode())
   assert_equal([1, 4], [line('.'), col('.')])
 enddef
@@ -1393,7 +1393,7 @@ def g:Test_the_rest_of_a_code_lens_is_asked_for()
   assert_true(t.StartServer({
     capabilities: Offering({codeLensProvider: {resolveProvider: true}}),
     replies: {
-      # A place in the file and nothing to say about it yet.
+      # A place in the file and no text for it yet.
       'textDocument/codeLens': [{range: RANGE, data: 'the rest'}],
       'codeLens/resolve': {range: RANGE,
 			   command: {title: '2 uses', command: 'probe.say'}},
@@ -1464,7 +1464,7 @@ def g:Test_the_signature_goes_with_the_call_it_describes()
 	      'a move should be asked about')
 
   # The call is deleted, so there is nothing left to describe.  The server
-  # says as much by answering with no signature at all.
+  # reports that by answering with no signature at all.
   setline(1, '    ')
   cursor(1, 4)
   doautocmd TextChangedI
@@ -1568,7 +1568,7 @@ def g:Test_the_rest_of_an_inlay_hint_is_asked_for()
   cursor(2, 9)
   LspInlayHintInfo
   assert_true(t.WaitFor(() => !popup_list()->empty()),
-	      'what the hint has to say should be shown')
+	      'what the hint reports should be shown')
   assert_equal('the type it works out to',
 	       getbufline(winbufnr(popup_list()[0]), 1)->get(0, ''))
   assert_equal('the rest', t.Sent('inlayHint/resolve')[0].params.data,
@@ -1693,8 +1693,8 @@ def g:Test_a_modifier_takes_over_from_the_token_type()
 		[3, 1, 'LspSemReadonly'],
 		[5, 1, 'LspSemDeprecated']], PaintedOn(1))
 
-  # A group for the pair says more than one for the modifier alone, so it is
-  # the one that is used.
+  # A group for the pair is more telling than one for the modifier alone,
+  # so it is the one that is used.
   highlight link LspSemVariableReadonly Todo
   defer execute('highlight clear LspSemVariableReadonly')
   setline(1, 'a b c ')
@@ -1792,7 +1792,7 @@ def g:Test_the_diagnostics_are_asked_for_when_they_are_not_sent()
   assert_false(first->has_key('previousResultId'),
 	       'there is nothing to hand back the first time')
 
-  # The answer to the second one says nothing changed, so what is on the
+  # The answer to the second one reports nothing changed, so what is on the
   # screen is what was reported before.
   setline(2, '{ ')
   doautocmd TextChanged
@@ -1836,7 +1836,7 @@ def g:Test_a_watched_file_being_written_is_reported()
 		    ->len() == 1),
 	      'the registration should be answered')
 
-  # This one is not watched, so writing it says nothing.
+  # This one is not watched, so writing it reports nothing.
   write
   execute 'edit ' .. fnameescape(HEADER)
   setline(1, '// a header')
@@ -1857,7 +1857,7 @@ def g:Test_a_watched_file_being_written_is_reported()
   write
   sleep 100m
   assert_equal(1, len(t.Sent('workspace/didChangeWatchedFiles')),
-	       'a watch that was given up should say nothing')
+	       'a watch that was given up should report nothing')
 enddef
 
 def g:Test_folds_come_from_the_server()
@@ -2035,7 +2035,7 @@ def g:Test_a_popup_is_drawn_the_way_it_was_asked_for()
   assert_equal('PopupBorder:ErrorMsg', opts.highlights)
 enddef
 
-# A popup nothing was said about takes the border 'pumopt' names, and keeps
+# A popup nothing was named for takes the border 'pumopt' names, and keeps
 # the one it has always had where 'pumopt' names none.
 def g:Test_a_popup_with_nothing_said_follows_pumopt()
   assert_true(t.StartServer({
@@ -2063,7 +2063,7 @@ def g:Test_a_popup_with_nothing_said_follows_pumopt()
   assert_false(opts->has_key('borderchars'),
 	       'and the characters Vim draws a border with')
 
-  # Only saying so takes it away.
+  # Only naming none takes it away.
   popup_clear()
   g:lsp_client_config.hover_popup = {opt: ''}
   defer execute('unlet g:lsp_client_config.hover_popup')
@@ -2075,7 +2075,7 @@ def g:Test_a_popup_with_nothing_said_follows_pumopt()
 enddef
 
 def g:Test_a_popup_asked_for_in_a_way_that_cannot_be_read()
-  # Said as the buffer is taken on, without waiting for the popup itself.
+  # Reported as the buffer is taken on, without waiting for the popup itself.
   g:lsp_client_config.signature_popup = {opt: 'popup:round'}
   messages clear
   assert_true(t.StartServer({
@@ -2085,10 +2085,10 @@ def g:Test_a_popup_asked_for_in_a_way_that_cannot_be_read()
   defer popup_clear()
   assert_match('g:lsp_client_config.signature_popup: cannot read "popup:round"',
 	       execute('messages'))
-  # And kept, since what a server says as it starts washes it away.
+  # And kept, since what a server reports as it starts washes it away.
   assert_match('g:lsp_client_config.signature_popup: cannot read "popup:round"',
 	       execute('LspStatus'))
-  # :LspConfigCheck says the same however often it is asked.
+  # :LspConfigCheck comes out the same however often it is asked.
   for _ in [1, 2]
     assert_match('g:lsp_client_config.signature_popup: cannot read "popup:round"',
 		 execute('LspConfigCheck'))
@@ -2104,15 +2104,15 @@ def g:Test_a_popup_asked_for_in_a_way_that_cannot_be_read()
   g:lsp_client_config.omnifunc = 'yes'
   defer execute('g:lsp_client_config.omnifunc = true')
   g:lsp_server_list = [{name: 1, filetypes: []}]
-  var said = execute('LspConfigCheck')
-  assert_match('has no such key as "hilight_delay"', said)
-  assert_match('"omnifunc" takes true or false', said)
-  assert_match('g:lsp_server_list\[0\]: has no "cmd"', said)
-  assert_match('g:lsp_server_list\[0\]: "name" takes a String', said)
-  assert_match('g:lsp_server_list\[0\]: "filetypes" is empty', said)
+  var text = execute('LspConfigCheck')
+  assert_match('has no such key as "hilight_delay"', text)
+  assert_match('"omnifunc" takes true or false', text)
+  assert_match('g:lsp_server_list\[0\]: has no "cmd"', text)
+  assert_match('g:lsp_server_list\[0\]: "name" takes a String', text)
+  assert_match('g:lsp_server_list\[0\]: "filetypes" is empty', text)
 
   # "popup:" is no key of 'pumopt' and "height:" is one a popup has no use
-  # for; both are said so, and the rest of the string is read all the same.
+  # for; both are reported, and the rest of the string is read all the same.
   messages clear
   g:lsp_client_config.hover_popup = {opt: 'popup:round,height:9,opacity:60'}
   defer execute('unlet! g:lsp_client_config.hover_popup')
@@ -2124,7 +2124,7 @@ def g:Test_a_popup_asked_for_in_a_way_that_cannot_be_read()
 	       execute('messages'))
   assert_equal(60, popup_getoptions(popup_list()[0]).opacity)
 
-  # The same keys in 'pumopt' are the menu's own, so borrowing them says
+  # The same keys in 'pumopt' are the menu's own, so borrowing them reports
   # nothing.
   popup_clear()
   unlet g:lsp_client_config.hover_popup

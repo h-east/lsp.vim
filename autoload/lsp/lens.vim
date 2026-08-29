@@ -1,6 +1,6 @@
 vim9script
 
-# LSP client for Vim - what the server has to say about a line, above it
+# LSP client for Vim - what the server reports about a line, above it
 # Maintainer: Hirohito Higashi <h.east.727@gmail.com>
 # Latest Change: 2026 Aug 22
 
@@ -35,8 +35,8 @@ export def Clear(bufnr: number)
   prop_remove({bufnr: bufnr, type: TYPE, all: true})
 enddef
 
-# A lens with no command is one the server has not worked out yet; it says so
-# by offering to resolve it, which is asked for before this is called.
+# A lens with no command is one the server has not worked out yet; it offers
+# to resolve it instead, which is asked for before this is called.
 def Title(lens: dict<any>): string
   var cmd = lens->get('command', {})
   return type(cmd) == v:t_dict ? cmd->get('title', '') : ''

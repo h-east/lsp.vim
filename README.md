@@ -109,7 +109,7 @@ def LspBuffer()
   nnoremap <buffer> gd <Cmd>LspDefinition<CR>
 enddef
 
-# Whatever the servers say they handle, so adding one above is enough.
+# Whatever filetypes the servers cover, so adding one above is enough.
 const LspFiletypes = g:lsp_server_list
       ->mapnew((_, c) => c.filetypes)->flattennew()->join(',')
 
@@ -130,8 +130,8 @@ bounds it.
 - pylsp 1.15.0, for Python
 - gopls 0.18.0, for Go
 
-Only what a server says it offers is asked for, and the three differ enough
-to be worth naming.  clangd answers a type hierarchy, semantic tokens and a
+Only what a server offers is asked for, and the three differ enough to be
+worth naming.  clangd answers a type hierarchy, semantic tokens and a
 formatting request for a range, and offers no code lens; its call hierarchy
 answers who calls a function, while `callHierarchy/outgoingCalls` comes back
 as an unknown method.  pylsp offers a code lens, and offers no workspace
@@ -139,8 +139,8 @@ symbol search, no inlay hints and no call hierarchy.  gopls offers a code
 lens, inlay hints and semantic tokens, and neither a type hierarchy nor a
 formatting request for a range; it is the only one of the three that asks at
 run time to be told about files it is not being sent.  gopls and pylsp take
-more than one workspace folder, clangd says nothing of it and so gets a
-process per root.
+more than one workspace folder, clangd supports neither and so gets a process
+per root.
 
 ## What it does
 
@@ -188,7 +188,7 @@ process per root.
 | Server | `:LspStart` | Connect this buffer to the server for its filetype |
 |  | `:LspStop` | Shut down every running server |
 |  | `:LspStatus` | List the running servers |
-|  | `:LspConfigCheck` | Say what in `g:lsp_client_config` or `g:lsp_server_list` cannot be read |
+|  | `:LspConfigCheck` | Report what in `g:lsp_client_config` or `g:lsp_server_list` cannot be read |
 |  | `:LspWorkspaceFolderAdd [{dir}]` | Hand a directory to this server as another workspace folder |
 |  | `:LspWorkspaceFolderRemove {dir}` | Take a workspace folder back from this server |
 |  | `:LspLog` | Open what the server has logged |
@@ -211,14 +211,14 @@ process per root.
 |  | `:LspRenameFile [{name}]` | Rename this file, imports and all |
 |  | `:LspFormat` | Format this buffer, or a range of it |
 | Display | `:LspInlayHint` | Turn the inlay hints on or off |
-|  | `:LspInlayHintInfo` | What the server says about the hint here |
-|  | `:LspInlayHintApply` | Put what the hint here says into the file |
+|  | `:LspInlayHintInfo` | What the server reports about the hint here |
+|  | `:LspInlayHintApply` | Put the hint here into the file |
 |  | `:LspFolding` | Turn the folds from the server on or off |
 |  | `:LspCodeLens` | Turn the code lenses on or off |
 |  | `:LspCodeLensRun` | Run the lens above this line |
 |  | `:LspDocumentLink` | Turn the document links on or off |
 |  | `:LspDocumentLinkOpen` | Go where the link under the cursor leads |
-|  | `:LspDocumentLinkInfo` | What the server says about that link |
+|  | `:LspDocumentLinkInfo` | What the server reports about that link |
 |  | `:LspSemanticTokens` | Turn the coloring from the server on or off |
 
 See `:help lsp.txt` for the options and the details.
@@ -361,11 +361,11 @@ TEST_FILTER=rename ./run         # only the tests whose name matches
 ```
 
 The results are printed and also left in `test/messages`, and the exit status
-says whether anything failed.  A Vim too old for the plugin is reported as
+reports whether anything failed.  A Vim too old for the plugin is reported as
 such rather than failing every test on a missing command.
 
 They run against `test/fakeserver.py`, which answers from a scenario file
-rather than being a real language server: the scenario says what capabilities
+rather than being a real language server: the scenario names the capabilities
 to announce, what to send unprompted, and what to reply to each request with.
 It records everything the client sent, so a test can check that as well as
 what the client did with the answers.

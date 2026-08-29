@@ -77,7 +77,7 @@ export def At(bufnr: number, lnum: number, col: number): dict<any>
   return {}
 enddef
 
-# What the server said about this one, kept so it is asked for once.
+# What the server returned for this one, kept so it is asked for once.
 export def Resolved(bufnr: number, link: dict<any>, full: dict<any>)
   for item in links->get(string(bufnr), [])
     if item.link is link

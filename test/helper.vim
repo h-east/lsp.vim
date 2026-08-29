@@ -26,7 +26,7 @@ enddef
 export const SRC = HERE .. '/Xsrc.c'
 
 # Writes "lines" to the source file, opens it, and hands it to a server that
-# answers the way "scenario" says.  The scenario takes "capabilities",
+# answers the way "scenario" holds.  The scenario takes "capabilities",
 # "notify" and "replies"; see fakeserver.py.  What "server" holds is added to
 # the entry in g:lsp_server_list.
 #
@@ -54,7 +54,7 @@ export def StartServer(scenario: dict<any>, lines: list<string>,
   # waits longer than anything else does.
   var ready = WaitFor(() => execute('LspStatus') =~# 'ready', 30000)
   if !ready
-    # Say what the server did instead, there is no guessing from "false".
+    # Report what the server did instead, there is no guessing from "false".
     add(v:errors, 'the server did not come up; status: '
 		  .. execute('LspStatus')->trim()
 		  .. '; stderr: ' .. string(execute('LspLog')->trim()))

@@ -102,7 +102,7 @@ def BorderChars(style: string): list<string>
   return BORDER_STYLES[style]
 enddef
 
-# What 'pumopt' takes that says nothing about a popup.
+# What 'pumopt' takes that has no meaning for a popup.
 const PUMOPT_MENU_ONLY = ['height:', 'width:', 'maxwidth:', 'shadow', 'margin']
 
 # A popup goes up over and over, so a setting is complained about once rather
@@ -110,10 +110,10 @@ const PUMOPT_MENU_ONLY = ['height:', 'width:', 'maxwidth:', 'shadow', 'margin']
 var complained: dict<bool> = {}
 
 def Complain(name: string, msg: string)
-  var said = name .. ': ' .. msg
-  if !complained->has_key(said)
-    complained[said] = true
-    util.WarningMsg(said)
+  var text = name .. ': ' .. msg
+  if !complained->has_key(text)
+    complained[text] = true
+    util.WarningMsg(text)
   endif
 enddef
 
@@ -123,9 +123,9 @@ enddef
 def PopupStyle(name: string): dict<any>
   var where = 'g:lsp_client_config.' .. name
   var conf: dict<any> = Setting(name)
-  var said = conf->has_key('opt')
+  var named = conf->has_key('opt')
   var opts: dict<any> = {}
-  for token in split(said ? conf.opt : &pumopt, ',')
+  for token in split(named ? conf.opt : &pumopt, ',')
     if token =~# '^border:'
       var chars = BorderChars(token[7 : ])
       if chars->empty()
@@ -141,7 +141,7 @@ def PopupStyle(name: string): dict<any>
       else
 	opts.opacity = percent
       endif
-    elseif !said
+    elseif !named
       # The menu's own, borrowed with the rest of 'pumopt'.
     elseif index(PUMOPT_MENU_ONLY, matchstr(token, '^\a\+:\=')) >= 0
       Complain(where, printf('"%s" is for the completion menu alone', token))
@@ -151,7 +151,7 @@ def PopupStyle(name: string): dict<any>
   endfor
   # A border of its own where nobody named one, so that leaving both this and
   # 'pumopt' alone leaves the popups as they were.
-  if !said && !opts->has_key('border')
+  if !named && !opts->has_key('border')
     opts.border = []
   endif
   var highlights = conf->get('highlights', '')
@@ -313,7 +313,7 @@ def SyncKind(cl: dict<any>): number
   return type(sync) == v:t_number ? sync : SYNC_FULL
 enddef
 
-# What a server says it wants around a save; a plain number says nothing.
+# What a server asks for around a save; a plain number asks for nothing.
 def Sync(cl: dict<any>, what: string): bool
   var sync = cl.capabilities->get('textDocumentSync', 0)
   return type(sync) == v:t_dict && sync->get(what, false)
@@ -323,7 +323,7 @@ enddef
 # protocol has a number for that fits.
 const SAVE_MANUAL = 1
 
-# How long a write waits for the server to say what to change first.  A save
+# How long a write waits for the server to name what to change first.  A save
 # that hangs is worse than one the server did not get to touch.
 const WILL_SAVE_TIMEOUT = 1000
 
@@ -357,7 +357,7 @@ def WillSave(bufnr: number)
   endif
 enddef
 
-# A listener change says: replace the lines "lnum" up to but not including
+# A listener change means: replace the lines "lnum" up to but not including
 # "end" with "text".  The document as the server has it always ends in a
 # newline, so line "end - 1" exists even when "end" is one past the last line.
 def ChangeToLsp(change: dict<any>): dict<any>
@@ -390,7 +390,7 @@ def OnChange(bufnr: number, _: number, _: number, _: number,
   SendChange(cl, bufnr, changes->mapnew((_, c) => ChangeToLsp(c)))
 enddef
 
-# What a server says about "save" decides whether the text goes along: asking
+# What a server asks under "save" decides whether the text goes along: asking
 # for it means it would rather not read the file itself.
 def DidSave(bufnr: number)
   var cl = BufClient(bufnr)
@@ -442,7 +442,7 @@ enddef
 const MSG_ERROR = 1
 const MSG_WARNING = 2
 
-def Say(type: number, message: string)
+def ShowMessage(type: number, message: string)
   var text = message->substitute('\n', ' ', 'g')
   if type == MSG_ERROR
     util.ErrorMsg(text)
@@ -453,7 +453,7 @@ def Say(type: number, message: string)
   endif
 enddef
 
-# What a server says it is busy with, kept by the token it named, since only
+# What a server is busy with, kept by the token it named, since only
 # the first message of a run carries the title.
 var progress_title: dict<string> = {}
 
@@ -499,7 +499,7 @@ def OnNotify(cl: dict<any>, method: string, params: any)
       diag.Update(bufnr, cl.diagnostics[uri])
     endif
   elseif method ==# 'window/showMessage'
-    Say(params->get('type', 0), params->get('message', ''))
+    ShowMessage(params->get('type', 0), params->get('message', ''))
   elseif method ==# 'window/logMessage'
     # For the record, and there can be a lot of it.
     cl.log->add(params->get('message', ''))
@@ -560,7 +560,7 @@ enddef
 # server when this is the first buffer for that workspace.
 export def Attach(loud: bool = false)
   # Read here as well as where a popup goes up, so that what cannot be read
-  # is said as the buffer is taken on.
+  # is reported as the buffer is taken on.
   for popup in POPUPS
     PopupStyle(popup)
   endfor
@@ -652,7 +652,7 @@ export def Stop(loud: bool = false)
   adopted = {}
   pending_open = {}
   # A buffer number is handed out again once the buffer is gone, so what was
-  # said about the old one must not be left lying about.
+  # reported for the old one must not be left lying about.
   util.ClearEncodings()
   if loud
     echomsg running == 0 ? 'lsp: no server was running'
@@ -704,7 +704,7 @@ def CheckClientConfig()
   for name in POPUPS
     var popup = conf->get(name, {})
     if type(popup) != v:t_dict
-      continue		# said already
+      continue		# reported already
     endif
     for [key, value] in popup->items()
       if !POPUP_KEYS->has_key(key)
@@ -753,9 +753,9 @@ def CheckServerList()
   endfor
 enddef
 
-# What is asked of the plugin, read again and said in full.  The record of
-# what has been said is emptied first, so that this says the same thing every
-# time it is asked.
+# What is asked of the plugin, read again and reported in full.  The record
+# of what has been reported is emptied first, so that this comes out the same
+# every time it is asked.
 export def ConfigCheck()
   complained = {}
   CheckClientConfig()
@@ -769,10 +769,10 @@ export def Status()
   var long = v:versionlong
   echo printf('lsp.vim %s  (Vim %d.%d.%04d)', VERSION,
 	      long / 1000000, long / 10000 % 100, long % 10000)
-  # A word about a setting is easily lost among what a server says as it
+  # A word about a setting is easily lost among what a server reports as it
   # starts.
-  for said in complained->keys()->sort()
-    echo 'lsp: ' .. said
+  for text in complained->keys()->sort()
+    echo 'lsp: ' .. text
   endfor
   if clients->empty()
     echo 'lsp: no server running'
@@ -1064,7 +1064,7 @@ enddef
 
 # The screen column to start the popup at, so that the name in the signature
 # stands over the name of the call being typed.  Zero where there is no name
-# on this line to line up with, leaving the cursor to say where it goes.
+# on this line to line up with, leaving the cursor to mark where it goes.
 def SignatureCol(): number
   var open = searchpairpos('(', '', ')', 'bnW')
   if open[0] != line('.')
@@ -1155,7 +1155,7 @@ def ShowSignature(help: any)
     return
   endif
 
-  # A signature may say which parameter is active itself.
+  # A signature may name the active parameter itself.
   var active = signature->get('activeParameter',
 					help->get('activeParameter', -1))
   var range = ActiveRange(signature, active)
@@ -1429,9 +1429,9 @@ export def Format(first: number, last: number)
   var provider = whole ? 'documentFormattingProvider'
 		       : 'documentRangeFormattingProvider'
   if !cl.capabilities->has_key(provider)
-    var said = whole ? 'the server does not offer formatting'
-		     : 'the server does not offer formatting a range'
-    util.WarningMsg(said)
+    var msg = whole ? 'the server does not offer formatting'
+		    : 'the server does not offer formatting a range'
+    util.WarningMsg(msg)
     return
   endif
   # The reply describes the buffer as it was asked about.
@@ -1520,7 +1520,7 @@ def TextInRange(bufnr: number, range: dict<any>): string
   return getbufline(bufnr, lnum)->get(0, '')->strpart(col - 1, end_col - col)
 enddef
 
-# What a "prepareRename" answer says the name is: a placeholder of its own, or
+# What a "prepareRename" answer gives as the name: a placeholder of its own,
 # the range it covers, or nothing at all, which means work it out here.
 def Placeholder(result: any): string
   if type(result) != v:t_dict
@@ -1608,7 +1608,7 @@ def ActionTitle(action: dict<any>): string
 enddef
 
 # Whether the server fills the rest of an item in when it is handed back.
-# A code action says so with "resolveSupport", the others with a flag.
+# A code action announces it with "resolveSupport", the others with a flag.
 def Resolves(cl: dict<any>, provider: string): bool
   var options = cl.capabilities->get(provider, {})
   if type(options) != v:t_dict
@@ -1633,7 +1633,7 @@ def DoAction(cl: dict<any>, action: dict<any>)
   var wrapped = type(cmd) == v:t_dict
   var name = wrapped ? cmd->get('command', '') : cmd
   if type(name) != v:t_string || name->empty()
-    util.WarningMsg('the action says neither what to change nor what to run')
+    util.WarningMsg('the action holds neither a change nor a command')
     return
   endif
   # The changes come back through "workspace/applyEdit", which is what
@@ -1925,8 +1925,8 @@ export def FoldExpr(lnum: number): string
   return fold.Expr(lnum)
 enddef
 
-# A hint carries more than the text it shows: something to say about it, and
-# the change that puts what it says into the file.  A server may leave those
+# A hint carries more than the text it shows: a note about it, and the change
+# that puts the hint into the file.  A server may leave those
 # out until the hint is acted on, which is what "inlayHint/resolve" is for.
 def WithHint(want: string, Use: func(dict<any>))
   var cl = ReadyClient()
@@ -1965,7 +1965,7 @@ export def InlayHintInfo()
   WithHint('tooltip', (hint: dict<any>) => {
     var lines = HoverText(hint->get('tooltip', ''))
     if lines->empty()
-      util.WarningMsg('the hint has nothing more to say')
+      util.WarningMsg('the hint holds nothing more')
       return
     endif
     popup_atcursor(lines, POPUP_OPTIONS->extendnew(PopupStyle('hover_popup')))
@@ -1987,7 +1987,7 @@ export def ToggleInlayHints()
   echo 'lsp: inlay hints ' .. (on ? 'on' : 'off')
 enddef
 
-# What the server has to say about a line, shown above it.  Off by default:
+# What the server reports about a line, shown above it.  Off by default:
 # this puts text in the window that the file does not hold.
 def CodeLenses()
   if !Setting('code_lens')
@@ -2008,8 +2008,8 @@ def CodeLenses()
     var lenses = type(result) == v:t_list ? result : []
     lens.Update(bufnr, lenses)
 
-    # A lens may arrive without the command it stands for, which is both what
-    # it says and what it runs, so the rest of it is asked for.
+    # A lens may arrive without the command it stands for, which is both its
+    # text and what it runs, so the rest of it is asked for.
     if !Resolves(cl, 'codeLensProvider')
       return
     endif
@@ -2119,7 +2119,7 @@ export def OpenDocumentLink()
   WithLink('target', (found: dict<any>) => {
     var target = found->get('target', '')
     if target->empty()
-      util.WarningMsg('the server did not say where this leads')
+      util.WarningMsg('the server did not report where this leads')
       return
     endif
     if target =~? '^file://'
@@ -2134,7 +2134,7 @@ export def DocumentLinkInfo()
   WithLink('tooltip', (found: dict<any>) => {
     var lines = HoverText(found->get('tooltip', ''))
     if lines->empty()
-      util.WarningMsg('the link has nothing more to say')
+      util.WarningMsg('the link holds nothing more')
       return
     endif
     popup_atcursor(lines, POPUP_OPTIONS->extendnew(PopupStyle('hover_popup')))
@@ -2421,7 +2421,7 @@ export def OutgoingCalls()
   CallHierarchy(false)
 enddef
 
-# An item names a type and says where it is written; the name is the place
+# An item names a type and where it is written; the name is the place
 # worth going to.
 def TypeLocations(types: any): list<dict<any>>
   var locs: list<dict<any>> = []
@@ -2461,9 +2461,9 @@ def TypeHierarchy(up: bool)
 		      (types: any) => {
       var qf = LocationItems(TypeLocations(types))
       if qf->empty()
-	var said = up ? 'nothing is above this one'
-		      : 'nothing is below this one'
-	util.WarningMsg(said)
+	var msg = up ? 'nothing is above this one'
+		     : 'nothing is below this one'
+	util.WarningMsg(msg)
 	return
       endif
       setqflist([], ' ', {title: 'LSP ' .. what .. ': '
@@ -2945,7 +2945,7 @@ enddef
 
 def OnCompleteDone()
   resolve_seq += 1
-  # The next completion is its own, whatever the server said about this one.
+  # The next completion is its own, whatever the server returned for this one.
   completion_incomplete = false
 
   # An item may come with edits elsewhere in the file, usually an include to
@@ -2971,7 +2971,7 @@ def OnCompleteDone()
   timer_start(0, (_) => ApplyTextEdits(bufnr, edits))
 enddef
 
-# A watcher says which changes it wants to hear about; without a "kind" it
+# A watcher names which changes it wants to hear about; without a "kind" it
 # wants all of them.
 const WATCH_CREATE = 1
 const WATCH_CHANGE = 2
@@ -3086,8 +3086,8 @@ enddef
 # change from a file coming into being.
 var write_existed = false
 
-# A server may want a say in what happens to a file as a whole: what refers
-# to it when it is renamed, what goes in a new one.  The filters say which
+# A server may want a hand in what happens to a file as a whole: what refers
+# to it when it is renamed, what goes in a new one.  The filters name which
 # files it cares about.
 def FileOpFilters(cl: dict<any>, op: string): list<any>
   var space = cl.capabilities->get('workspace', {})
@@ -3128,7 +3128,7 @@ def WantsFileOp(cl: dict<any>, op: string, path: string): bool
   return false
 enddef
 
-# How long the file waits for the server to say what else has to change.
+# How long the file waits for the server to name what else has to change.
 const FILE_OP_TIMEOUT = 1000
 
 def FileOpEdits(cl: dict<any>, method: string, files: list<any>)
@@ -3231,8 +3231,8 @@ export def RenameFile(newname: string)
 enddef
 
 # A server may report on its own with "textDocument/publishDiagnostics", or
-# wait to be asked with "textDocument/diagnostic"; "diagnosticProvider" says
-# which.  Both end up in the same place.
+# wait to be asked with "textDocument/diagnostic"; "diagnosticProvider"
+# announces which.  Both end up in the same place.
 
 # The "resultId" of the last report, by buffer: handing it back is what lets a
 # server answer "unchanged" instead of listing everything again.
@@ -3342,7 +3342,7 @@ def ShowMessageRequest(params: any, Answer: func(any))
   endif
   var actions = params->get('actions', [])
   if type(actions) != v:t_list || actions->empty()
-    Say(params->get('type', 0), params->get('message', ''))
+    ShowMessage(params->get('type', 0), params->get('message', ''))
     Answer(v:null)
     return
   endif
@@ -3366,7 +3366,7 @@ def OpenExternal(uri: string): bool
   return true
 enddef
 
-# A file the server would like looked at, at a place in it if it says one.
+# A file the server would like looked at, at a place in it if it names one.
 def ShowDocument(params: any): bool
   if type(params) != v:t_dict
     return false

@@ -49,7 +49,7 @@ def Define()
   for [name, group] in LINKS->items()
     execute 'highlight default link' Group(name) group
   endfor
-  # No link for this one: a line through the text says "do not use it"
+  # No link for this one: a line through the text means "do not use it"
   # whatever the colors around it are.
   highlight default LspSemDeprecated term=strikethrough cterm=strikethrough
 	\ gui=strikethrough

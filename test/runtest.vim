@@ -17,7 +17,7 @@ filetype plugin indent on
 execute 'source ' .. fnameescape(PLUGIN .. '/plugin/lsp.vim')
 
 # The plugin gives up quietly on a Vim that is too old, which would leave
-# every test failing on a missing command.  Say what is wrong instead.
+# every test failing on a missing command.  Report what is wrong instead.
 if !exists(':LspStart')
   writefile(['This Vim cannot run the plugin, so nothing was tested.',
 	     'It needs 9.2.1004 or later with +job and +channel; this one is '
@@ -34,7 +34,7 @@ var failed: list<string> = []
 var ran = 0
 var report: list<string> = []
 
-def Say(line: string)
+def Report(line: string)
   add(report, line)
 enddef
 
@@ -59,12 +59,12 @@ def RunOne(name: string)
   silent! :%bwipe!
 
   if v:errors->empty()
-    Say('ok     ' .. name)
+    Report('ok     ' .. name)
   else
     add(failed, name)
-    Say('FAILED ' .. name)
+    Report('FAILED ' .. name)
     for err in v:errors
-      Say('       ' .. err)
+      Report('       ' .. err)
     endfor
   endif
 enddef
@@ -87,7 +87,7 @@ def Main()
     endfor
   endfor
 
-  Say(printf('%d run, %d failed', ran, len(failed)))
+  Report(printf('%d run, %d failed', ran, len(failed)))
   writefile(report, HERE .. '/messages')
   for line in report
     echomsg line
