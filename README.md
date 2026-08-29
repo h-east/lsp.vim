@@ -230,6 +230,9 @@ What this client does with each of the 95 requests and notifications in
 the LSP 3.18 meta model: 73 are answered, 1 more is worth having, and
 21 are left out for the reason given.
 
+<details>
+<summary>Method-by-method tables</summary>
+
 ### Lifecycle
 
 | Method | State | Note |
@@ -349,6 +352,8 @@ the LSP 3.18 meta model: 73 are answered, 1 more is worth having, and
 | `window/workDoneProgress/create` | yes |  |
 | `window/workDoneProgress/cancel` | no | clangd and gopls never mark their work cancellable |
 | `telemetry/event` | no | there is nowhere to send it |
+
+</details>
 
 ## Tests
 
