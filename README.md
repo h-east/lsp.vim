@@ -226,7 +226,7 @@ See `:help lsp.txt` for the options and the details.
 ## Protocol coverage
 
 What this client does with each of the 95 requests and notifications in
-the LSP 3.18 meta model: 71 are answered, 4 more are worth having, and
+the LSP 3.18 meta model: 72 are answered, 3 more are worth having, and
 20 are left out for the reason given.
 
 ### Lifecycle
@@ -314,7 +314,7 @@ the LSP 3.18 meta model: 71 are answered, 4 more are worth having, and
 | --- | --- | --- |
 | `workspace/symbol` | yes | `:LspSymbol` |
 | `workspaceSymbol/resolve` | yes |  |
-| `workspace/configuration` | yes | answered from `g:lsp_server_list` |
+| `workspace/configuration` | yes | a null for each item, no settings are kept |
 | `workspace/didChangeConfiguration` | planned | nothing tells the server the settings changed |
 | `workspace/workspaceFolders` | yes |  |
 | `workspace/didChangeWorkspaceFolders` | yes | `:LspWorkspaceFolderAdd`, `:LspWorkspaceFolderRemove` |
@@ -332,7 +332,7 @@ the LSP 3.18 meta model: 71 are answered, 4 more are worth having, and
 | `workspace/inlayHint/refresh` | yes |  |
 | `workspace/semanticTokens/refresh` | yes |  |
 | `workspace/diagnostic/refresh` | yes |  |
-| `workspace/foldingRange/refresh` | planned | the folds are asked for again on a change |
+| `workspace/foldingRange/refresh` | yes |  |
 | `workspace/inlineValue/refresh` | no |  |
 | `workspace/textDocumentContent` | no | for a document the server makes up |
 | `workspace/textDocumentContent/refresh` | no |  |

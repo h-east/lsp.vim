@@ -382,8 +382,8 @@ The server ~
 		A server may find that what it told us has gone out of date,
 		because a file it depends on changed, and ask for it to be
 		asked for again.  The semantic tokens, the code lenses, the
-		inlay hints and the diagnostics can each be asked for that
-		way; whichever of them is turned off stays off.
+		inlay hints, the folds and the diagnostics can each be asked
+		for that way; whichever of them is turned off stays off.
 
 		A message may come with answers to pick from, and then it
 		goes into a menu rather than onto the message line; closing
@@ -823,7 +823,8 @@ while with |:LspFolding|.
 Doing so sets 'foldmethod' to "expr" and 'foldexpr' to a function of this
 plugin, keeping what was there to put back when the folds are turned off
 again or the buffer is detached.  The ranges are asked for afresh whenever
-the buffer changes.
+the buffer changes, and whenever the server says what it told us no longer
+stands.
 
 Only whole lines are folded.  A server able to fold part of a line is told
 not to bother.

@@ -188,6 +188,7 @@ def ClientCapabilities(snippet: bool): dict<any>
       semanticTokens: {refreshSupport: true},
       codeLens: {refreshSupport: true},
       inlayHint: {refreshSupport: true},
+      foldingRange: {refreshSupport: true},
       diagnostics: {refreshSupport: true},
       fileOperations: {
 	dynamicRegistration: false,

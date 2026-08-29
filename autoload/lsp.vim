@@ -3422,6 +3422,11 @@ def OnRequest(cl: dict<any>, method: string, params: any,
     InlayHints()
     return true
   endif
+  if method ==# 'workspace/foldingRange/refresh'
+    Answer(v:null)
+    FoldingRanges()
+    return true
+  endif
   if method ==# 'workspace/diagnostic/refresh'
     Answer(v:null)
     # What was reported before no longer stands, so no "unchanged" answer.

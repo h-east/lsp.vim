@@ -532,21 +532,26 @@ enddef
 
 def g:Test_the_server_asks_for_things_to_be_asked_for_again()
   g:lsp_client_config.semantic_tokens = true
+  g:lsp_client_config.folding = true
   defer execute('unlet g:lsp_client_config.semantic_tokens')
+  defer execute('unlet g:lsp_client_config.folding')
   assert_true(t.StartServer({
     capabilities: Offering({
       definitionProvider: true,
       semanticTokensProvider: {legend: LEGEND, full: true},
+      foldingRangeProvider: true,
       diagnosticProvider: {interFileDependencies: true,
 			   workspaceDiagnostics: false},
     }),
     replies: {
       'textDocument/definition': v:null,
       'textDocument/semanticTokens/full': {data: TOKENS},
+      'textDocument/foldingRange': [],
       'textDocument/diagnostic': {kind: 'full', resultId: '1', items: []},
     },
     ask: {'textDocument/definition': [
       {id: 'sem', method: 'workspace/semanticTokens/refresh', params: v:null},
+      {id: 'fold', method: 'workspace/foldingRange/refresh', params: v:null},
       {id: 'diag', method: 'workspace/diagnostic/refresh', params: v:null},
     ]},
   }, SOURCE))
@@ -555,14 +560,19 @@ def g:Test_the_server_asks_for_things_to_be_asked_for_again()
 		    len(t.Sent('textDocument/semanticTokens/full')) == 1),
 	      'asked for once to start with')
   var first = len(t.Sent('textDocument/diagnostic'))
+  var folds = len(t.Sent('textDocument/foldingRange'))
 
   LspDefinition
   assert_true(t.WaitFor(() => !Answered('sem')->empty()
+			      && !Answered('fold')->empty()
 			      && !Answered('diag')->empty()),
-	      'both should be answered')
+	      'all three should be answered')
   assert_true(t.WaitFor(() =>
 		    len(t.Sent('textDocument/semanticTokens/full')) == 2),
 	      'the tokens should be asked for again')
+  assert_true(t.WaitFor(() =>
+		    len(t.Sent('textDocument/foldingRange')) > folds),
+	      'the folds should be asked for again')
   assert_true(t.WaitFor(() =>
 		    len(t.Sent('textDocument/diagnostic')) > first),
 	      'the diagnostics should be asked for again')
