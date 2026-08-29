@@ -351,6 +351,19 @@ The server ~
 		this Vim holds; a |vimrc| put right is taken in by sourcing
 		it again or by starting over.
 
+							*:LspConfigReload*
+:LspConfigReload
+		Tell every running server that its settings changed, and
+		report how many were told.  Use it after putting a new
+		"settings" into |g:lsp_server_list|, which takes sourcing the
+		|vimrc| again or setting the variable by hand.
+
+		A server that takes its settings by asking
+		("workspace/configuration") asks again when it hears this, and
+		is answered from the entry as it stands then.  One that took
+		them as "initializationOptions" at startup is past listening;
+		that needs |:LspStop| and opening the file again.
+
 						  *:LspWorkspaceFolderAdd*
 :LspWorkspaceFolderAdd [{dir}]
 		Hand {dir} to the server of the current buffer as another

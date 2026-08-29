@@ -11,8 +11,9 @@ What it does is read from the JSON file named by $LSP_SCENARIO:
                   how a server changes its mind about what it said before
     errors        error by method name, for a request to be turned down
     ask           requests of the server's own, by the method that sets
-                  them off; this is how a server hands over an edit.  An
-                  entry may name the "id" to ask under, a string included
+                  them off, a notification included; this is how a server
+                  hands over an edit.  An entry may name the "id" to ask
+                  under, a string included
 
 Every message that comes in is appended to $LSP_TRACE as one JSON object per
 line, so a test can check what the client sent as well as what it did with
@@ -101,13 +102,15 @@ def main():
             else:
                 send({'jsonrpc': '2.0', 'id': msg['id'],
                       'result': result_for(method)})
-            # A method may also be what sets off a request of the server's
-            # own, which is how it hands over an edit it worked out itself.
-            for item in SCENARIO.get('ask', {}).get(method, []):
-                send({'jsonrpc': '2.0',
-                      'id': item.get('id', 100000 + next_id()),
-                      'method': item['method'],
-                      'params': item.get('params', {})})
+
+        # A method may also be what sets off a request of the server's own:
+        # that is how it hands over an edit it worked out itself, or asks
+        # something back after a notification.
+        for item in SCENARIO.get('ask', {}).get(method, []):
+            send({'jsonrpc': '2.0',
+                  'id': item.get('id', 100000 + next_id()),
+                  'method': item['method'],
+                  'params': item.get('params', {})})
 
 
 if __name__ == '__main__':

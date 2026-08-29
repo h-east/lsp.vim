@@ -177,6 +177,8 @@ def ClientCapabilities(snippet: bool): dict<any>
       workspaceFolders: true,
       # Answered from "settings" in the g:lsp_server_list entry.
       configuration: true,
+      # |:LspConfigReload| is what sends it.
+      didChangeConfiguration: {dynamicRegistration: false},
       symbol: {
 	dynamicRegistration: false,
 	# A symbol may come with the file it is in but not the place in it.

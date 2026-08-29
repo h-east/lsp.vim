@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.000'
+const VERSION = '0.2.001'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -764,6 +764,36 @@ export def ConfigCheck()
   if complained->empty()
     echo 'lsp: the configuration is good'
   endif
+enddef
+
+# The entry a running server was started from, as g:lsp_server_list holds it
+# now.  Empty where it has been taken out since.
+def ServerNamed(name: string): dict<any>
+  for config in get(g:, 'lsp_server_list', [])
+    if config->get('name', '') ==# name
+      return config
+    endif
+  endfor
+  return {}
+enddef
+
+# A server that asks for its settings asks again when it hears this, so the
+# notification carries nothing; what it comes back for is answered from the
+# entry as it stands now.
+export def ConfigReload()
+  var told = 0
+  for cl in clients->values()
+    var config = ServerNamed(cl.name)
+    if !config->empty()
+      cl.config = config
+    endif
+    lspclient.Notify(cl, 'workspace/didChangeConfiguration',
+		     {settings: v:null})
+    told += 1
+  endfor
+  echomsg told == 0 ? 'lsp: no server is running'
+		    : printf('lsp: %d server%s told', told,
+			     told == 1 ? '' : 's')
 enddef
 
 export def Status()

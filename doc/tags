@@ -2,6 +2,7 @@
 :LspCodeLens	lsp.txt	/*:LspCodeLens*
 :LspCodeLensRun	lsp.txt	/*:LspCodeLensRun*
 :LspConfigCheck	lsp.txt	/*:LspConfigCheck*
+:LspConfigReload	lsp.txt	/*:LspConfigReload*
 :LspDeclaration	lsp.txt	/*:LspDeclaration*
 :LspDefinition	lsp.txt	/*:LspDefinition*
 :LspDiag	lsp.txt	/*:LspDiag*

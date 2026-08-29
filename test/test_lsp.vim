@@ -433,6 +433,28 @@ def g:Test_the_server_is_handed_the_settings_it_asks_for()
 	       Answered('cfg')[0].result)
 enddef
 
+def g:Test_the_servers_are_told_the_settings_changed()
+  assert_true(t.StartServer({
+    capabilities: Offering({}),
+    ask: {'workspace/didChangeConfiguration': [{
+      id: 'again',
+      method: 'workspace/configuration',
+      params: {items: [{section: 'fake'}]},
+    }]},
+  }, ['int one;'], {settings: {fake: 'before'}}))
+
+  # A whole new List, the way sourcing a vimrc again leaves one, so the entry
+  # the server started from is not the one that holds the new settings.
+  var entry = g:lsp_server_list[0]->copy()
+  entry.settings = {fake: 'after'}
+  g:lsp_server_list = [entry]
+  assert_match('1 server told', execute('LspConfigReload'))
+  assert_true(t.WaitFor(() => !Answered('again')->empty()),
+	      'the server should ask for its settings again')
+  # Answered from the entry as it stands now, not the one it started with.
+  assert_equal(['after'], Answered('again')[0].result)
+enddef
+
 def g:Test_a_message_comes_with_answers_to_pick_from()
   defer popup_clear()
   assert_true(t.StartServer({

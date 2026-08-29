@@ -189,6 +189,7 @@ per root.
 |  | `:LspStop` | Shut down every running server |
 |  | `:LspStatus` | List the running servers |
 |  | `:LspConfigCheck` | Report what in `g:lsp_client_config` or `g:lsp_server_list` cannot be read |
+|  | `:LspConfigReload` | Tell every running server that its settings changed |
 |  | `:LspWorkspaceFolderAdd [{dir}]` | Hand a directory to this server as another workspace folder |
 |  | `:LspWorkspaceFolderRemove {dir}` | Take a workspace folder back from this server |
 |  | `:LspLog` | Open what the server has logged |
@@ -226,7 +227,7 @@ See `:help lsp.txt` for the options and the details.
 ## Protocol coverage
 
 What this client does with each of the 95 requests and notifications in
-the LSP 3.18 meta model: 72 are answered, 2 more are worth having, and
+the LSP 3.18 meta model: 73 are answered, 1 more is worth having, and
 21 are left out for the reason given.
 
 ### Lifecycle
@@ -315,7 +316,7 @@ the LSP 3.18 meta model: 72 are answered, 2 more are worth having, and
 | `workspace/symbol` | yes | `:LspSymbol` |
 | `workspaceSymbol/resolve` | yes |  |
 | `workspace/configuration` | yes | answered from `settings` in the server entry |
-| `workspace/didChangeConfiguration` | planned | nothing tells the server the settings changed |
+| `workspace/didChangeConfiguration` | yes | `:LspConfigReload` |
 | `workspace/workspaceFolders` | yes |  |
 | `workspace/didChangeWorkspaceFolders` | yes | `:LspWorkspaceFolderAdd`, `:LspWorkspaceFolderRemove` |
 | `workspace/didChangeWatchedFiles` | yes | for the files a server asks to watch |
