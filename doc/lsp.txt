@@ -107,11 +107,21 @@ g:lsp_server_list
 				usually wants.  Left out when it is not
 				there, which is not the same as sending an
 				empty Dictionary.
+		settings	Optional, what the server is handed when it
+				asks with "workspace/configuration".  A
+				server asks by section, which is a path into
+				this Dictionary: "gopls" reads the "gopls"
+				key, "python.analysis" the "analysis" key
+				inside "python".  A section this holds
+				nothing for is answered with a null, which
+				leaves that setting alone.
 
 		A server may keep something turned off until it is asked for
-		this way.  "gopls" offers the semantic tokens and then turns
-		down every request for them unless it was started with
-		{semanticTokens: true}.
+		one of these two ways.  "gopls" offers the semantic tokens
+		and then turns down every request for them, with
+		"semantictokens are disabled", unless it has been handed
+		{semanticTokens: true}: either as "initializationOptions" at
+		startup, or under "gopls" in "settings" when it asks.
 
 		Such a turn-down is reported once.  What is asked for on its
 		own, with every change or as the cursor moves, is not asked

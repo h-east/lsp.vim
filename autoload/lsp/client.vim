@@ -175,6 +175,8 @@ def ClientCapabilities(snippet: bool): dict<any>
       # More than one root can be handed to one server, and it is told when
       # another one is added.
       workspaceFolders: true,
+      # Answered from "settings" in the g:lsp_server_list entry.
+      configuration: true,
       symbol: {
 	dynamicRegistration: false,
 	# A symbol may come with the file it is in but not the place in it.
@@ -245,6 +247,26 @@ def RespondError(client: dict<any>, id: any, code: number, message: string)
   ch_sendexpr(client.channel, {id: id, error: {code: code, message: message}})
 enddef
 
+# What "section" names in "settings", a dot stepping into a nested Dictionary.
+# Null where there is nothing there; the protocol reads that as leaving the
+# setting alone.
+def SettingAt(settings: dict<any>, section: any): any
+  if type(section) != v:t_string
+    return settings
+  endif
+  if section->empty()
+    return settings
+  endif
+  var value: any = settings
+  for key in split(section, '\.')
+    if type(value) != v:t_dict || !value->has_key(key)
+      return v:null
+    endif
+    value = value[key]
+  endfor
+  return value
+enddef
+
 # A message that is not a reply to one of our requests: a notification, or a
 # request that wants an answer.
 def OnMessage(client: dict<any>, ch: channel, msg: dict<any>)
@@ -254,9 +276,11 @@ def OnMessage(client: dict<any>, ch: channel, msg: dict<any>)
   endif
   if msg->has_key('id')
     if method ==# 'workspace/configuration'
-      # No per-server configuration is kept, answer with a null for each item.
+      var settings = client.config->get('settings', {})
       var items = msg->get('params', {})->get('items', [])
-      Respond(client, msg.id, items->mapnew((_, _) => v:null))
+      var answer = items->mapnew(
+	  (_, item) => SettingAt(settings, item->get('section', '')))
+      Respond(client, msg.id, answer)
     elseif RequestHandler == null_function
 	  || !RequestHandler(client, method, msg->get('params', {}),
 			     (result) => Respond(client, msg.id, result))

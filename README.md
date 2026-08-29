@@ -314,7 +314,7 @@ the LSP 3.18 meta model: 72 are answered, 2 more are worth having, and
 | --- | --- | --- |
 | `workspace/symbol` | yes | `:LspSymbol` |
 | `workspaceSymbol/resolve` | yes |  |
-| `workspace/configuration` | yes | a null for each item, no settings are kept |
+| `workspace/configuration` | yes | answered from `settings` in the server entry |
 | `workspace/didChangeConfiguration` | planned | nothing tells the server the settings changed |
 | `workspace/workspaceFolders` | yes |  |
 | `workspace/didChangeWorkspaceFolders` | yes | `:LspWorkspaceFolderAdd`, `:LspWorkspaceFolderRemove` |

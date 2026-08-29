@@ -408,6 +408,31 @@ def Answered(id: string): list<dict<any>>
 								      .. "'")
 enddef
 
+def g:Test_the_server_is_handed_the_settings_it_asks_for()
+  const SETTINGS = {fake: {on: true, nested: {deep: 7}}}
+  assert_true(t.StartServer({
+    capabilities: Offering({definitionProvider: true}),
+    replies: {'textDocument/definition': v:null},
+    ask: {'textDocument/definition': [{
+      id: 'cfg',
+      method: 'workspace/configuration',
+      params: {items: [{section: 'fake'}, {section: 'fake.nested.deep'},
+		       {section: 'nothing.here'}, {}]},
+    }]},
+  }, ['int one;'], {settings: SETTINGS}))
+
+  var caps = t.Sent('initialize')[0].params.capabilities
+  assert_true(caps.workspace.configuration,
+	      'a server has to be told it can ask')
+
+  LspDefinition
+  assert_true(t.WaitFor(() => !Answered('cfg')->empty()),
+	      'the server should be handed what it asked for')
+  # A section is a path into "settings"; an item without one takes the lot.
+  assert_equal([SETTINGS.fake, 7, v:null, SETTINGS],
+	       Answered('cfg')[0].result)
+enddef
+
 def g:Test_a_message_comes_with_answers_to_pick_from()
   defer popup_clear()
   assert_true(t.StartServer({

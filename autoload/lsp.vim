@@ -77,6 +77,7 @@ const SERVER_KEYS = {
   filetypes: v:t_list,
   rootPatterns: v:t_list,
   initializationOptions: v:t_dict,
+  settings: v:t_dict,
 }
 const SERVER_NEEDED = ['name', 'cmd', 'filetypes']
 
