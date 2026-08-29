@@ -240,6 +240,21 @@ g:lsp_client_config
 				written without.
 				Default: |true|
 
+		hover_format	Which of the two forms a hover is asked for
+				in, "plaintext" or "markdown".  A server is
+				told the client can show both and which one
+				it prefers, so the other may still arrive;
+				what does arrive is drawn in the filetype it
+				names, "markdown" for markdown.
+				The markup is not taken out: with "markdown"
+				the "#" of a heading and the backticks of a
+				code span are there to read, colored rather
+				than acted on.
+				This goes out at startup, so a server that is
+				already running keeps what it was told; see
+				|:LspStop|.
+				Default: "plaintext"
+
 		hover_popup
 		menu_popup
 		signature_popup

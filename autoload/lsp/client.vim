@@ -36,7 +36,7 @@ export def SetRequestHandler(
   RequestHandler = Handler
 enddef
 
-def ClientCapabilities(snippet: bool): dict<any>
+def ClientCapabilities(snippet: bool, hover_format: list<string>): dict<any>
   return {
     general: {
       # UTF-8 first: that is what Vim counts in anyway, so a position needs
@@ -66,7 +66,9 @@ def ClientCapabilities(snippet: bool): dict<any>
 	},
       },
       hover: {
-	contentFormat: ['plaintext', 'markdown'],
+	# The order is the preference; "hover_format" in |lsp-configuration|
+	# turns it around.
+	contentFormat: hover_format,
 	dynamicRegistration: false,
       },
       signatureHelp: {
@@ -380,7 +382,7 @@ def Initialize(client: dict<any>, OnReady: func(dict<any>))
     workspaceFolders: client.folders->mapnew((_, folder) =>
 	  ({uri: util.PathToUri(folder),
 	    name: fnamemodify(folder, ':t')})),
-    capabilities: ClientCapabilities(client.snippet),
+    capabilities: ClientCapabilities(client.snippet, client.hover_format),
     trace: 'off',
   }
   # The shape of this is up to the server, so it goes out as written.  Left
@@ -409,7 +411,8 @@ enddef
 
 # Returns an empty Dict when the server could not be started.
 export def Start(config: dict<any>, root: string,
-		 OnReady: func(dict<any>), snippet: bool = false): dict<any>
+		 OnReady: func(dict<any>), snippet: bool = false,
+		 hover_format: list<string> = ['plaintext']): dict<any>
   if !executable(config.cmd[0])
     util.ErrorMsg('cannot execute "' .. config.cmd[0] .. '"')
     return {}
@@ -419,6 +422,7 @@ export def Start(config: dict<any>, root: string,
     name: config.name,
     config: config,
     snippet: snippet,
+    hover_format: hover_format,
     root: root,
     running: false,
     stopping: false,

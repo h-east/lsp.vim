@@ -2058,6 +2058,61 @@ def g:Test_a_part_the_server_turns_down()
 	       execute('messages'))
 enddef
 
+def g:Test_the_format_a_hover_is_asked_for()
+  assert_true(t.StartServer({capabilities: Offering({})}, ['int x;']))
+  var caps = t.Sent('initialize')[0].params.capabilities
+  assert_equal(['plaintext', 'markdown'],
+	       caps.textDocument.hover.contentFormat)
+
+  t.StopServer()
+  g:lsp_client_config.hover_format = 'markdown'
+  defer execute('unlet g:lsp_client_config.hover_format')
+  assert_true(t.StartServer({capabilities: Offering({})}, ['int x;']))
+  caps = t.Sent('initialize')[0].params.capabilities
+  # Both are named either way, only the order turns around.
+  assert_equal(['markdown', 'plaintext'],
+	       caps.textDocument.hover.contentFormat)
+enddef
+
+def g:Test_a_hover_is_drawn_in_the_filetype_the_server_named()
+  defer popup_clear()
+  assert_true(t.StartServer({
+    capabilities: Offering({hoverProvider: true}),
+    sequence: {'textDocument/hover': [
+      {contents: {kind: 'markdown', value: '# heading'}},
+      {contents: {language: 'c', value: 'int x;'}},
+      {contents: {language: 'not a filetype', value: 'x'}},
+      {contents: {kind: 'plaintext', value: 'x'}},
+    ]},
+  }, ['int x;']))
+
+  def Filetype(): string
+    return popup_list()->empty()
+	 ? ''
+	 : getbufvar(winbufnr(popup_list()[0]), '&filetype')
+  enddef
+
+  LspHover
+  assert_true(t.WaitFor(() => Filetype() ==# 'markdown'),
+	      'a MarkupContent that names markdown')
+  popup_clear()
+
+  LspHover
+  assert_true(t.WaitFor(() => Filetype() ==# 'c'),
+	      'the language of a MarkedString')
+  popup_clear()
+
+  # A server names the filetype, so what is not one is turned down.
+  LspHover
+  assert_true(t.WaitFor(() => !popup_list()->empty()))
+  assert_equal('', Filetype())
+  popup_clear()
+
+  LspHover
+  assert_true(t.WaitFor(() => !popup_list()->empty()))
+  assert_equal('', Filetype())
+enddef
+
 # "ascii" rather than a box-drawing style, so that what is drawn does not
 # turn on 'encoding' and 'ambiwidth'.
 def g:Test_a_popup_is_drawn_the_way_it_was_asked_for()

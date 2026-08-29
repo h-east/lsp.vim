@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.001'
+const VERSION = '0.2.002'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -61,6 +61,7 @@ const DEFAULTS = {
   folding: false,
   semantic_tokens: false,
   will_save: true,
+  hover_format: 'plaintext',
   hover_popup: {},
   menu_popup: {},
   signature_popup: {},
@@ -80,6 +81,9 @@ const SERVER_KEYS = {
   settings: v:t_dict,
 }
 const SERVER_NEEDED = ['name', 'cmd', 'filetypes']
+
+# What "hover_format" takes.
+const HOVER_FORMATS = ['plaintext', 'markdown']
 
 def Setting(name: string): any
   return get(g:, 'lsp_client_config', {})->get(name, DEFAULTS[name])
@@ -592,7 +596,7 @@ export def Attach(loud: bool = false)
   if key->empty()
     key = ClientKey(config.name, root)
     var fresh = lspclient.Start(config, root, OnReady,
-				Setting('snippet'))
+				Setting('snippet'), HoverFormat())
     if fresh->empty()
       return
     endif
@@ -700,6 +704,9 @@ def CheckClientConfig()
     elseif !IsType(value, type(DEFAULTS[key]))
       Complain(WHERE, printf('"%s" takes %s', key,
 			     TypeName(type(DEFAULTS[key]))))
+    elseif key ==# 'hover_format' && index(HOVER_FORMATS, value) < 0
+      Complain(WHERE, printf('"hover_format" takes "%s"',
+			     HOVER_FORMATS->join('" or "')))
     endif
   endfor
   for name in POPUPS
@@ -904,6 +911,40 @@ export def WorkspaceFolderRemove(path: string)
   echomsg printf('lsp: %s no longer covers %s', cl.name, dir)
 enddef
 
+# The formats to name, the one "hover_format" asks for first: the protocol
+# takes what the client can show, in the order it prefers.
+def HoverFormat(): list<string>
+  var first = Setting('hover_format')
+  if index(HOVER_FORMATS, first) < 0
+    first = HOVER_FORMATS[0]
+  endif
+  return [first] + HOVER_FORMATS->copy()->filter((_, f) => f !=# first)
+enddef
+
+# The filetype to draw a hover in: "markdown" for a MarkupContent that names
+# it, the language of a MarkedString, empty otherwise.  A server names it, so
+# anything but a filetype name is turned down.
+def HoverFiletype(contents: any): string
+  if type(contents) != v:t_dict
+    return ''
+  endif
+  var ft = contents->get('kind', '') ==# 'markdown'
+	 ? 'markdown'
+	 : contents->get('language', '')
+  return type(ft) == v:t_string && ft =~# '^\a[[:alnum:]._-]*$' ? ft : ''
+enddef
+
+# The popup a hover, a hint or a link is shown in, drawn in the filetype the
+# server named.
+def HoverPopup(lines: list<string>, contents: any)
+  var id = popup_atcursor(lines,
+			  POPUP_OPTIONS->extendnew(PopupStyle('hover_popup')))
+  var ft = HoverFiletype(contents)
+  if !ft->empty()
+    win_execute(id, 'setlocal filetype=' .. ft)
+  endif
+enddef
+
 # The "contents" of a hover reply is a string, a Dict, or a List of either.
 def HoverText(contents: any): list<string>
   if type(contents) == v:t_string
@@ -961,7 +1002,7 @@ export def Hover()
 	  util.WarningMsg('no information')
 	  return
 	endif
-	popup_atcursor(lines, POPUP_OPTIONS->extendnew(PopupStyle('hover_popup')))
+	HoverPopup(lines, result->get('contents', ''))
       })
 enddef
 
@@ -1999,7 +2040,7 @@ export def InlayHintInfo()
       util.WarningMsg('the hint holds nothing more')
       return
     endif
-    popup_atcursor(lines, POPUP_OPTIONS->extendnew(PopupStyle('hover_popup')))
+    HoverPopup(lines, hint->get('tooltip', ''))
   })
 enddef
 
@@ -2168,7 +2209,7 @@ export def DocumentLinkInfo()
       util.WarningMsg('the link holds nothing more')
       return
     endif
-    popup_atcursor(lines, POPUP_OPTIONS->extendnew(PopupStyle('hover_popup')))
+    HoverPopup(lines, found->get('tooltip', ''))
   })
 enddef
 
