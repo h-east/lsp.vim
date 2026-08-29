@@ -226,8 +226,8 @@ See `:help lsp.txt` for the options and the details.
 ## Protocol coverage
 
 What this client does with each of the 95 requests and notifications in
-the LSP 3.18 meta model: 72 are answered, 3 more are worth having, and
-20 are left out for the reason given.
+the LSP 3.18 meta model: 72 are answered, 2 more are worth having, and
+21 are left out for the reason given.
 
 ### Lifecycle
 
@@ -346,7 +346,7 @@ the LSP 3.18 meta model: 72 are answered, 3 more are worth having, and
 | `window/logMessage` | yes | `:LspLog` |
 | `window/showDocument` | yes | opens it here, or hands a URI to `:URLOpen` |
 | `window/workDoneProgress/create` | yes |  |
-| `window/workDoneProgress/cancel` | planned | nothing calls a server's work off |
+| `window/workDoneProgress/cancel` | no | clangd and gopls never mark their work cancellable |
 | `telemetry/event` | no | there is nowhere to send it |
 
 ## Tests
