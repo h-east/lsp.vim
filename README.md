@@ -63,6 +63,29 @@ g:lsp_server_list = [{
 }]
 ```
 
+<details>
+<summary>For legacy Vim script</summary>
+
+```vim
+let g:lsp_server_list = [
+      \ #{name: 'clangd',
+      \   filetypes: ['c', 'cpp'],
+      \   cmd: ['clangd', '--background-index', '--clang-tidy',
+      \         '--header-insertion=never'],
+      \   rootPatterns: ['compile_commands.json', '.git']},
+      \ #{name: 'pylsp',
+      \   filetypes: ['python'],
+      \   cmd: ['pylsp'],
+      \   rootPatterns: ['pyproject.toml', '.git']},
+      \ #{name: 'gopls',
+      \   filetypes: ['go'],
+      \   cmd: ['gopls'],
+      \   rootPatterns: ['go.work', 'go.mod', '.git']},
+      \ ]
+```
+
+</details>
+
 What the client itself does goes in `g:lsp_client_config`, one entry per
 setting:
 
@@ -72,6 +95,18 @@ g:lsp_client_config = {
   inlay_hint: true,
 }
 ```
+
+<details>
+<summary>For legacy Vim script</summary>
+
+```vim
+let g:lsp_client_config = #{
+      \ highlight_delay: 150,
+      \ inlay_hint: v:true,
+      \ }
+```
+
+</details>
 
 Every key that can go in there, and what it is when it is left out, is
 listed under `:help lsp-configuration`.
@@ -118,6 +153,36 @@ augroup lsprc
   execute 'autocmd FileType' LspFiletypes 'LspBuffer()'
 augroup END
 ```
+
+<details>
+<summary>For legacy Vim script</summary>
+
+```vim
+function! s:LspBuffer()
+  " 'autocomplete' offers what 'complete' names, and "o" names 'omnifunc',
+  " which the plugin has set.
+  setlocal complete^=o
+  setlocal autocomplete
+  " "menuone" for a single match, "popup" for the resolved documentation.
+  setlocal completeopt=menuone,popup
+  " So the text stays put as a sign comes and goes.
+  setlocal signcolumn=yes
+
+  nnoremap <buffer> K  <Cmd>LspHover<CR>
+  nnoremap <buffer> gd <Cmd>LspDefinition<CR>
+endfunction
+
+" Whatever filetypes the servers cover, so adding one above is enough.
+let s:lsp_filetypes = g:lsp_server_list
+      \ ->mapnew({_, c -> c.filetypes})->flattennew()->join(',')
+
+augroup lsprc
+  autocmd!
+  execute 'autocmd FileType' s:lsp_filetypes 'call s:LspBuffer()'
+augroup END
+```
+
+</details>
 
 `'autocompletedelay'` is global rather than per buffer, so it goes on its
 own: `set autocompletedelay=500` keeps the menu from opening between
