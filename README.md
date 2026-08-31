@@ -195,17 +195,7 @@ bounds it.
 - pylsp 1.15.0, for Python
 - gopls 0.18.0, for Go
 
-Only what a server offers is asked for, and the three differ enough to be
-worth naming.  clangd answers a type hierarchy, semantic tokens and a
-formatting request for a range, and offers no code lens; its call hierarchy
-answers who calls a function, while `callHierarchy/outgoingCalls` comes back
-as an unknown method.  pylsp offers a code lens, and offers no workspace
-symbol search, no inlay hints and no call hierarchy.  gopls offers a code
-lens, inlay hints and semantic tokens, and neither a type hierarchy nor a
-formatting request for a range; it is the only one of the three that asks at
-run time to be told about files it is not being sent.  gopls and pylsp take
-more than one workspace folder, clangd supports neither and so gets a process
-per root.
+Only what a server offers is asked for, so what you get depends on the server.
 
 ## What it does
 
