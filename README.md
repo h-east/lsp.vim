@@ -421,26 +421,10 @@ the LSP 3.18 meta model: 73 are answered, 1 more is worth having, and
 
 </details>
 
-## Tests
+## Contributing
 
-```
-cd test && ./run
-```
-
-```
-VIMPROG=/path/to/vim ./run       # which Vim to test, "vim" by default
-TEST_FILTER=rename ./run         # only the tests whose name matches
-```
-
-The results are printed and also left in `test/messages`, and the exit status
-reports whether anything failed.  A Vim too old for the plugin is reported as
-such rather than failing every test on a missing command.
-
-They run against `test/fakeserver.py`, which answers from a scenario file
-rather than being a real language server: the scenario names the capabilities
-to announce, what to send unprompted, and what to reply to each request with.
-It records everything the client sent, so a test can check that as well as
-what the client did with the answers.
+How a report or a patch is best put, and how the tests are run, is in
+[CONTRIBUTING](.github/CONTRIBUTING.md).
 
 ## AI
 
