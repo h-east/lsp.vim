@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.002'
+const VERSION = '0.2.003'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -934,10 +934,14 @@ def HoverFiletype(contents: any): string
   return type(ft) == v:t_string && ft =~# '^\a[[:alnum:]._-]*$' ? ft : ''
 enddef
 
-# Scroll the popup with the keys the completion info popup takes; every other
-# key is left to Vim.
+# Take the popup away with <Esc>, or scroll it with the keys the completion
+# info popup takes; every other key is left to Vim.
 def HoverFilter(id: number, key: string): bool
   var name = keytrans(key)
+  if name ==# '<Esc>'
+    CloseHoverPopup()
+    return true
+  endif
   var keys = ''
   if name ==# '<C-S-Down>' || name ==# '<C-S-N>'
     keys = "\<C-E>"
@@ -954,16 +958,35 @@ def HoverFilter(id: number, key: string): bool
   return true
 enddef
 
+# The popup the last hover, hint or link went into, there being one at a time.
+var hover_popup = 0
+
+# Close it, if it is still up.  The screen is put right here, since what takes
+# the popup away does not always redraw.
+def CloseHoverPopup()
+  if !popup_getpos(hover_popup)->empty()
+    popup_close(hover_popup)
+    redraw
+  endif
+enddef
+
 # The popup a hover, a hint or a link is shown in, drawn in the filetype the
-# server named.
+# server named.  One still up from an earlier ask makes way for it, and what
+# leaves the place it is about behind takes it away.
 def HoverPopup(lines: list<string>, contents: any)
+  CloseHoverPopup()
   var options = POPUP_OPTIONS->extendnew(PopupStyle('hover_popup'))
   options.filter = HoverFilter
   options.filtermode = 'n'
-  var id = popup_atcursor(lines, options)
+  hover_popup = popup_atcursor(lines, options)
+  augroup lsp_hover_popup
+    autocmd!
+    autocmd ModeChanged,WinLeave,WinScrolled,BufLeave,VimResized
+	  \ * ++once CloseHoverPopup()
+  augroup END
   var ft = HoverFiletype(contents)
   if !ft->empty()
-    win_execute(id, 'setlocal filetype=' .. ft)
+    win_execute(hover_popup, 'setlocal filetype=' .. ft)
   endif
 enddef
 

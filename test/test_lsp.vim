@@ -2176,6 +2176,80 @@ def g:Test_the_hover_popup_leaves_other_keys_alone()
   assert_equal(2, line('.'), 'CTRL-N should still move the cursor')
 enddef
 
+# Asking again where the cursor has moved to, before the popup that is up has
+# been closed by the move.
+def g:Test_a_hover_popup_makes_way_for_the_next_one()
+  assert_true(t.StartServer({
+    capabilities: Offering({hoverProvider: true}),
+    replies: {'textDocument/hover': {contents: 'x'}},
+  }, ['int x;']->repeat(20)))
+  defer popup_clear()
+
+  cursor(1, 1)
+  LspHover
+  assert_true(t.WaitFor(() => !popup_list()->empty()))
+  var first = popup_list()[0]
+
+  cursor(5, 1)
+  LspHover
+  assert_true(t.WaitFor(() =>
+	      popup_list()->len() == 1 && popup_list()[0] != first),
+	      'the popup that was up should have made way for the new one')
+enddef
+
+# A mode is entered where the cursor stands, so what closes the popup on a
+# move does not reach it.
+def g:Test_a_hover_popup_closes_on_the_way_into_another_mode()
+  assert_true(t.StartServer({
+    capabilities: Offering({hoverProvider: true}),
+    replies: {'textDocument/hover': {contents: 'x'}},
+  }, ['int x;']))
+  defer popup_clear()
+
+  LspHover
+  assert_true(t.WaitFor(() => !popup_list()->empty()))
+  feedkeys("i\<Esc>", 'xt')
+  assert_true(popup_list()->empty(), 'Insert mode should close it')
+
+  LspHover
+  assert_true(t.WaitFor(() => !popup_list()->empty()))
+  feedkeys("V\<Esc>", 'xt')
+  assert_true(popup_list()->empty(), 'Visual mode should close it')
+
+  LspHover
+  assert_true(t.WaitFor(() => !popup_list()->empty()))
+  feedkeys("\<Esc>", 'xt')
+  assert_true(popup_list()->empty(), '<Esc> should close it where it stands')
+
+  # While the command line is up, nothing else would redraw what it was over.
+  LspHover
+  assert_true(t.WaitFor(() => !popup_list()->empty()))
+  redraw
+  var pos = popup_getpos(popup_list()[0])
+  assert_equal('x', screenstring(pos.core_line, pos.core_col))
+  g:seen = ''
+  g:Seen = () => {
+    g:seen = screenstring(pos.core_line, pos.core_col)
+  }
+  defer execute('unlet g:seen g:Seen')
+  augroup lsp_test_cmdline
+    autocmd!
+    autocmd ModeChanged * ++once g:Seen()
+  augroup END
+  defer execute('autocmd! lsp_test_cmdline')
+
+  feedkeys(":\<Esc>", 'xt')
+  assert_true(popup_list()->empty(), 'the command line should close it')
+  assert_notequal('x', g:seen, 'and take it off the screen')
+
+  # A split does not move the cursor either.
+  LspHover
+  assert_true(t.WaitFor(() => !popup_list()->empty()))
+  split
+  defer execute('close')
+  assert_true(popup_list()->empty(), 'a split should close it')
+enddef
+
 # "ascii" rather than a box-drawing style, so that what is drawn does not
 # turn on 'encoding' and 'ambiwidth'.
 def g:Test_a_popup_is_drawn_the_way_it_was_asked_for()

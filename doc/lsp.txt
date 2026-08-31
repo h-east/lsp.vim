@@ -460,8 +460,11 @@ The server ~
 Asking ~
 								*:LspHover*
 :LspHover	Ask the server about the symbol under the cursor and show the
-		answer in a popup.  The popup closes when the cursor moves.
-		What does not fit is reached with the keys under
+		answer in a popup.  <Esc> takes the popup away where it
+		stands.  What it tells is about the place the cursor is in,
+		so it also closes on anything that leaves that place behind:
+		a cursor move, another mode, another window, another buffer,
+		a scroll.  What does not fit is reached with the keys under
 		|lsp-popup-scroll|.
 
 								*:LspSignature*
