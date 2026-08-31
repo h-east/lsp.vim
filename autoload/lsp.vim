@@ -1520,17 +1520,40 @@ def EditLines(lines: list<string>, edit: dict<any>): list<string>
 	 + after
 enddef
 
+# How many lines the edits above "lnum" put in, less what they take out.
+def LinesAdded(edits: list<any>, lnum: number): number
+  var added = 0
+  for edit in edits
+    var range = edit->get('range', {})
+    var sl = range->get('start', {})->get('line', 0)
+    var el = range->get('end', {})->get('line', sl)
+    if el < lnum - 1
+      added += count(edit->get('newText', ''), "\n") - (el - sl)
+    endif
+  endfor
+  return added
+enddef
+
 # Worked out on a copy and put back in one go, so a single undo takes all of
-# it back.
+# it back.  The cursor goes along with the line it is on.
 def ApplyTextEdits(bufnr: number, edits: list<any>)
   var lines = getbufline(bufnr, 1, '$')
-  for edit in SortedEdits(edits)
+  var sorted = SortedEdits(edits)
+  for edit in sorted
     lines = EditLines(lines, edit)
   endfor
+  # Read before the lines change, or the column is lost to whatever line ends
+  # up in its place.
+  var pos = bufnr == bufnr('%') ? getcurpos() : []
+  var added = pos->empty() ? 0 : LinesAdded(sorted, pos[1])
   var was = BufLineCount(bufnr)
   setbufline(bufnr, 1, lines)
   if was > len(lines)
     deletebufline(bufnr, len(lines) + 1, was)
+  endif
+  if added != 0
+    pos[1] += added
+    setpos('.', pos)
   endif
 enddef
 

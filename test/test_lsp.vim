@@ -267,12 +267,15 @@ def g:Test_the_edits_around_a_completed_word()
     replies: {'textDocument/completion': {isIncomplete: false, items: [ITEM]}},
   }, ['int main(void)', '{', '    prin', '}']))
 
+  stopped_at = []
   cursor(3, 8)
-  feedkeys("A\<C-X>\<C-O>\<C-Y>\<Esc>", 'tx')
-  # The edits around the word land after the event that carries the word.
-  assert_true(t.WaitFor(() => getline(1) ==# '#include <stdio.h>'),
-	      'the include should be added')
-  assert_equal('    printf', getline(4))
+  # The edits around the word land after the event that carries the word, so
+  # the typing waits for them.
+  feedkeys("A\<C-X>\<C-O>\<C-Y>(\<C-R>=g:StopWhenEdited()\<CR>\<Esc>", 'tx')
+  assert_equal('#include <stdio.h>', getline(1), 'the include should be added')
+  assert_equal('    printf(', getline(4))
+  assert_equal([4, 12], stopped_at, 'the cursor should go down with its line')
+  assert_equal(4, line('.'))
 enddef
 
 # Where the cursor is left has to be read while Insert mode is still on, so
@@ -280,6 +283,13 @@ enddef
 var stopped_at: list<number> = []
 
 def g:SnippetStop(): string
+  stopped_at = [line('.'), col('.')]
+  return ''
+enddef
+
+# The edits land from a timer, which the wait gives room to run.
+def g:StopWhenEdited(): string
+  t.WaitFor(() => getline(1) ==# '#include <stdio.h>')
   stopped_at = [line('.'), col('.')]
   return ''
 enddef
