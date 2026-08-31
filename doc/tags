@@ -54,6 +54,7 @@ lsp-inlay-hint	lsp.txt	/*lsp-inlay-hint*
 lsp-introduction	lsp.txt	/*lsp-introduction*
 lsp-limitations	lsp.txt	/*lsp-limitations*
 lsp-popup	lsp.txt	/*lsp-popup*
+lsp-popup-scroll	lsp.txt	/*lsp-popup-scroll*
 lsp-requirements	lsp.txt	/*lsp-requirements*
 lsp-selection	lsp.txt	/*lsp-selection*
 lsp-semantic-tokens	lsp.txt	/*lsp-semantic-tokens*

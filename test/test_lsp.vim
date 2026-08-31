@@ -2113,6 +2113,69 @@ def g:Test_a_hover_is_drawn_in_the_filetype_the_server_named()
   assert_equal('', Filetype())
 enddef
 
+# More in the popup than fits, so that there is something to scroll to.
+def g:Test_the_hover_popup_scrolls_from_the_keyboard()
+  assert_true(t.StartServer({
+    capabilities: Offering({hoverProvider: true}),
+    replies: {'textDocument/hover': {contents:
+	      range(1, 200)->mapnew((_, n) => printf('line %d', n))->join("\n")}},
+  }, ['int x;']))
+  defer popup_clear()
+
+  LspHover
+  assert_true(t.WaitFor(() => !popup_list()->empty()),
+	      'the server should answer with a popup')
+  var id = popup_list()[0]
+  var height = popup_getpos(id).core_height
+  assert_true(height > 2, 'the popup should be taller than a page step')
+  assert_equal(1, popup_getpos(id).firstline)
+
+  # The letter keys are fed unsimplified, so that Shift is kept.
+  feedkeys("\<C-S-Down>", 'xt')
+  assert_equal(2, popup_getpos(id).firstline, 'a line down')
+  feedkeys("\<*C-S-N>", 'xt')
+  assert_equal(3, popup_getpos(id).firstline, 'a line down with CTRL-SHIFT-N')
+  feedkeys("\<C-S-Up>", 'xt')
+  assert_equal(2, popup_getpos(id).firstline, 'a line back up')
+  feedkeys("\<*C-S-P>", 'xt')
+  assert_equal(1, popup_getpos(id).firstline, 'a line up with CTRL-SHIFT-P')
+
+  # A page is a windowful less the two lines that carry over.
+  feedkeys("\<C-S-PageDown>", 'xt')
+  assert_equal(height - 1, popup_getpos(id).firstline, 'a page down')
+  feedkeys("\<C-S-PageUp>", 'xt')
+  assert_equal(1, popup_getpos(id).firstline, 'a page back up')
+
+  # The cursor stays where it is, so the popup stays up.
+  assert_equal(1, line('.'))
+  assert_false(popup_getpos(id)->empty(), 'the popup should still be there')
+enddef
+
+# A key the popup does not take stays Vim's own while the popup is up.
+def g:Test_the_hover_popup_leaves_other_keys_alone()
+  assert_true(t.StartServer({
+    capabilities: Offering({hoverProvider: true}),
+    replies: {'textDocument/hover': {contents: 'x'}},
+  }, ['int x;']->repeat(200)))
+  defer popup_clear()
+
+  LspHover
+  assert_true(t.WaitFor(() => !popup_list()->empty()),
+	      'the server should answer with a popup')
+
+  var first = line('w0')
+  feedkeys("\<C-F>", 'xt')
+  assert_true(line('w0') > first, 'CTRL-F should still scroll the window')
+
+  # A plain CTRL-N is not CTRL-SHIFT-N: it moves the cursor.
+  popup_clear()
+  cursor(1, 1)
+  LspHover
+  assert_true(t.WaitFor(() => !popup_list()->empty()))
+  feedkeys("\<C-N>", 'xt')
+  assert_equal(2, line('.'), 'CTRL-N should still move the cursor')
+enddef
+
 # "ascii" rather than a box-drawing style, so that what is drawn does not
 # turn on 'encoding' and 'ambiwidth'.
 def g:Test_a_popup_is_drawn_the_way_it_was_asked_for()

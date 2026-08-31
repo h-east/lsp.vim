@@ -934,11 +934,33 @@ def HoverFiletype(contents: any): string
   return type(ft) == v:t_string && ft =~# '^\a[[:alnum:]._-]*$' ? ft : ''
 enddef
 
+# Scroll the popup with the keys the completion info popup takes; every other
+# key is left to Vim.
+def HoverFilter(id: number, key: string): bool
+  var name = keytrans(key)
+  var keys = ''
+  if name ==# '<C-S-Down>' || name ==# '<C-S-N>'
+    keys = "\<C-E>"
+  elseif name ==# '<C-S-Up>' || name ==# '<C-S-P>'
+    keys = "\<C-Y>"
+  elseif name ==# '<C-S-PageDown>'
+    keys = "\<C-F>"
+  elseif name ==# '<C-S-PageUp>'
+    keys = "\<C-B>"
+  else
+    return false
+  endif
+  win_execute(id, 'normal! ' .. keys)
+  return true
+enddef
+
 # The popup a hover, a hint or a link is shown in, drawn in the filetype the
 # server named.
 def HoverPopup(lines: list<string>, contents: any)
-  var id = popup_atcursor(lines,
-			  POPUP_OPTIONS->extendnew(PopupStyle('hover_popup')))
+  var options = POPUP_OPTIONS->extendnew(PopupStyle('hover_popup'))
+  options.filter = HoverFilter
+  options.filtermode = 'n'
+  var id = popup_atcursor(lines, options)
   var ft = HoverFiletype(contents)
   if !ft->empty()
     win_execute(id, 'setlocal filetype=' .. ft)

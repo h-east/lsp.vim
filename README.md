@@ -225,7 +225,8 @@ per root.
   asked for
 - Growing the selection out to the next range the file is built from, and
   back in, through `<Plug>(lsp-selection-expand)` and its shrink
-- Hover, and jumps to a definition, declaration, type or implementation
+- Hover, scrolled from the keyboard where it does not fit, and jumps to a
+  definition, declaration, type or implementation
 - Every mention of a symbol, the symbols in a file, and a workspace-wide
   symbol search
 - Who calls a function and what it calls, and what a type is derived

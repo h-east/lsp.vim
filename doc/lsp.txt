@@ -333,6 +333,30 @@ Turning the border off leaves the signature popup room for another line of
 text: it is placed clear of the completion menu, and what the border costs is
 counted before it goes up.
 
+							*lsp-popup-scroll*
+A hover popup with more in it than fits gets a scrollbar, which the mouse
+wheel turns.  From the keyboard it takes the keys the completion info popup
+takes, |popupmenu-keys|:
+
+	CTRL-SHIFT-<Up>		up a line
+	CTRL-SHIFT-<Down>	down a line
+	CTRL-SHIFT-<PageUp>	up a page
+	CTRL-SHIFT-<PageDown>	down a page
+	CTRL-SHIFT-P		up a line
+	CTRL-SHIFT-N		down a line
+
+Nothing is mapped: the popup reads the keys itself while it is up, in Normal
+mode, so what they otherwise do is left alone.  The cursor does not move, so
+the popup stays where it is.
+
+CTRL-SHIFT-P and CTRL-SHIFT-N need the GUI or a terminal that reports
+modifiers for letter keys, which is what 'keyprotocol' asks for; see
+|modifyOtherKeys|.  A terminal that reports no modifiers at all, the Linux
+console among them, leaves the other four out as well.
+
+The popup |:LspInlayHintInfo| and |:LspDocumentLinkInfo| put up is the same
+one and scrolls the same way.
+
 ==============================================================================
 4. Commands							*lsp-commands*
 
@@ -437,6 +461,8 @@ Asking ~
 								*:LspHover*
 :LspHover	Ask the server about the symbol under the cursor and show the
 		answer in a popup.  The popup closes when the cursor moves.
+		What does not fit is reached with the keys under
+		|lsp-popup-scroll|.
 
 								*:LspSignature*
 :LspSignature	Show what the call the cursor is in takes, in a popup.  See
