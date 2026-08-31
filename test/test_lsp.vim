@@ -2123,6 +2123,47 @@ def g:Test_a_hover_is_drawn_in_the_filetype_the_server_named()
   assert_equal('', Filetype())
 enddef
 
+def g:Test_the_character_references_in_a_hover()
+  defer popup_clear()
+  assert_true(t.StartServer({
+    capabilities: Offering({hoverProvider: true}),
+    sequence: {'textDocument/hover': [
+      {contents: {kind: 'markdown',
+		  value: 'a&nbsp;b &lt;T&gt; &quot;q&quot; &amp;amp; &#39;'
+			 .. ' &#x41; &unknown; &42;'}},
+      {contents: {kind: 'plaintext', value: 'a&nbsp;b'}},
+      {contents: {language: 'c', value: 'a&nbsp;b'}},
+      {contents: 'a&nbsp;b'},
+    ]},
+  }, ['int x;']))
+
+  def Text(): string
+    return popup_list()->empty()
+	 ? ''
+	 : getbufline(winbufnr(popup_list()[0]), 1)->get(0, '')
+  enddef
+
+  # What is left out of the table, and a number that is none, stay as they are.
+  LspHover
+  assert_true(t.WaitFor(() =>
+	      Text() ==# 'a b <T> "q" &amp; '' A &unknown; &42;'),
+	      'the references markdown is written with')
+  popup_clear()
+
+  # Plaintext and code are the characters they hold.
+  LspHover
+  assert_true(t.WaitFor(() => Text() ==# 'a&nbsp;b'), 'plaintext is left alone')
+  popup_clear()
+
+  LspHover
+  assert_true(t.WaitFor(() => Text() ==# 'a&nbsp;b'), 'code is left alone')
+  popup_clear()
+
+  # A MarkedString that is a plain string is markdown.
+  LspHover
+  assert_true(t.WaitFor(() => Text() ==# 'a b'), 'a string of its own')
+enddef
+
 # More in the popup than fits, so that there is something to scroll to.
 def g:Test_the_hover_popup_scrolls_from_the_keyboard()
   assert_true(t.StartServer({

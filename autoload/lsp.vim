@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.003'
+const VERSION = '0.2.004'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -990,10 +990,36 @@ def HoverPopup(lines: list<string>, contents: any)
   endif
 enddef
 
+# The character references markdown is written with, as the characters they
+# name.
+const ENTITIES = {
+  amp: '&',
+  apos: "'",
+  gt: '>',
+  lt: '<',
+  nbsp: ' ',
+  quot: '"',
+}
+
+def EntityChar(whole: string, name: string): string
+  if name[0] ==# '#'
+    var nr = name[1] ==? 'x' ? str2nr(name[2 : ], 16) : str2nr(name[1 : ])
+    return nr > 0 ? nr2char(nr) : whole
+  endif
+  return ENTITIES->get(name, whole)
+enddef
+
+def Decoded(text: string): string
+  return text->substitute('&\(#\d\+\|#[xX]\x\+\|\a\+\);',
+			  '\=EntityChar(submatch(0), submatch(1))', 'g')
+enddef
+
 # The "contents" of a hover reply is a string, a Dict, or a List of either.
+# A string of its own is markdown, as is a MarkupContent that names it; a
+# MarkedString with a language is code, and plaintext is what it says.
 def HoverText(contents: any): list<string>
   if type(contents) == v:t_string
-    return contents->split("\n")
+    return Decoded(contents)->split("\n")
   endif
   if type(contents) == v:t_list
     var out: list<string> = []
@@ -1003,7 +1029,9 @@ def HoverText(contents: any): list<string>
     return out
   endif
   if type(contents) == v:t_dict
-    return contents->get('value', '')->split("\n")
+    var text = contents->get('value', '')
+    return (contents->get('kind', '') ==# 'markdown' ? Decoded(text) : text)
+	   ->split("\n")
   endif
   return []
 enddef
