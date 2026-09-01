@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.004'
+const VERSION = '0.2.005'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -268,6 +268,19 @@ def SetBufferOptions(cl: dict<any>, bufnr: number)
   setbufvar(bufnr, '&omnifunc', 'lsp#OmniFunc')
 enddef
 
+# Fired for the buffer it is about, so a buffer-local setting lands on it.
+# One no window holds is passed over: nothing can make it current.
+def BufEvent(name: string, bufnr: number)
+  if bufnr == bufnr('%')
+    execute 'silent doautocmd <nomodeline> User' name
+    return
+  endif
+  var winid = bufwinid(bufnr)
+  if winid > 0
+    win_execute(winid, 'silent doautocmd <nomodeline> User ' .. name)
+  endif
+enddef
+
 def DidOpen(cl: dict<any>, bufnr: number)
   var uri = util.PathToUri(bufname(bufnr))
   if cl.documents->has_key(uri)
@@ -294,6 +307,7 @@ def DidOpen(cl: dict<any>, bufnr: number)
     SemanticTokens()
     PullDiagnostics()
   endif
+  BufEvent('LspAttached', bufnr)
 enddef
 
 def SendChange(cl: dict<any>, bufnr: number, changes: list<dict<any>>)
@@ -618,6 +632,9 @@ export def Attach(loud: bool = false)
 enddef
 
 export def Detach(bufnr: number = bufnr('%'))
+  # A buffer may be let go of more than once, since the autocommand that
+  # leads here stays with it; only the time it had a server is an event.
+  var was_served = !getbufvar(bufnr, 'lsp_client_key', '')->empty()
   var listener = getbufvar(bufnr, 'lsp_listener', 0)
   if listener > 0
     listener_remove(listener)
@@ -645,12 +662,20 @@ export def Detach(bufnr: number = bufnr('%'))
     endif
     setbufvar(bufnr, 'lsp_listener', 0)
     setbufvar(bufnr, 'lsp_client_key', '')
+    if was_served
+      BufEvent('LspDetached', bufnr)
+    endif
   endif
 enddef
 
 export def Stop(loud: bool = false)
   var running = len(clients)
   for cl in clients->values()
+    # The buffers go back to what they were before the server took them on,
+    # while it is still there to be told they are closed.
+    for doc in cl.documents->values()
+      Detach(doc.bufnr)
+    endfor
     lspclient.Stop(cl)
   endfor
   clients = {}

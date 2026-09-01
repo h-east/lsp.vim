@@ -144,13 +144,11 @@ def LspBuffer()
   nnoremap <buffer> gd <Cmd>LspDefinition<CR>
 enddef
 
-# Whatever filetypes the servers cover, so adding one above is enough.
-const LspFiletypes = g:lsp_server_list
-      ->mapnew((_, c) => c.filetypes)->flattennew()->join(',')
-
+# Fired for a buffer a server has taken on, so where a server is set up but
+# not installed, the buffer is left as it was.
 augroup lsprc
   autocmd!
-  execute 'autocmd FileType' LspFiletypes 'LspBuffer()'
+  autocmd User LspAttached LspBuffer()
 augroup END
 ```
 
@@ -172,13 +170,11 @@ function! s:LspBuffer()
   nnoremap <buffer> gd <Cmd>LspDefinition<CR>
 endfunction
 
-" Whatever filetypes the servers cover, so adding one above is enough.
-let s:lsp_filetypes = g:lsp_server_list
-      \ ->mapnew({_, c -> c.filetypes})->flattennew()->join(',')
-
+" Fired for a buffer a server has taken on, so where a server is set up but
+" not installed, the buffer is left as it was.
 augroup lsprc
   autocmd!
-  execute 'autocmd FileType' s:lsp_filetypes 'call s:LspBuffer()'
+  autocmd User LspAttached call s:LspBuffer()
 augroup END
 ```
 

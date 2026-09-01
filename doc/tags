@@ -36,6 +36,8 @@
 :LspWorkspaceFolderRemove	lsp.txt	/*:LspWorkspaceFolderRemove*
 <Plug>(lsp-selection-expand)	lsp.txt	/*<Plug>(lsp-selection-expand)*
 <Plug>(lsp-selection-shrink)	lsp.txt	/*<Plug>(lsp-selection-shrink)*
+LspAttached	lsp.txt	/*LspAttached*
+LspDetached	lsp.txt	/*LspDetached*
 g:loaded_lsp_vim	lsp.txt	/*g:loaded_lsp_vim*
 g:lsp_client_config	lsp.txt	/*g:lsp_client_config*
 g:lsp_server_list	lsp.txt	/*g:lsp_server_list*
@@ -48,6 +50,7 @@ lsp-configuration	lsp.txt	/*lsp-configuration*
 lsp-contents	lsp.txt	/*lsp-contents*
 lsp-diagnostics	lsp.txt	/*lsp-diagnostics*
 lsp-document-link	lsp.txt	/*lsp-document-link*
+lsp-events	lsp.txt	/*lsp-events*
 lsp-folding	lsp.txt	/*lsp-folding*
 lsp-highlight	lsp.txt	/*lsp-highlight*
 lsp-inlay-hint	lsp.txt	/*lsp-inlay-hint*

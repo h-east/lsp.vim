@@ -357,6 +357,33 @@ console among them, leaves the other four out as well.
 The popup |:LspInlayHintInfo| and |:LspDocumentLinkInfo| put up is the same
 one and scrolls the same way.
 
+Events ~
+								*lsp-events*
+Two |User| events are fired, one where a buffer gains a server and one where
+it loses one:
+							      *LspAttached*
+							      *LspDetached*
+	LspAttached	The server is ready and has been told about the
+			buffer.  What it offers is known by then.
+	LspDetached	The buffer is no longer served, whether it was
+			unloaded or |:LspStop| let go of it.
+
+Each is fired for the buffer it is about, which is the current one while the
+autocommand runs, so |:map-<buffer>| and |:setlocal| land where they are
+meant to.  A buffer no window holds is passed over.
+
+This is where the settings a server makes worth having belong, rather than
+under a |FileType| autocommand: where a server is set up but not installed,
+the buffer is then left as it was: >vim9
+
+	def LspBuffer()
+	  setlocal complete^=o completeopt=menuone,popup signcolumn=yes
+	  nnoremap <buffer> K  <Cmd>LspHover<CR>
+	  nnoremap <buffer> gd <Cmd>LspDefinition<CR>
+	enddef
+
+	autocmd User LspAttached LspBuffer()
+<
 ==============================================================================
 4. Commands							*lsp-commands*
 
@@ -367,8 +394,10 @@ The server ~
 		is for a buffer whose 'filetype' was decided later.
 
 								*:LspStop*
-:LspStop	Shut down every running server.  A buffer is connected again
-		when it is opened again.
+:LspStop	Shut down every running server.  The buffers they had go back
+		to what they were before, signs, hints and 'omnifunc' among
+		it, and each one fires |LspDetached|.  A buffer is connected
+		again when it is opened again.
 
 								*:LspStatus*
 :LspStatus	Name the version of the plugin and of Vim, then list the

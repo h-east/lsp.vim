@@ -2123,6 +2123,36 @@ def g:Test_a_hover_is_drawn_in_the_filetype_the_server_named()
   assert_equal('', Filetype())
 enddef
 
+# The events are what a buffer-local setting hangs off, so each has to reach
+# the buffer it is about.
+def g:Test_the_events_a_buffer_gaining_and_losing_a_server_fires()
+  g:seen = []
+  augroup lsp_test_events
+    autocmd!
+    autocmd User LspAttached add(g:seen, ['attached', bufnr('%')])
+    autocmd User LspDetached add(g:seen, ['detached', bufnr('%')])
+  augroup END
+  defer execute('autocmd! lsp_test_events')
+  defer execute('unlet g:seen')
+
+  assert_true(t.StartServer({capabilities: SYNC}, ['int x;']))
+  var bufnr = bufnr('%')
+  assert_equal([['attached', bufnr]], g:seen)
+
+  # A server stopped by hand lets go of its buffers, which are still there.
+  t.StopServer()
+  assert_equal([['attached', bufnr], ['detached', bufnr]], g:seen)
+  assert_equal('', getbufvar(bufnr, 'lsp_client_key'))
+  assert_equal(0, getbufvar(bufnr, 'lsp_listener'))
+
+  g:seen = []
+  assert_true(t.StartServer({capabilities: SYNC}, ['int x;']))
+  var again = bufnr('%')
+  assert_equal([['attached', again]], g:seen)
+  execute 'bwipe!' again
+  assert_equal([['attached', again], ['detached', again]], g:seen)
+enddef
+
 def g:Test_the_character_references_in_a_hover()
   defer popup_clear()
   assert_true(t.StartServer({
