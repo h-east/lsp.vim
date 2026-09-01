@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.005'
+const VERSION = '0.2.006'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -3161,7 +3161,15 @@ def OnCompleteDone()
   # They never overlap what completion touched, so they apply as they are.
   # After the event, to stay out of whatever the completion is still doing.
   var bufnr = bufnr('%')
-  timer_start(0, (_) => ApplyTextEdits(bufnr, edits))
+  timer_start(0, (_) => {
+    ApplyTextEdits(bufnr, edits)
+    # An import put in above the call moves it, so the signature was asked
+    # about where the call no longer is.
+    if !signature_asked->empty()
+      signature_asked = []
+      Signature()
+    endif
+  })
 enddef
 
 # A watcher names which changes it wants to hear about; without a "kind" it

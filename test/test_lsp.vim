@@ -278,6 +278,60 @@ def g:Test_the_edits_around_a_completed_word()
   assert_equal(4, line('.'))
 enddef
 
+# Read from the typeahead, so that Insert mode is still on; the sleep gives
+# the edits and the answers to them their turn.
+var asked_at: list<any> = []
+
+def g:SignatureAsked(): string
+  sleep 400m
+  asked_at = t.Sent('textDocument/signatureHelp')
+	       ->mapnew((_, m) => m.params.position)
+  return ''
+enddef
+
+# The server is asked about a place in the file, and an import put in above
+# the call moves it after the asking.
+def g:Test_the_signature_of_a_call_a_completion_imported_for()
+  const ITEM = {
+    label: 'printf',
+    filterText: 'printf',
+    insertText: 'printf',
+    insertTextFormat: 1,
+    kind: 3,
+    additionalTextEdits: [{
+      newText: "#include <stdio.h>\n",
+      range: {start: {line: 0, character: 0}, end: {line: 0, character: 0}},
+    }],
+  }
+  assert_true(t.StartServer({
+    capabilities: Offering({completionProvider: {resolveProvider: false},
+			    signatureHelpProvider: {triggerCharacters: ['(']}}),
+    replies: {
+      'textDocument/completion': {isIncomplete: false, items: [ITEM]},
+      'textDocument/signatureHelp': {signatures: [{label: 'printf(fmt)'}],
+				     activeSignature: 0, activeParameter: 0},
+    },
+  }, ['int main(void)', '{', '    prin', '}']))
+  defer popup_clear()
+
+  var save_delay = &autocompletedelay
+  defer execute('set autocompletedelay=' .. save_delay)
+  setlocal complete=o
+  setlocal autocomplete
+  set autocompletedelay=0
+  test_override('char_avail', 1)
+
+  asked_at = []
+  cursor(3, 8)
+  feedkeys("A\<C-N>\<C-Y>(\<C-R>=g:SignatureAsked()\<CR>\<Esc>", 'tx')
+  CleanUp()
+
+  assert_equal('    printf(', getline(4))
+  assert_equal(2, len(asked_at), 'asked once before the import, once after')
+  assert_equal({line: 3, character: 11}, asked_at[1],
+	       'the call is asked about where the import left it')
+enddef
+
 # Where the cursor is left has to be read while Insert mode is still on, so
 # it is read from the typeahead itself.
 var stopped_at: list<number> = []
