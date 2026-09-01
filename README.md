@@ -4,25 +4,55 @@
 [![Update doc/tags](https://github.com/h-east/lsp.vim/actions/workflows/update-doc-tags.yml/badge.svg)](https://github.com/h-east/lsp.vim/actions/workflows/update-doc-tags.yml)
 [![Vim 9.2.1004+](https://img.shields.io/badge/Vim-9.2.1004%2B-015b01?logo=vim&logoColor=white)](#requirements)
 
-A Language Server Protocol client for Vim, written in Vim9 script.
+A Language Server Protocol client for Vim, written in Vim9 script.  Nothing
+else to install: Vim frames the protocol messages and matches replies to
+requests itself, so what is left to the plugin is the conversation and what
+to do with the answers.
 
-Vim frames the protocol messages and matches replies to requests itself, so
-what is left to the plugin is the conversation and what to do with the
-answers.
+73 of the 95 requests and notifications in the LSP 3.18 meta model are
+answered, and each of the rest is listed with the reason it is not.
 
-It is written as much to put Vim's own side of the protocol through its
-paces as to be used every day, and some of what turned up that way has gone
-into Vim itself.  Expect it to move at that pace rather than at the pace of
-a plugin its author leans on all day.
+<!-- TODO: a demo of completion, hover and a jump to a definition -->
+
+## What it does
+
+**Completion** through `'omnifunc'`, with the documentation popup beside the
+menu and snippets whose stops can be stepped through.
+
+**Diagnostics** as signs, text highlights and a message on the cursor line,
+whether the server sends them or waits to be asked.
+
+**Reading** hover, signature help while a call is being typed, and the
+symbol under the cursor marked everywhere it is used.
+
+**Jumping** to a definition, declaration, type or implementation, with lists
+of references, of the symbols in a file or a workspace, of who calls a
+function and what it calls, and of what a type is derived from.
+
+**Editing** rename across files, formatting a buffer or a range, and code
+actions from a menu, including the ones a server carries out itself.
+
+**Display** inlay hints, code lenses, document links, semantic tokens and
+folds worked out by the server, each off until asked for.
+
+The buffer is kept in step with the server as it is typed in, the server
+hears what it asked to hear about, and what it reports about itself is
+under `:LspStatus` and `:LspLog`.  The details are in `:help lsp.txt`.
 
 ## Requirements
 
-- Vim 9.2.1004 or later, with the `+job` and `+channel` features.  That patch
-  is what lets a completion function tell whether Vim asked on its own,
-  9.2.0997 before it is what lets `ch_sendexpr()` answer a request the server
-  named with a string, and 9.2.0970 what lets `listener_add()` ask for the
-  text of a change, which is how a buffer is kept in step with the server.
+- Vim 9.2.1004 or later, with the `+job` and `+channel` features
 - A language server for the language you work in, installed separately
+
+<details>
+<summary>What those patches are for</summary>
+
+9.2.1004 is what lets a completion function tell whether Vim asked on its
+own, 9.2.0997 before it is what lets `ch_sendexpr()` answer a request the
+server named with a string, and 9.2.0970 what lets `listener_add()` ask for
+the text of a change, which is how a buffer is kept in step with the server.
+
+</details>
 
 ## Installation
 
@@ -85,6 +115,8 @@ let g:lsp_server_list = [
 ```
 
 </details>
+
+Every key an entry takes is under `:help g:lsp_server_list`.
 
 What the client itself does goes in `g:lsp_client_config`, one entry per
 setting:
@@ -192,46 +224,6 @@ bounds it.
 - gopls 0.18.0, for Go
 
 Only what a server offers is asked for, so what you get depends on the server.
-
-## What it does
-
-- Completion through `'omnifunc'`, including `completionItem/resolve` for the
-  info popup, and snippets whose stops can be stepped through once `snippet`
-  is turned on
-- Diagnostics as signs, text highlights and a message on the cursor line,
-  whether the server sends them or waits to be asked
-- Signature help while a call is being typed
-- The other places the symbol under the cursor is used, marked in the buffer
-- Semantic tokens, the coloring a server works out from what it parsed, off
-  until asked for
-- Inlay hints, the names and types a server fills in, off until asked for
-- Folds worked out by the server, off until asked for
-- Code lenses above the line they are about, off until asked for
-- Document links, the parts of a file that lead somewhere else, off until
-  asked for
-- Growing the selection out to the next range the file is built from, and
-  back in, through `<Plug>(lsp-selection-expand)` and its shrink
-- Hover, scrolled from the keyboard where it does not fit, and jumps to a
-  definition, declaration, type or implementation
-- Every mention of a symbol, the symbols in a file, and a workspace-wide
-  symbol search
-- Who calls a function and what it calls, and what a type is derived
-  from or gives rise to
-- Rename across files, formatting a buffer or a range, and code actions from
-  a menu
-- One server for several projects where it takes workspace folders, one per
-  root where it does not
-- Incremental document synchronization with `listener_add()`
-- What the server wants changed on the way to disk, waited for before the
-  write
-- What the server reports about itself: messages, logs, and what it is busy
-  with
-- What the server asks of the editor: a message to answer, a file to look
-  at, and what has gone out of date and should be asked for again
-- Changes the server works out on its own, including an action it carries out
-  itself
-- Files the server asked to watch, reported when Vim writes one or notices
-  that it changed
 
 ## Commands
 
@@ -406,6 +398,12 @@ the LSP 3.18 meta model: 73 are answered, 1 more is worth having, and
 | `telemetry/event` | no | there is nowhere to send it |
 
 </details>
+
+## Status
+
+It is written as much to put Vim's own side of the protocol through its
+paces as to be used every day, and some of what turned up that way has gone
+into Vim itself.  Expect it to move at that pace.
 
 ## Contributing
 
