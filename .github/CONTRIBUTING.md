@@ -17,7 +17,7 @@ client.
 ## Reporting
 
 A report is easiest to act on with the language server named, a file small
-enough to paste, and the keys to press in it.  `:LspStatus` says which server
+enough to paste, and the keys to press in it.  `:LspStatus` names which server
 a buffer talks to and how far it got, and `:LspLog` holds what the server
 logged and what it wrote to its standard error.  The messages themselves are
 in Vim's channel log, which `ch_logfile()` starts.
