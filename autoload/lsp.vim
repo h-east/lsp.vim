@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.006'
+const VERSION = '0.2.007'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -2947,6 +2947,7 @@ def ShowInfo(text: string)
 enddef
 
 def OnCompleteChanged()
+  diag.Redraw(bufnr('%'))
   MoveSignature()
   resolve_seq += 1
   var item = v:event->get('completed_item', {})->get('user_data', {})
@@ -3137,6 +3138,7 @@ def FinishSnippet(item: dict<any>, word: string)
 enddef
 
 def OnCompleteDone()
+  diag.Redraw(bufnr('%'))
   resolve_seq += 1
   # The next completion is its own, whatever the server returned for this one.
   completion_incomplete = false

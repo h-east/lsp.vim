@@ -116,6 +116,15 @@ export def Update(bufnr: number, items: list<dict<any>>)
   endif
 enddef
 
+# Completion takes the word it is replacing away, and the text properties on
+# it go with the text.  The server has no reason to report the same thing
+# twice, so what it last said is drawn again from here.
+export def Redraw(bufnr: number)
+  if diagnostics->has_key(string(bufnr)) && bufloaded(bufnr)
+    Draw(bufnr)
+  endif
+enddef
+
 export def Clear(bufnr: number)
   var key = string(bufnr)
   if diagnostics->has_key(key)
