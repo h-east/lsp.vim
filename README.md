@@ -12,7 +12,8 @@ to do with the answers.
 73 of the 95 requests and notifications in the LSP 3.18 meta model are
 answered, and each of the rest is listed with the reason it is not.
 
-<!-- TODO: a demo of completion, hover and a jump to a definition -->
+![Completion with the documentation beside it, the signature of a call, hover,
+a jump to a definition and the references list](.github/demo.gif)
 
 ## What it does
 
