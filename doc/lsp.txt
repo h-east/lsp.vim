@@ -296,9 +296,12 @@ Each is asked for on its own, under "hover_popup", "menu_popup" and
 			'pumopt', what is not named goes back to what it is
 			by default, so a String without "border:" in it
 			leaves the popup with no border.
-	highlights	A String read the way 'winhighlight' is, handed to
-			|popup_create()| as it stands.  |hl-PopupBorder| is
-			the group the border is drawn in.
+	highlights	A String read the way 'winhighlight' is.  Name
+			|hl-PopupBorder| in it for the border: a popup draws
+			that one from the group itself rather than through
+			'winhighlight', so what is named for it is handed to
+			|popup_create()| as "borderhighlight" instead.  The
+			rest goes to 'winhighlight' as it stands.
 
 Where "opt" is left out, the border 'pumopt' names is taken, so setting that
 is enough for all four to match.  Where 'pumopt' names none, the popup keeps

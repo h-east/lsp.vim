@@ -162,6 +162,14 @@ def PopupStyle(name: string): dict<any>
   var highlights = conf->get('highlights', '')
   if !highlights->empty()
     opts.highlights = highlights
+    # The border is drawn from the global |hl-PopupBorder|, which
+    # 'winhighlight' does not reach, so what is named for it is handed to
+    # popup_create() as the border highlight instead.
+    var border = highlights->split(',')
+		 ->filter((_, s) => s =~# '^PopupBorder:')
+    if !border->empty()
+      opts.borderhighlight = [border[-1]->matchstr(':\zs.*')]
+    endif
   endif
   return opts
 enddef
