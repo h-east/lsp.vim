@@ -1002,10 +1002,21 @@ def CloseHoverPopup()
   endif
 enddef
 
+# A server may end what it writes with blank lines; they would be empty rows
+# at the foot of the popup.
+def Trimmed(lines: list<string>): list<string>
+  var out = copy(lines)
+  while !out->empty() && out[-1] =~ '^\s*$'
+    remove(out, -1)
+  endwhile
+  return out
+enddef
+
 # The popup a hover, a hint or a link is shown in, drawn in the filetype the
 # server named.  One still up from an earlier ask makes way for it, and what
 # leaves the place it is about behind takes it away.
-def HoverPopup(lines: list<string>, contents: any)
+def HoverPopup(raw: list<string>, contents: any)
+  var lines = Trimmed(raw)
   CloseHoverPopup()
   var options = POPUP_OPTIONS->extendnew(PopupStyle('hover_popup'))
   options.filter = HoverFilter
