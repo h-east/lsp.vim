@@ -979,6 +979,13 @@ def HoverFilter(id: number, key: string): bool
   else
     return false
   endif
+  # A window scrolls past its last line to write there; a popup is only read.
+  if keys ==# "\<C-E>" || keys ==# "\<C-F>"
+    var pos = popup_getpos(id)
+    if pos->get('lastline', 0) >= getbufinfo(winbufnr(id))[0].linecount
+      return true
+    endif
+  endif
   win_execute(id, 'normal! ' .. keys)
   return true
 enddef
