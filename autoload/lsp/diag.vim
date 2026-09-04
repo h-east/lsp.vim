@@ -208,29 +208,46 @@ def RelatedEntries(bufnr: number, item: dict<any>): list<dict<any>>
   return out
 enddef
 
+# What |setqflist()| and |setloclist()| take for a file, whether or not there
+# is a buffer for it: one without has no lines to count a character offset
+# in, so the column is the one the protocol gives.
+export def Entries(path: string, items: list<any>): list<dict<any>>
+  var bufnr = bufnr(util.OpenName(path))
+  var entries: list<dict<any>> = []
+  for item in items
+    if type(item) != v:t_dict
+      continue
+    endif
+    var start = item->get('range', {})->get('start', {})
+    var lnum = start->get('line', 0) + 1
+    var col = start->get('character', 0) + 1
+    if bufnr > 0 && bufloaded(bufnr)
+      [lnum, col] = util.PosFromLsp(bufnr, start)
+    endif
+    var source = item->get('source', '')
+    entries->add({
+      filename: path,
+      lnum: lnum,
+      col: col,
+      type: Kind(item).qf,
+      text: (source->empty() ? '' : '[' .. source .. '] ')
+	    .. item->get('message', '')->substitute('\n', ' ', 'g'),
+    })
+    if bufnr > 0
+      entries += RelatedEntries(bufnr, item)
+    endif
+  endfor
+  return entries
+enddef
+
 export def ToLocList(bufnr: number)
   var items = diagnostics->get(string(bufnr), [])
   if items->empty()
     echo 'lsp: the server reported nothing for this buffer'
     return
   endif
-  var entries: list<dict<any>> = []
-  for item in items
-    var kind = Kind(item)
-    var [lnum, col] = util.PosFromLsp(bufnr,
-				item->get('range', {})->get('start', {}))
-    var source = item->get('source', '')
-    entries->add({
-      bufnr: bufnr,
-      lnum: lnum,
-      col: col,
-      type: kind.qf,
-      text: (source->empty() ? '' : '[' .. source .. '] ')
-	    .. item->get('message', '')->substitute('\n', ' ', 'g'),
-    })
-    entries += RelatedEntries(bufnr, item)
-  endfor
-  setloclist(0, [], ' ', {title: 'LSP diagnostics', items: entries})
+  setloclist(0, [], ' ', {title: 'LSP diagnostics',
+			  items: Entries(bufname(bufnr), items)})
   lopen
 enddef
 

@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.009'
+const VERSION = '0.2.010'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -61,6 +61,7 @@ const DEFAULTS = {
   folding: false,
   semantic_tokens: false,
   on_type_formatting: false,
+  workspace_diagnostics: false,
   will_save: true,
   hover_format: 'plaintext',
   hover_popup: {},
@@ -464,6 +465,7 @@ def OnReady(cl: dict<any>)
   if pending_open->has_key(key)
     remove(pending_open, key)
   endif
+  PullWorkspace(cl)
 enddef
 
 # The "type" of a window message, from most to least serious.
@@ -484,6 +486,36 @@ enddef
 # What a server is busy with, kept by the token it named, since only
 # the first message of a run carries the title.
 var progress_title: dict<string> = {}
+
+# What to do with a part of an answer, by the token the request named.
+var partial_cb: dict<func(any)> = {}
+
+export def AwaitPartial(token: string, Cb: func(any))
+  partial_cb[token] = Cb
+enddef
+
+export def ForgetPartial(token: string)
+  if partial_cb->has_key(token)
+    remove(partial_cb, token)
+  endif
+enddef
+
+# A "$/progress" notification carries either a part of an answer or a report
+# of how a job is coming along; the token is what tells them apart.
+def TookPartial(params: any): bool
+  if type(params) != v:t_dict
+    return false
+  endif
+  # The protocol lets a token be a string or a number; string() would put
+  # quotes around the one that is already a string.
+  var raw = params->get('token', '')
+  var token = type(raw) == v:t_string ? raw : string(raw)
+  if !partial_cb->has_key(token)
+    return false
+  endif
+  partial_cb[token](params->get('value', {}))
+  return true
+enddef
 
 def ShowProgress(params: any)
   if type(params) != v:t_dict
@@ -535,7 +567,9 @@ def OnNotify(cl: dict<any>, method: string, params: any)
       remove(cl.log, 0, len(cl.log) - 201)
     endif
   elseif method ==# '$/progress'
-    ShowProgress(params)
+    if !TookPartial(params)
+      ShowProgress(params)
+    endif
   endif
 enddef
 
@@ -687,6 +721,7 @@ export def Stop(loud: bool = false)
     for doc in cl.documents->values()
       Detach(doc.bufnr)
     endfor
+    StopWorkspacePull(cl)
     lspclient.Stop(cl)
   endfor
   clients = {}
@@ -3348,6 +3383,10 @@ def Register(cl: dict<any>, params: any)
     cl.registrations[item.id] = item
   endfor
   cl.watchers = Watchers(cl)
+  # This may be the first word that the server answers a pull at all, so the
+  # buffer is asked about again; another one waits until it is entered.
+  PullDiagnostics()
+  PullWorkspace(cl)
 enddef
 
 def Unregister(cl: dict<any>, params: any)
@@ -3613,6 +3652,107 @@ def PullDiagnostics()
   })
 enddef
 
+# Each request has a token of its own, so that a part of an answer that was
+# given up on does not land in the next one.
+var workspace_asked = 0
+
+def ForgetWorkspacePull(cl: dict<any>)
+  if !cl.workspace_token->empty()
+    ForgetPartial(cl.workspace_token)
+  endif
+  cl.workspace_pull = -1
+  cl.workspace_token = ''
+enddef
+
+def StopWorkspacePull(cl: dict<any>)
+  if cl.workspace_pull > 0
+    lspclient.Cancel(cl, cl.workspace_pull)
+  endif
+  ForgetWorkspacePull(cl)
+enddef
+
+# A report about a file with a buffer is left to the document pull, which the
+# protocol has win over this one.
+def TakeWorkspaceReport(cl: dict<any>, report: any)
+  if type(report) != v:t_dict
+    return
+  endif
+  var uri = report->get('uri', '')
+  if uri->empty()
+    return
+  endif
+  var id = report->get('resultId', '')
+  if id->empty()
+    if cl.workspace_ids->has_key(uri)
+      remove(cl.workspace_ids, uri)
+    endif
+  else
+    cl.workspace_ids[uri] = id
+  endif
+  # "unchanged" means what was reported before still stands.
+  if report->get('kind', 'full') !=# 'full'
+    return
+  endif
+  var bufnr = bufnr(util.OpenName(util.UriToPath(uri)))
+  if bufnr > 0 && cl.documents->has_key(uri)
+    return
+  endif
+  cl.diagnostics[uri] = report->get('items', [])
+  if bufnr > 0
+    diag.Update(bufnr, cl.diagnostics[uri])
+  endif
+enddef
+
+def PullWorkspace(cl: dict<any>)
+  if cl.workspace_pull > 0 || !Setting('workspace_diagnostics')
+    return
+  endif
+  var provider = Capability(cl, 'diagnosticProvider')
+  if type(provider) != v:t_dict || !provider->get('workspaceDiagnostics', false)
+	|| lspclient.Declined(cl, 'workspace/diagnostic')
+    return
+  endif
+  workspace_asked += 1
+  cl.workspace_token = 'lsp-workspace-diagnostic-' .. workspace_asked
+  var params: dict<any> = {
+    previousResultIds: cl.workspace_ids->keys()
+		   ->mapnew((_, u) => ({uri: u, value: cl.workspace_ids[u]})),
+    partialResultToken: cl.workspace_token,
+  }
+  var identifier = provider->get('identifier', '')
+  if !identifier->empty()
+    params.identifier = identifier
+  endif
+  # The server keeps this open, so each part is acted on as it arrives.
+  AwaitPartial(cl.workspace_token, (value: any) => {
+    if type(value) == v:t_dict
+      for report in value->get('items', [])
+	TakeWorkspaceReport(cl, report)
+      endfor
+    endif
+  })
+  cl.workspace_pull = lspclient.Request(cl, 'workspace/diagnostic', params,
+    (result: any) => {
+      if type(result) == v:t_dict
+	for report in result->get('items', [])
+	  TakeWorkspaceReport(cl, report)
+	endfor
+      endif
+      # The server closed it, so it is asked again.
+      ForgetWorkspacePull(cl)
+      PullWorkspace(cl)
+    },
+    (code: number) => {
+      ForgetWorkspacePull(cl)
+      # Anything else is the server saying it will not answer at all.
+      if code == lspclient.CANCELLED
+	PullWorkspace(cl)
+      else
+	lspclient.Decline(cl, 'workspace/diagnostic')
+      endif
+    })
+enddef
+
 # Long enough that a burst of typing is answered once.
 const DIAGNOSTIC_DELAY = 200
 
@@ -3634,6 +3774,33 @@ export def Diagnostics()
     return
   endif
   diag.ToLocList(bufnr('%'))
+enddef
+
+# The workspace pull runs on its own; this is what shows what it has
+# reported, an open buffer included.
+export def WorkspaceDiagnostics()
+  var cl = BufClient(bufnr('%'))
+  if cl->empty() || !cl.initialized
+    util.WarningMsg('no server for this buffer')
+    return
+  endif
+  if !Setting('workspace_diagnostics')
+    util.WarningMsg('"workspace_diagnostics" is off')
+    return
+  endif
+  # The pull starts as the server comes up, so a setting turned on after
+  # that has left nothing running.
+  PullWorkspace(cl)
+  var entries: list<dict<any>> = []
+  for uri in cl.diagnostics->keys()->sort()
+    entries += diag.Entries(util.UriToPath(uri), cl.diagnostics[uri])
+  endfor
+  if entries->empty()
+    echo 'lsp: the server has reported nothing for the workspace'
+    return
+  endif
+  setqflist([], ' ', {title: 'LSP workspace diagnostics', items: entries})
+  copen
 enddef
 
 export def Log()
@@ -3758,7 +3925,10 @@ def OnRequest(cl: dict<any>, method: string, params: any,
     Answer(v:null)
     # What was reported before no longer stands, so no "unchanged" answer.
     diagnostic_ids = {}
+    cl.workspace_ids = {}
     PullDiagnostics()
+    StopWorkspacePull(cl)
+    PullWorkspace(cl)
     return true
   endif
   if method ==# 'window/showMessageRequest'

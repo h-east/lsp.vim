@@ -2058,17 +2058,9 @@ def g:Test_a_report_is_asked_for_once_the_server_registers_for_it()
   assert_true(t.Sent('textDocument/diagnostic')->empty(),
 	      'nothing should be asked for before the server registers')
 
+  # The registration itself is what has the buffer asked about: waiting for
+  # the next change would leave a file just opened with nothing on it.
   LspHover
-  assert_true(t.WaitFor(() =>
-		  t.Trace()->copy()
-		    ->filter((_, m) => string(m->get('id', '')) ==# "'reg'")
-		    ->len() == 1),
-	      'the registration should be answered')
-
-  # A change is what has a report asked for, and now there is a server to
-  # ask.
-  setline(1, 'int three;')
-  doautocmd TextChanged
   assert_true(t.WaitFor(() =>
 		  !t.Sent('textDocument/diagnostic')->empty()),
 	      'a report should be asked for once the registration arrives')
@@ -2171,6 +2163,87 @@ def g:Test_a_report_is_left_alone_once_the_server_gives_it_up()
   sleep 500m
   assert_equal(asked, len(t.Sent('textDocument/diagnostic')),
 	       'nothing more should be asked for')
+enddef
+
+def g:Test_the_workspace_is_pulled_for_as_long_as_the_server_answers()
+  defer execute('cclose')
+  g:lsp_client_config = get(g:, 'lsp_client_config', {})
+  g:lsp_client_config.workspace_diagnostics = true
+  defer execute('unlet g:lsp_client_config.workspace_diagnostics')
+  const HEADER = t.SRC->substitute('\.c$', '.h', '')
+  defer delete(HEADER)
+  writefile(['int two;'], HEADER)
+  const THERE = {
+    uri: 'file://' .. HEADER,
+    kind: 'full',
+    resultId: 'b',
+    items: [{range: {start: {line: 0, character: 4},
+		     end: {line: 0, character: 7}},
+	     severity: 2, source: 'test', message: 'a fault there'}],
+  }
+  # The report arrives as a part while the request is still open; the answer
+  # itself is empty, which is what the protocol asks of a server that streams.
+  assert_true(t.StartServer({
+    capabilities: Offering({diagnosticProvider:
+			{identifier: 'test', interFileDependencies: true,
+			 workspaceDiagnostics: true}}),
+    replies: {'workspace/diagnostic': {items: []}},
+    ask: {'workspace/diagnostic': [{
+      notify: true, before: true, method: '$/progress',
+      params: {token: 'lsp-workspace-diagnostic-1', value: {items: [THERE]}},
+    }]},
+  }, ['int one;']))
+
+  assert_true(t.WaitFor(() => !t.Sent('workspace/diagnostic')->empty()),
+	      'the workspace should be asked about on its own')
+  var sent = t.Sent('workspace/diagnostic')[0].params
+  assert_equal('test', sent.identifier)
+  assert_equal([], sent.previousResultIds)
+  assert_equal('lsp-workspace-diagnostic-1', sent.partialResultToken)
+
+  # The answer closed the request, so it goes out again; by then the part
+  # that came before it has been taken.
+  assert_true(t.WaitFor(() => len(t.Sent('workspace/diagnostic')) >= 2),
+	      'a closed request should be sent again')
+  var again = t.Sent('workspace/diagnostic')[1].params
+  assert_equal([{uri: 'file://' .. HEADER, value: 'b'}],
+	       again.previousResultIds)
+
+  LspWorkspaceDiag
+  var items = getqflist()->copy()
+	      ->filter((_, e) => e.text =~# 'a fault there')
+  assert_equal(1, len(items))
+  assert_equal('W', items[0].type)
+  assert_equal(HEADER, fnamemodify(bufname(items[0].bufnr), ':p'))
+enddef
+
+def g:Test_the_workspace_is_left_alone_where_the_server_says_no()
+  g:lsp_client_config = get(g:, 'lsp_client_config', {})
+  g:lsp_client_config.workspace_diagnostics = true
+  defer execute('unlet g:lsp_client_config.workspace_diagnostics')
+  assert_true(t.StartServer({
+    capabilities: Offering({diagnosticProvider:
+			{interFileDependencies: false,
+			 workspaceDiagnostics: false}}),
+  }, ['int one;']))
+
+  sleep 300m
+  assert_true(t.Sent('workspace/diagnostic')->empty(),
+	      'nothing should be asked for')
+enddef
+
+def g:Test_the_workspace_is_left_alone_when_turned_off()
+  assert_true(t.StartServer({
+    capabilities: Offering({diagnosticProvider:
+			{interFileDependencies: false,
+			 workspaceDiagnostics: true}}),
+  }, ['int one;']))
+
+  sleep 300m
+  assert_true(t.Sent('workspace/diagnostic')->empty(),
+	      'nothing should be asked for with the setting off')
+  LspWorkspaceDiag
+  assert_equal('lsp: "workspace_diagnostics" is off', LastMessage())
 enddef
 
 def g:Test_a_watched_file_being_written_is_reported()

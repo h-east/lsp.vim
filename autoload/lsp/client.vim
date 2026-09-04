@@ -309,9 +309,12 @@ export def Notify(client: dict<any>, method: string, params: any = {})
 enddef
 
 # "Cb" is called with the "result" of the reply; an error is reported and Cb
-# is not called.  Returns the request id, for Cancel().
+# is not called.  A request that has something of its own to do about an
+# error hands over "OnError", which is called with the code instead of any of
+# that.  Returns the request id, for Cancel().
 export def Request(client: dict<any>, method: string, params: any,
-						  Cb: func(any)): number
+		   Cb: func(any),
+		   OnError: func(number) = null_function): number
   if !client.running
     return -1
   endif
@@ -320,6 +323,10 @@ export def Request(client: dict<any>, method: string, params: any,
 	if reply->has_key('error')
 	  var err = reply.error
 	  var code = err->get('code', 0)
+	  if OnError != null_function
+	    OnError(code)
+	    return
+	  endif
 	  if code == CONTENT_MODIFIED || code == SERVER_CANCELLED
 	    return
 	  endif
@@ -370,6 +377,16 @@ enddef
 export def Declined(client: dict<any>, method: string): bool
   return client.declined->get(method, false)
 enddef
+
+# For a request that takes its own errors: it decides what counts as a
+# refusal, and puts the method down as one here.
+export def Decline(client: dict<any>, method: string)
+  client.declined[method] = true
+enddef
+
+# The code a server answers a request it dropped with, which the one that
+# asked may want to ask again after.
+export const CANCELLED = SERVER_CANCELLED
 
 export def Cancel(client: dict<any>, id: number)
   if id > 0
@@ -449,6 +466,11 @@ export def Start(config: dict<any>, root: string,
     # The requests the server turned down.  What is asked on its own, over and
     # over, looks here first; what the user asks for is tried every time.
     declined: {},
+    # The workspace pull this server is answering: what it was sent under,
+    # and the "resultId" of each file.  See |lsp-workspace-diagnostics|.
+    workspace_pull: -1,
+    workspace_token: '',
+    workspace_ids: {},
   }
 
   var job = job_start(config.cmd, {

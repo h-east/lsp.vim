@@ -9,6 +9,9 @@ set noswapfile
 set nomore
 set belloff=all
 set cmdheight=10
+if exists('+shellslash')
+  set shellslash
+endif
 const PLUGIN = fnamemodify(HERE, ':h')
 execute 'set runtimepath^=' .. PLUGIN
 filetype plugin indent on

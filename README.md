@@ -9,7 +9,7 @@ else to install: Vim frames the protocol messages and matches replies to
 requests itself, so what is left to the plugin is the conversation and what
 to do with the answers.
 
-74 of the 95 requests and notifications in the LSP 3.18 meta model are
+75 of the 95 requests and notifications in the LSP 3.18 meta model are
 answered, and each of the rest is listed with the reason it is not.
 
 ![Completion with the documentation beside it, the signature of a call, hover,
@@ -252,6 +252,7 @@ Only what a server offers is asked for, so what you get depends on the server.
 |  | `:LspOutline` | The symbols in this buffer, into the location list |
 |  | `:LspSymbol {query}` | Search the workspace for symbols |
 |  | `:LspDiag` | The diagnostics, into the location list |
+|  | `:LspWorkspaceDiag` | The diagnostics for the workspace, into the quickfix list |
 | Changing | `:LspCodeAction` | Offer what the server can do here |
 |  | `:LspRename [{name}]` | Rename the symbol everywhere |
 |  | `:LspRenameFile [{name}]` | Rename this file, imports and all |
@@ -272,8 +273,8 @@ See `:help lsp.txt` for the options and the details.
 ## Protocol coverage
 
 What this client does with each of the 95 requests and notifications in
-the LSP 3.18 meta model: 74 are answered, 1 more is worth having, and
-20 are left out for the reason given.
+the LSP 3.18 meta model: 75 are answered, and 20 are left out for the
+reason given.
 
 <details>
 <summary>Method-by-method tables</summary>
@@ -370,7 +371,7 @@ the LSP 3.18 meta model: 74 are answered, 1 more is worth having, and
 | `workspace/didChangeWatchedFiles` | yes | for the files a server asks to watch |
 | `workspace/executeCommand` | yes | for a code action or lens the server runs |
 | `workspace/applyEdit` | yes | changes the server works out on its own |
-| `workspace/diagnostic` | planned | where to show diagnostics for the whole workspace is undecided |
+| `workspace/diagnostic` | yes | off unless "workspace_diagnostics" is set |
 | `workspace/willCreateFiles` | yes |  |
 | `workspace/didCreateFiles` | yes |  |
 | `workspace/willRenameFiles` | yes | `:LspRenameFile` |

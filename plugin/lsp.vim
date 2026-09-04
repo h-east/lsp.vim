@@ -76,6 +76,7 @@ command! -bar -nargs=? -complete=file LspRenameFile lsp.RenameFile(<q-args>)
 command! -bar -range LspCodeAction lsp.CodeAction(<line1>, <line2>)
 command! -bar LspSignature  lsp.Signature()
 command! -bar LspDiag       lsp.Diagnostics()
+command! -bar LspWorkspaceDiag lsp.WorkspaceDiagnostics()
 command! -bar LspLog        lsp.Log()
 
 # Nothing is bound to these; see |lsp-snippet|.

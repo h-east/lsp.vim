@@ -32,6 +32,7 @@
 :LspSuperTypes	lsp.txt	/*:LspSuperTypes*
 :LspSymbol	lsp.txt	/*:LspSymbol*
 :LspTypeDefinition	lsp.txt	/*:LspTypeDefinition*
+:LspWorkspaceDiag	lsp.txt	/*:LspWorkspaceDiag*
 :LspWorkspaceFolderAdd	lsp.txt	/*:LspWorkspaceFolderAdd*
 :LspWorkspaceFolderRemove	lsp.txt	/*:LspWorkspaceFolderRemove*
 <Plug>(lsp-selection-expand)	lsp.txt	/*<Plug>(lsp-selection-expand)*
@@ -66,4 +67,5 @@ lsp-semantic-tokens	lsp.txt	/*lsp-semantic-tokens*
 lsp-signature	lsp.txt	/*lsp-signature*
 lsp-snippet	lsp.txt	/*lsp-snippet*
 lsp-watched-files	lsp.txt	/*lsp-watched-files*
+lsp-workspace-diagnostics	lsp.txt	/*lsp-workspace-diagnostics*
 lsp.txt	lsp.txt	/*lsp.txt*

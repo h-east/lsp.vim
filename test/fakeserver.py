@@ -13,7 +13,11 @@ What it does is read from the JSON file named by $LSP_SCENARIO:
     ask           requests of the server's own, by the method that sets
                   them off, a notification included; this is how a server
                   hands over an edit.  An entry may name the "id" to ask
-                  under, a string included
+                  under, a string included, or set "notify" to send a
+                  notification rather than a request, which is how the
+                  parts of an answer are handed over under "$/progress".
+                  Set "before" to send it ahead of the reply, which is the
+                  order the parts of an answer arrive in
 
 Every message that comes in is appended to $LSP_TRACE as one JSON object per
 line, so a test can check what the client sent as well as what it did with
@@ -96,6 +100,10 @@ def main():
             # holds for it, and null when it holds nothing.  A method named
             # under "errors" is turned down instead, the way a server does
             # with a part of what it offers that it has not implemented.
+            for item in SCENARIO.get('ask', {}).get(method, []):
+                if item.get('before'):
+                    send({'jsonrpc': '2.0', 'method': item['method'],
+                          'params': item.get('params', {})})
             error = SCENARIO.get('errors', {}).get(method)
             if error is not None:
                 send({'jsonrpc': '2.0', 'id': msg['id'], 'error': error})
@@ -107,10 +115,14 @@ def main():
         # that is how it hands over an edit it worked out itself, or asks
         # something back after a notification.
         for item in SCENARIO.get('ask', {}).get(method, []):
-            send({'jsonrpc': '2.0',
-                  'id': item.get('id', 100000 + next_id()),
-                  'method': item['method'],
-                  'params': item.get('params', {})})
+            if item.get('before'):
+                continue
+            out = {'jsonrpc': '2.0',
+                   'method': item['method'],
+                   'params': item.get('params', {})}
+            if not item.get('notify'):
+                out['id'] = item.get('id', 100000 + next_id())
+            send(out)
 
 
 if __name__ == '__main__':

@@ -241,6 +241,15 @@ g:lsp_client_config
 				|lsp-on-type-formatting|.
 				Default: |false|
 
+		workspace_diagnostics
+				When true, a server that reports on the whole
+				workspace is asked to, and what it says about
+				a file no buffer holds is kept as well.  Off
+				by default: it has the server look at every
+				file in the project.  See
+				|lsp-workspace-diagnostics|.
+				Default: |false|
+
 		will_save	When true, a server that wants to put the
 				file right on the way to disk is asked what
 				to change first, and the write waits for the
@@ -592,6 +601,13 @@ Filling a list ~
 :LspDiag	Put the diagnostics for the current buffer into its location
 		list and open it.  See |lsp-diagnostics|.
 
+						*:LspWorkspaceDiag*
+:LspWorkspaceDiag
+		Put what the server has reported about the workspace by now
+		into the |quickfix| list and open it.  Run it again for a
+		list that has caught up.  Needs "workspace_diagnostics" in
+		|g:lsp_client_config|.  See |lsp-workspace-diagnostics|.
+
 Changing the text ~
 						*:LspCodeAction*
 :LspCodeAction
@@ -845,6 +861,43 @@ be given a look of its own with |:highlight|:
 	LspDiagWarningText	text a warning covers, |hl-SpellCap|
 	LspDiagInfoText		text an info item covers, |hl-SpellRare|
 	LspDiagHintText		text a hint covers, |hl-SpellLocal|
+
+					*lsp-workspace-diagnostics*
+What is above is about the file being edited.  A server may also report on
+the whole workspace, files no buffer holds included, and says so by offering
+"workspaceDiagnostics".  Set "workspace_diagnostics" in |g:lsp_client_config|
+to |true| to ask it to: >vim9
+
+	g:lsp_client_config = {workspace_diagnostics: true}
+<
+It is off by default, since it has the server look at every file in the
+project rather than the one in front of you.
+
+Both ends have to be told.  This is what has the client take the reports; a
+server has its own setting for looking past the files that are open, and
+offers "workspaceDiagnostics" only once it is set.  For basedpyright that is
+"diagnosticMode" under "python.analysis", handed over in "settings"; see
+|g:lsp_server_list|.
+
+The request is made once the server is ready and is left open: the protocol
+lets the server keep it that way for as long as it likes and hand over what
+it works out a piece at a time.  Each piece is taken as it arrives rather
+than at the end, so reports appear while the server is still going.  When the
+server closes the request it is made again, with the "resultId" of every
+report handed back, so that what has not changed need not be listed again.
+Setting this after the server came up leaves nothing running, which
+|:LspWorkspaceDiag| puts right by starting it.
+
+A report about a file that is open is left to the request made for that
+buffer, which the protocol has win over this one.  The rest is kept, and
+|:LspWorkspaceDiag| puts it, the open files included, into the |quickfix|
+list.  Reports keep arriving for as long as Vim is open, so the list is what
+the server had said by the time it was asked for, the way |:LspReferences|
+and the rest are: ask again for one that has caught up.
+
+Opening a file from the list hands it to the server, which is asked about it
+as any other buffer is: signs and highlights appear, and putting the fault
+right takes them away again without waiting for a write.
 
 ==============================================================================
 7. Signature help				*lsp-signature*
