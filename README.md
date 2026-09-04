@@ -272,8 +272,8 @@ See `:help lsp.txt` for the options and the details.
 ## Protocol coverage
 
 What this client does with each of the 95 requests and notifications in
-the LSP 3.18 meta model: 73 are answered, 1 more is worth having, and
-21 are left out for the reason given.
+the LSP 3.18 meta model: 73 are answered, 2 more are worth having, and
+20 are left out for the reason given.
 
 <details>
 <summary>Method-by-method tables</summary>
@@ -347,15 +347,15 @@ the LSP 3.18 meta model: 73 are answered, 1 more is worth having, and
 | `textDocument/formatting` | yes | `:LspFormat` |
 | `textDocument/rangeFormatting` | yes | `:{range}LspFormat` |
 | `textDocument/rangesFormatting` | no | Vim has one range at a time |
-| `textDocument/onTypeFormatting` | no | clangd answers by removing the indent |
+| `textDocument/onTypeFormatting` | planned | which trigger characters to act on is undecided |
 | `textDocument/rename` | yes | `:LspRename` |
 | `textDocument/prepareRename` | yes | turns a rename down before it is sent |
-| `textDocument/linkedEditingRange` | no | clangd and gopls do not offer it |
-| `textDocument/documentColor` | no | clangd and gopls do not offer it |
+| `textDocument/linkedEditingRange` | no | nothing here mirrors an edit into another range |
+| `textDocument/documentColor` | no | nothing here shows a color |
 | `textDocument/colorPresentation` | no |  |
 | `textDocument/inlineValue` | no | for a debugger, which this is not |
-| `textDocument/inlineCompletion` | no | clangd and gopls do not offer it |
-| `textDocument/moniker` | no | clangd and gopls do not offer it |
+| `textDocument/inlineCompletion` | no | completion is asked for, not offered while typing |
+| `textDocument/moniker` | no | for an indexer, which this is not |
 
 ### Workspace
 
@@ -370,7 +370,7 @@ the LSP 3.18 meta model: 73 are answered, 1 more is worth having, and
 | `workspace/didChangeWatchedFiles` | yes | for the files a server asks to watch |
 | `workspace/executeCommand` | yes | for a code action or lens the server runs |
 | `workspace/applyEdit` | yes | changes the server works out on its own |
-| `workspace/diagnostic` | planned | diagnostics are pulled a buffer at a time |
+| `workspace/diagnostic` | planned | where to show diagnostics for the whole workspace is undecided |
 | `workspace/willCreateFiles` | yes |  |
 | `workspace/didCreateFiles` | yes |  |
 | `workspace/willRenameFiles` | yes | `:LspRenameFile` |
@@ -395,7 +395,7 @@ the LSP 3.18 meta model: 73 are answered, 1 more is worth having, and
 | `window/logMessage` | yes | `:LspLog` |
 | `window/showDocument` | yes | opens it here, or hands a URI to `:URLOpen` |
 | `window/workDoneProgress/create` | yes |  |
-| `window/workDoneProgress/cancel` | no | clangd and gopls never mark their work cancellable |
+| `window/workDoneProgress/cancel` | no | nothing here offers a way to call off the server's work |
 | `telemetry/event` | no | there is nowhere to send it |
 
 </details>
