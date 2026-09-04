@@ -141,6 +141,9 @@ def ClientCapabilities(snippet: bool, hover_format: list<string>): dict<any>
 	# here, and what the name to start from is.
 	prepareSupport: true,
       },
+      onTypeFormatting: {
+	dynamicRegistration: false,
+      },
       publishDiagnostics: {
 	relatedInformation: true,
       },

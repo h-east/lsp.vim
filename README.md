@@ -9,7 +9,7 @@ else to install: Vim frames the protocol messages and matches replies to
 requests itself, so what is left to the plugin is the conversation and what
 to do with the answers.
 
-73 of the 95 requests and notifications in the LSP 3.18 meta model are
+74 of the 95 requests and notifications in the LSP 3.18 meta model are
 answered, and each of the rest is listed with the reason it is not.
 
 ![Completion with the documentation beside it, the signature of a call, hover,
@@ -272,7 +272,7 @@ See `:help lsp.txt` for the options and the details.
 ## Protocol coverage
 
 What this client does with each of the 95 requests and notifications in
-the LSP 3.18 meta model: 73 are answered, 2 more are worth having, and
+the LSP 3.18 meta model: 74 are answered, 1 more is worth having, and
 20 are left out for the reason given.
 
 <details>
@@ -347,7 +347,7 @@ the LSP 3.18 meta model: 73 are answered, 2 more are worth having, and
 | `textDocument/formatting` | yes | `:LspFormat` |
 | `textDocument/rangeFormatting` | yes | `:{range}LspFormat` |
 | `textDocument/rangesFormatting` | no | Vim has one range at a time |
-| `textDocument/onTypeFormatting` | planned | which trigger characters to act on is undecided |
+| `textDocument/onTypeFormatting` | yes | off unless "on_type_formatting" is set |
 | `textDocument/rename` | yes | `:LspRename` |
 | `textDocument/prepareRename` | yes | turns a rename down before it is sent |
 | `textDocument/linkedEditingRange` | no | nothing here mirrors an edit into another range |

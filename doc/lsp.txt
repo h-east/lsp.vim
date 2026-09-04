@@ -4,28 +4,29 @@ Author:  Hirohito Higashi <h.east.727@gmail.com>
 License: Same terms as Vim itself.  See |license|.
 
 ==============================================================================
-CONTENTS							*lsp-contents*
+CONTENTS					*lsp-contents*
 
-1. Introduction		|lsp-introduction|
-2. Requirements		|lsp-requirements|
-3. Configuration	|lsp-configuration|
-4. Commands		|lsp-commands|
-5. Completion		|lsp-completion|
-6. Diagnostics		|lsp-diagnostics|
-7. Signature help	|lsp-signature|
-8. Symbol highlight	|lsp-highlight|
-9. Inlay hints		|lsp-inlay-hint|
-10. Folding		|lsp-folding|
-11. Code lens		|lsp-code-lens|
-12. Document links	|lsp-document-link|
-13. Selecting		|lsp-selection|
-14. Semantic tokens	|lsp-semantic-tokens|
-15. Watched files	|lsp-watched-files|
-16. Limitations		|lsp-limitations|
-17. AI			|lsp-ai|
+1. Introduction			|lsp-introduction|
+2. Requirements			|lsp-requirements|
+3. Configuration		|lsp-configuration|
+4. Commands			|lsp-commands|
+5. Completion			|lsp-completion|
+6. Diagnostics			|lsp-diagnostics|
+7. Signature help		|lsp-signature|
+8. Symbol highlight		|lsp-highlight|
+9. Inlay hints			|lsp-inlay-hint|
+10. Folding			|lsp-folding|
+11. Code lens			|lsp-code-lens|
+12. Document links		|lsp-document-link|
+13. Selecting			|lsp-selection|
+14. Semantic tokens		|lsp-semantic-tokens|
+15. On-type formatting		|lsp-on-type-formatting|
+16. Watched files		|lsp-watched-files|
+17. Limitations			|lsp-limitations|
+18. AI				|lsp-ai|
 
 ==============================================================================
-1. Introduction						*lsp-introduction*
+1. Introduction					*lsp-introduction*
 
 This plugin talks to a language server over the Language Server Protocol and
 brings what the server knows into Vim: what a symbol is, and where it is
@@ -64,7 +65,7 @@ first, and the write waits for the answer; "will_save" in
 |g:lsp_client_config| turns that off.
 
 ==============================================================================
-2. Requirements						*lsp-requirements*
+2. Requirements					*lsp-requirements*
 
 Vim 9.2.1004 or later, with the |+job| and |+channel| features.  That patch is
 what lets a completion function tell whether Vim asked on its own, 9.2.0997
@@ -78,13 +79,13 @@ A language server for the language you work in.  It has to be installed
 separately, none is shipped with Vim.
 
 ==============================================================================
-3. Configuration					*lsp-configuration*
+3. Configuration				*lsp-configuration*
 
 What follows is written in |Vim9| script, which is what a |vimrc| starting
 with `vim9script` takes; from a legacy one, write `let` in front and |v:true|
 for `true`.
 
-						       *g:lsp_server_list*
+						*g:lsp_server_list*
 g:lsp_server_list
 		A List of Dictionaries, one per server.  Each entry holds:
 
@@ -154,7 +155,7 @@ g:lsp_server_list
 		about it.  What is left of the roots is what a server missing
 		either capability gets, one process each.
 
-						     *g:lsp_client_config*
+						*g:lsp_client_config*
 g:lsp_client_config
 		A Dictionary holding what the client itself does.  A key that
 		is not there takes the default below.
@@ -231,6 +232,15 @@ g:lsp_client_config
 				than adding to it.  See |lsp-semantic-tokens|.
 				Default: |false|
 
+		on_type_formatting
+				When true, a character the server named as
+				one to act on has it look at the text again
+				while it is being typed, and what it hands
+				back is put in.  Off by default: it changes
+				the text under the cursor as you type.  See
+				|lsp-on-type-formatting|.
+				Default: |false|
+
 		will_save	When true, a server that wants to put the
 				file right on the way to disk is asked what
 				to change first, and the write waits for the
@@ -272,11 +282,11 @@ g:lsp_client_config
 		|:LspSemanticTokens| write into this Dictionary, so what they
 		turn on stays on for the rest of the session.
 
-							*g:loaded_lsp_vim*
+						*g:loaded_lsp_vim*
 g:loaded_lsp_vim
 		Set to 1 while the plugin script is read.  Set it yourself in
-		your |vimrc| to keep the plugin from being loaded at all: >vim9
-
+		your |vimrc| to keep the plugin from being loaded at all:
+>vim9
 			g:loaded_lsp_vim = 1
 <
 		It marks the script as read, not that there is anything
@@ -284,7 +294,7 @@ g:loaded_lsp_vim
 		script stops early, and only |:LspStatus| is defined.  Whether
 		the plugin has something to offer is `exists(':LspStart')`.
 
-								*lsp-popup*
+						*lsp-popup*
 Three of the things the plugin puts up are popups: what |:LspHover| answers,
 the list |:LspCodeAction| offers, and the signature of the call being typed.
 Each is asked for on its own, under "hover_popup", "menu_popup" and
@@ -336,7 +346,7 @@ Turning the border off leaves the signature popup room for another line of
 text: it is placed clear of the completion menu, and what the border costs is
 counted before it goes up.
 
-							*lsp-popup-scroll*
+						*lsp-popup-scroll*
 A hover popup with more in it than fits gets a scrollbar, which the mouse
 wheel turns.  From the keyboard it takes the keys the completion info popup
 takes, |popupmenu-keys|:
@@ -361,11 +371,11 @@ The popup |:LspInlayHintInfo| and |:LspDocumentLinkInfo| put up is the same
 one and scrolls the same way.
 
 Events ~
-								*lsp-events*
+						*lsp-events*
 Two |User| events are fired, one where a buffer gains a server and one where
 it loses one:
-							      *LspAttached*
-							      *LspDetached*
+						*LspAttached*
+						*LspDetached*
 	LspAttached	The server is ready and has been told about the
 			buffer.  What it offers is known by then.
 	LspDetached	The buffer is no longer served, whether it was
@@ -388,21 +398,21 @@ the buffer is then left as it was: >vim9
 	autocmd User LspAttached LspBuffer()
 <
 ==============================================================================
-4. Commands							*lsp-commands*
+4. Commands					*lsp-commands*
 
 The server ~
-								*:LspStart*
+						*:LspStart*
 :LspStart	Connect the current buffer to the server for its 'filetype'.
 		This happens on its own when a buffer is opened, the command
 		is for a buffer whose 'filetype' was decided later.
 
-								*:LspStop*
+						*:LspStop*
 :LspStop	Shut down every running server.  The buffers they had go back
 		to what they were before, signs, hints and 'omnifunc' among
 		it, and each one fires |LspDetached|.  A buffer is connected
 		again when it is opened again.
 
-								*:LspStatus*
+						*:LspStatus*
 :LspStatus	Name the version of the plugin and of Vim, then list the
 		running servers, whether each one finished starting up, how
 		many buffers it has, and how many diagnostics are known for
@@ -411,7 +421,7 @@ The server ~
 		in |g:lsp_client_config| that could not be read is listed
 		first; |:LspConfigCheck| goes over it all.
 
-							*:LspConfigCheck*
+						*:LspConfigCheck*
 :LspConfigCheck	Read |g:lsp_client_config| and |g:lsp_server_list| and
 		report what cannot be read, or that the configuration is
 		good.  A key there is no such thing as, one holding what it
@@ -422,7 +432,7 @@ The server ~
 		this Vim holds; a |vimrc| put right is taken in by sourcing
 		it again or by starting over.
 
-							*:LspConfigReload*
+						*:LspConfigReload*
 :LspConfigReload
 		Tell every running server that its settings changed, and
 		report how many were told.  Use it after putting a new
@@ -435,7 +445,7 @@ The server ~
 		them as "initializationOptions" at startup is past listening;
 		that needs |:LspStop| and opening the file again.
 
-						  *:LspWorkspaceFolderAdd*
+						*:LspWorkspaceFolderAdd*
 :LspWorkspaceFolderAdd [{dir}]
 		Hand {dir} to the server of the current buffer as another
 		workspace folder, so that what is there is looked at as part
@@ -461,7 +471,7 @@ The server ~
 		open.  It is what the folder brings with it, such as the
 		symbols of the files that are not open, that goes.
 
-								*:LspLog*
+						*:LspLog*
 :LspLog		Open a scratch buffer holding what the server for the current
 		buffer has logged, which is where one explains why it is
 		unhappy.  A server logs in two places and both are shown,
@@ -490,7 +500,7 @@ The server ~
 		is what decides that.
 
 Asking ~
-								*:LspHover*
+						*:LspHover*
 :LspHover	Ask the server about the symbol under the cursor and show the
 		answer in a popup.  <Esc> takes the popup away where it
 		stands.  What it tells is about the place the cursor is in,
@@ -499,12 +509,12 @@ Asking ~
 		a scroll.  What does not fit is reached with the keys under
 		|lsp-popup-scroll|.
 
-								*:LspSignature*
+						*:LspSignature*
 :LspSignature	Show what the call the cursor is in takes, in a popup.  See
 		|lsp-signature|.
 
 Jumping ~
-							*:LspDefinition*
+						*:LspDefinition*
 :LspDefinition	Jump to the definition of the symbol under the cursor.  When
 		the definition is in another file it is opened in the current
 		window.  Where the jump began goes on the |tag-stack| and in
@@ -513,30 +523,30 @@ Jumping ~
 		definition instead, as in ":vertical LspDefinition" or
 		":tab LspDefinition".  See |:command-modifiers|.
 
-							*:LspDeclaration*
+						*:LspDeclaration*
 :LspDeclaration	Jump to the declaration of the symbol under the cursor, which
 		in C is where its prototype is rather than where it is
 		written out.  Otherwise like |:LspDefinition|.
 
-						    *:LspTypeDefinition*
+						*:LspTypeDefinition*
 :LspTypeDefinition
 		Jump to the definition of the type of the symbol under the
 		cursor.  Otherwise like |:LspDefinition|.
 
-						     *:LspImplementation*
+						*:LspImplementation*
 :LspImplementation
 		Jump to what implements the symbol under the cursor.
 		Otherwise like |:LspDefinition|.
 
 Filling a list ~
-							*:LspReferences*
+						*:LspReferences*
 :LspReferences	Put every mention of the symbol under the cursor into the
 		|quickfix| list and open it.  The declaration counts as a
 		mention, so it is in the list too.  A file that is not open
 		is read for the line to show, which is also what places the
 		column.
 
-						    *:LspIncomingCalls*
+						*:LspIncomingCalls*
 :LspIncomingCalls
 		Put every place the function under the cursor is called from
 		into the |quickfix| list and open it.  An entry names the
@@ -544,29 +554,29 @@ Filling a list ~
 		from |:LspReferences|: a mention is where the name is
 		written, a call is who is doing the calling.
 
-						    *:LspOutgoingCalls*
+						*:LspOutgoingCalls*
 :LspOutgoingCalls
 		Put every call the function under the cursor makes into the
 		|quickfix| list and open it.  The places are in this file,
 		since that is where the calls are written, and each is named
 		after the function being called.
 
-						       *:LspSuperTypes*
-:LspSuperTypes	Put the types the one under the cursor is derived from into the
-		|quickfix| list and open it.  Only the ones it names itself
-		are listed: to go further up, put the cursor on one of them
-		and ask again.
+						*:LspSuperTypes*
+:LspSuperTypes	Put the types the one under the cursor is derived from into
+		the |quickfix| list and open it.  Only the ones it names
+		itself are listed: to go further up, put the cursor on one of
+		them and ask again.
 
-						       *:LspSubTypes*
+						*:LspSubTypes*
 :LspSubTypes	Like |:LspSuperTypes|, downwards: the types derived from the
 		one under the cursor.
 
-							*:LspOutline*
+						*:LspOutline*
 :LspOutline	Put the symbols in the current buffer into its location list
 		and open it.  A symbol inside another, a field of a struct
 		for instance, is shown indented under it.
 
-								*:LspSymbol*
+						*:LspSymbol*
 :LspSymbol {query}
 		Put the symbols in the workspace whose name matches {query}
 		into the |quickfix| list and open it.  What counts as a match
@@ -578,12 +588,12 @@ Filling a list ~
 		nobody looks at.  Those are asked about again before the
 		list is put together.
 
-							*:LspDiag*
+						*:LspDiag*
 :LspDiag	Put the diagnostics for the current buffer into its location
 		list and open it.  See |lsp-diagnostics|.
 
 Changing the text ~
-							      *:LspCodeAction*
+						*:LspCodeAction*
 :LspCodeAction
 :{range}LspCodeAction
 		Ask what the server can do about the current line, or about
@@ -599,7 +609,7 @@ Changing the text ~
 		that the server works one out only for what is picked.
 		Picking it is what asks for the rest.
 
-						    *:LspRenameFile*
+						*:LspRenameFile*
 :LspRenameFile [{name}]
 		Rename the file in the current buffer to {name}, asking for
 		it when there is no argument.  The point of doing it this way
@@ -611,7 +621,7 @@ Changing the text ~
 		asked.  Nothing here removes a file, so a server is never told
 		about that.
 
-							*:LspRename*
+						*:LspRename*
 :LspRename [{name}]
 		Rename the symbol under the cursor to {name} everywhere the
 		server knows of it.  Without an argument the new name is
@@ -630,7 +640,7 @@ Changing the text ~
 		since that is not supported.  The same goes for changes a
 		server sends on its own.
 
-							*:LspFormat*
+						*:LspFormat*
 :LspFormat
 :{range}LspFormat
 		Ask the server to format the current buffer, or the lines in
@@ -644,34 +654,34 @@ Changing the text ~
 		two forms can work while the other is not on offer.
 
 What is shown ~
-							*:LspFolding*
+						*:LspFolding*
 :LspFolding	Turn the folds from the server on when they are off and off
 		when they are on, and report which it now is.  Turning them
 		off puts 'foldmethod' and 'foldexpr' back the way they were,
 		in every buffer.  See |lsp-folding|.
 
-							       *:LspCodeLens*
+						*:LspCodeLens*
 :LspCodeLens	Turn the code lenses on when they are off and off when they
 		are on, and report which it now is.  See |lsp-code-lens|.
 
-						       *:LspCodeLensRun*
+						*:LspCodeLensRun*
 :LspCodeLensRun
 		Run what the lens above the current line stands for.  When
 		the line has more than one, a menu asks which.
 
-						      *:LspDocumentLink*
+						*:LspDocumentLink*
 :LspDocumentLink
 		Turn the document links on when they are off and off when
 		they are on, and report which it now is.  Turning them off
 		takes away the marks already made, in every buffer.  See
 		|lsp-document-link|.
 
-						  *:LspDocumentLinkOpen*
+						*:LspDocumentLinkOpen*
 :LspDocumentLinkOpen
 		Go where the link under the cursor leads.  A file is opened
 		here, anything else is handed to |:URLOpen|.
 
-						  *:LspDocumentLinkInfo*
+						*:LspDocumentLinkInfo*
 :LspDocumentLinkInfo
 		Show what the server reports about the link under the cursor,
 		in a popup.
@@ -683,18 +693,18 @@ What is shown ~
 		away the ones already shown, in every buffer.  See
 		|lsp-inlay-hint|.
 
-						   *:LspInlayHintInfo*
+						*:LspInlayHintInfo*
 :LspInlayHintInfo
 		Show what the server reports about the hint nearest the
 		cursor, in a popup.  Most hints have nothing to add.
 
-						  *:LspInlayHintApply*
+						*:LspInlayHintApply*
 :LspInlayHintApply
 		Put what the hint nearest the cursor holds into the file, so
 		that a type it worked out becomes text like any other.  Not
 		every hint has a change to make.
 
-						  *:LspSemanticTokens*
+						*:LspSemanticTokens*
 :LspSemanticTokens
 		Turn the coloring from the server on when it is off and off
 		when it is on, and report which it now is.  Turning it off
@@ -702,7 +712,7 @@ What is shown ~
 		|lsp-semantic-tokens|.
 
 ==============================================================================
-5. Completion						*lsp-completion*
+5. Completion					*lsp-completion*
 
 When the server offers completion, 'omnifunc' is set to "lsp#OmniFunc" in the
 buffers it handles, so |i_CTRL-X_CTRL-O| asks the server.  A 'filetype' plugin
@@ -711,7 +721,7 @@ it takes over, and the old value is restored when the buffer is detached.  Set
 "omnifunc" in |g:lsp_client_config| to |false| to keep what the 'filetype'
 plugin chose.
 
-							*lsp#OmniFunc()*
+						*lsp#OmniFunc()*
 For 'autocomplete', where Vim asks on its own as the text is typed, put "o"
 in 'complete', which names the 'omnifunc' the plugin has set: >vim9
 
@@ -744,7 +754,7 @@ while it is still reading the file.
 
 The kind of an item is shown as the single letter |complete-items| asks for.
 
-							*lsp-snippet*
+						*lsp-snippet*
 Set "snippet" in |g:lsp_client_config| to |true| for the server to be told
 that snippets are taken; with it off a function comes back as its name and
 nothing else, and what a server offers as a snippet alone, "for" in C for
@@ -799,7 +809,7 @@ item is taken.  A single |undo| does not take those back with the word: they
 are a step of their own.
 
 ==============================================================================
-6. Diagnostics						*lsp-diagnostics*
+6. Diagnostics					*lsp-diagnostics*
 
 A server reports what it thinks is wrong with a file, either on its own or
 when it is asked; both end up in the same place, so which of the two a server
@@ -837,7 +847,7 @@ be given a look of its own with |:highlight|:
 	LspDiagHintText		text a hint covers, |hl-SpellLocal|
 
 ==============================================================================
-7. Signature help						*lsp-signature*
+7. Signature help				*lsp-signature*
 
 While a call is being typed the server is asked what it takes, and the answer
 appears in a popup a line away, with the parameter being filled in
@@ -866,7 +876,7 @@ What a signature holds is the server's business.  A macro is reported as what
 it expands to, so a call of a macro wrapping a function shows the function.
 
 ==============================================================================
-8. Symbol highlight					*lsp-highlight*
+8. Symbol highlight				*lsp-highlight*
 
 Once the cursor has stood still on a symbol for as long as "highlight_delay"
 holds, the server is asked where else that symbol is used in the buffer, and
@@ -884,7 +894,7 @@ linked to an existing one and free to be given a look of its own with
 	LspHighlightWrite	where it is written to, |hl-Visual|
 
 ==============================================================================
-9. Inlay hints						*lsp-inlay-hint*
+9. Inlay hints					*lsp-inlay-hint*
 
 A server can name what the file leaves unsaid: the parameter an argument is
 being passed as, and the type of something declared without one.  Set
@@ -913,7 +923,7 @@ than the file, and free to be given a look of their own with |:highlight|:
 	LspInlayParameter	the name an argument is passed as
 
 ==============================================================================
-10. Folding						*lsp-folding*
+10. Folding					*lsp-folding*
 
 A server knows where a function or a comment begins and ends, which is more
 than 'foldmethod' set to "indent" or "syntax" can work out.  Set "folding" in
@@ -934,7 +944,7 @@ What is folded is what the server reports, which is not always what
 before the closing bracket, for one, so that line stays outside the fold.
 
 ==============================================================================
-11. Code lens						*lsp-code-lens*
+11. Code lens					*lsp-code-lens*
 
 A server can report something about a line without being asked about it:
 how many places use a function, whether a test can be run from here.  Set
@@ -960,7 +970,7 @@ The text is put in the group LspCodeLens, linked to |group-name| so it stays
 quieter than the file.
 
 ==============================================================================
-12. Document links					*lsp-document-link*
+12. Document links				*lsp-document-link*
 
 A server knows which parts of a file lead somewhere else: the name of a
 header in an "#include" line, a path in a build file.  Set "document_link" in
@@ -988,14 +998,14 @@ cursor, for a server that reports anything.
 The mark is the group LspDocumentLink, linked to |group-name|.
 
 ==============================================================================
-13. Selecting						*lsp-selection*
+13. Selecting					*lsp-selection*
 
 A server knows how the file is built: which name is inside which call, which
 call inside which statement.
-					     *<Plug>(lsp-selection-expand)*
+						*<Plug>(lsp-selection-expand)*
 "(lsp-selection-expand)" takes the selection out to the next of those, from
 the cursor where there is none yet.
-					     *<Plug>(lsp-selection-shrink)*
+						*<Plug>(lsp-selection-shrink)*
 "(lsp-selection-shrink)" takes it back in.  In from the innermost is where
 the run began, cursor and selection as they were.
 
@@ -1022,7 +1032,7 @@ follows the key rather than going with it.  The rest are as quick as the
 keys.
 
 ==============================================================================
-14. Semantic tokens					*lsp-semantic-tokens*
+14. Semantic tokens				*lsp-semantic-tokens*
 
 A server that parsed the file knows what a name stands for, which is more
 than the highlighting worked out from the text alone can tell: a type from a
@@ -1071,7 +1081,47 @@ A server names in its legend the token types and the modifiers it uses.  A
 type this client has no group for is left to the syntax highlighting.
 
 ==============================================================================
-15. Watched files					*lsp-watched-files*
+15. On-type formatting				*lsp-on-type-formatting*
+
+A server may name characters that make it want to look at the text again as it
+is typed, and hand back what to change.  Set "on_type_formatting" in
+|g:lsp_client_config| to |true| for that to happen: >vim9
+
+	g:lsp_client_config = {on_type_formatting: true}
+<
+It is off by default, since it changes the text under the cursor while you are
+typing rather than when you ask for it.
+
+Which characters those are is the server's to name, and what comes back is put
+in as it stands.  clangd names the newline and answers it with the indent for
+the line it opened, which is |:LspFormat| for one line at the moment it is
+worth having.  Another server names another character and makes of it whatever
+it makes.  A server that names none is never asked.
+
+					*lsp-on-type-formatting-clangd*
+The indent clangd hands back comes from .clang-format, not from 'shiftwidth'
+and 'expandtab'; what the request carries is ignored.  That is what to want
+where .clang-format is what the tree is written to.  Leave this off where it
+is not: clangd reads the first .clang-format it finds above the file and holds
+every file in the tree to it, so one written for a corner of the tree rules
+the rest as well.
+
+The Vim source tree is one of those.  Its .clang-format holds "UseTab: Never"
+and is there for the two files that are kept formatted with it, while the
+rest goes by the |modeline| at the end of each file, "ts=8 sts=4 sw=4 noet":
+one level of indent is four spaces, two is a tab, three is a tab and four
+spaces.
+
+What comes back is dropped when the buffer changed while it was on its way, so
+a keystroke that lands first wins over a late answer.
+
+This does not take the place of 'autoindent', 'cindent' or 'indentexpr'.
+Those put in what they put in as the line opens, the server is asked about the
+text as it then stands, and what it hands back goes on top.  A server that
+answers nothing leaves the line the way Vim indented it.
+
+==============================================================================
+16. Watched files				*lsp-watched-files*
 
 A server may ask to be told when files it is not being sent change, so that
 it can keep up with what goes on around the one being edited.  It asks at run
@@ -1090,7 +1140,7 @@ server has no reason to ask for it; what it asks for anyway is answered and
 then left alone.
 
 ==============================================================================
-16. Limitations						*lsp-limitations*
+17. Limitations					*lsp-limitations*
 
 A code action is asked for by line, never by a range within one, so a server
 with something to offer about the exact text under the cursor is never given
@@ -1102,9 +1152,9 @@ line the cursor is on.  One reaching across lines is left to omni completion,
 which replaces the word before the cursor and no more.
 
 ==============================================================================
-17. AI								*lsp-ai*
+18. AI						*lsp-ai*
 
-This plugin is developed with the support of AI.
+This plugin is developed with the support of AI (Claude).
 
 ==============================================================================
  vim:tw=78:ts=8:noet:ft=help:norl:

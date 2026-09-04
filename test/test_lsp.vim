@@ -1305,6 +1305,119 @@ def g:Test_the_symbol_under_the_cursor_is_marked()
   assert_equal([], prop_list(3))
 enddef
 
+def g:Test_a_trigger_character_has_the_server_look_at_the_text()
+  g:lsp_client_config.on_type_formatting = true
+  defer execute('unlet g:lsp_client_config.on_type_formatting')
+  assert_true(t.StartServer({
+    capabilities: Offering({documentOnTypeFormattingProvider:
+			    {firstTriggerCharacter: "\n"}}),
+    # Put the indent clangd would put on the line the newline opened.
+    replies: {'textDocument/onTypeFormatting': [{
+      newText: "\n\t",
+      range: {start: {line: 0, character: 10}, end: {line: 1, character: 0}},
+    }]},
+  }, ['if (one) {', '}']))
+  # Vim throws its own indent away again on leaving Insert mode, which would
+  # count as the buffer having changed under the reply.
+  setlocal noautoindent nocindent indentexpr=
+
+  # Vim holds TextChangedI back until it waits for a key, which it never does
+  # here.  <Cmd> fires it where the cursor stands in Insert mode, rather than
+  # where leaving Insert mode puts it.
+  cursor(1, 11)
+  feedkeys("a\<CR>\<Cmd>doautocmd TextChangedI\<CR>\<Esc>", 'tx')
+  assert_true(t.WaitFor(() =>
+	      !t.Sent('textDocument/onTypeFormatting')->empty()),
+	      'the newline should reach the server')
+  var sent = t.Sent('textDocument/onTypeFormatting')[0].params
+  assert_equal("\n", sent.ch)
+  assert_equal({line: 1, character: 0}, sent.position)
+
+  assert_true(t.WaitFor(() => getline(2) ==# "\t"),
+	      'the indent the server sent should be applied')
+  assert_equal('if (one) {', getline(1))
+  assert_equal('}', getline(3))
+enddef
+
+def g:Test_a_trigger_puts_in_what_the_server_makes_of_it()
+  g:lsp_client_config.on_type_formatting = true
+  defer execute('unlet g:lsp_client_config.on_type_formatting')
+  assert_true(t.StartServer({
+    capabilities: Offering({documentOnTypeFormattingProvider:
+			    {firstTriggerCharacter: '{'}}),
+    # What basedpyright answers a "{" inside a string with: the "f" that
+    # makes it an f-string, put in ahead of where the cursor stands.
+    replies: {'textDocument/onTypeFormatting': [{
+      newText: 'f',
+      range: {start: {line: 0, character: 4}, end: {line: 0, character: 4}},
+    }]},
+  }, ['x = "abc"']))
+
+  cursor(1, 9)
+  feedkeys("i{\<Cmd>doautocmd TextChangedI\<CR>\<Esc>", 'tx')
+  assert_true(t.WaitFor(() =>
+	      !t.Sent('textDocument/onTypeFormatting')->empty()),
+	      'the trigger should reach the server')
+  var sent = t.Sent('textDocument/onTypeFormatting')[0].params
+  assert_equal('{', sent.ch)
+  # The position is where the cursor stands, past the character just typed.
+  assert_equal({line: 0, character: 9}, sent.position)
+
+  assert_true(t.WaitFor(() => getline(1) ==# 'x = f"abc{"'),
+	      'what the server sent should be put in')
+enddef
+
+def g:Test_text_typed_after_a_newline_is_not_a_newline()
+  # Tests run in name order and one of them takes the whole thing away, so
+  # this puts it back rather than counting on it being there.
+  g:lsp_client_config = get(g:, 'lsp_client_config', {})
+  g:lsp_client_config.on_type_formatting = true
+  defer execute('unlet g:lsp_client_config.on_type_formatting')
+  assert_true(t.StartServer({
+    capabilities: Offering({documentOnTypeFormattingProvider:
+			    {firstTriggerCharacter: "\n"}}),
+  }, ['if (one) {', '}']))
+  setlocal noautoindent nocindent indentexpr=
+
+  # Both changes reach one TextChangedI.  The line grew, but what stands
+  # before the cursor is the "x", so that is what was typed last; a request
+  # about the newline would name a position past it and take it along.
+  cursor(1, 11)
+  feedkeys("a\<CR>x\<Cmd>doautocmd TextChangedI\<CR>\<Esc>", 'tx')
+  sleep 500m
+  assert_true(t.Sent('textDocument/onTypeFormatting')->empty(),
+	      'the newline should not be reported once more was typed')
+  assert_equal('x', getline(2))
+enddef
+
+def g:Test_the_text_is_left_alone_while_typing_when_turned_off()
+  assert_true(t.StartServer({
+    capabilities: Offering({documentOnTypeFormattingProvider:
+			    {firstTriggerCharacter: "\n"}}),
+  }, ['if (one) {', '}']))
+
+  cursor(1, 11)
+  feedkeys("a\<CR>\<Cmd>doautocmd TextChangedI\<CR>\<Esc>", 'tx')
+  sleep 500m
+  assert_true(t.Sent('textDocument/onTypeFormatting')->empty(),
+	      'nothing should be sent with the setting off')
+enddef
+
+def g:Test_a_character_the_server_did_not_name_is_left_alone()
+  g:lsp_client_config.on_type_formatting = true
+  defer execute('unlet g:lsp_client_config.on_type_formatting')
+  assert_true(t.StartServer({
+    capabilities: Offering({documentOnTypeFormattingProvider:
+			    {firstTriggerCharacter: '}'}}),
+  }, ['int one;']))
+
+  cursor(1, 8)
+  feedkeys("ax\<Cmd>doautocmd TextChangedI\<CR>\<Esc>", 'tx')
+  sleep 500m
+  assert_true(t.Sent('textDocument/onTypeFormatting')->empty(),
+	      'only what the server named should reach it')
+enddef
+
 def g:Test_the_marks_are_left_alone_when_turned_off()
   g:lsp_client_config.document_highlight = false
   defer execute('unlet g:lsp_client_config.document_highlight')

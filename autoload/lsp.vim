@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.007'
+const VERSION = '0.2.008'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -60,6 +60,7 @@ const DEFAULTS = {
   document_link: false,
   folding: false,
   semantic_tokens: false,
+  on_type_formatting: false,
   will_save: true,
   hover_format: 'plaintext',
   hover_popup: {},
@@ -555,6 +556,8 @@ def HookBuffer()
     autocmd CursorMoved <buffer> hl.Clear(bufnr('%'))
     autocmd CursorMoved <buffer> HighlightLater()
     autocmd InsertEnter <buffer> StopHighlight()
+    autocmd InsertEnter <buffer> RememberLineCount()
+    autocmd TextChangedI <buffer> OnTypeFormat()
     autocmd TextChanged,BufEnter <buffer> InlayHints()
     autocmd TextChanged,BufEnter <buffer> CodeLenses()
     autocmd TextChanged,BufEnter <buffer> DocumentLinks()
@@ -1634,6 +1637,70 @@ def ApplyTextEdits(bufnr: number, edits: list<any>)
     pos[1] += added
     setpos('.', pos)
   endif
+enddef
+
+# The line count at the last change, so that a line having been added tells
+# the character typed was a newline.
+var typed_lines: dict<number> = {}
+
+def RememberLineCount()
+  var bufnr = bufnr('%')
+  typed_lines[string(bufnr)] = BufLineCount(bufnr)
+enddef
+
+def OnTypeFormat()
+  var bufnr = bufnr('%')
+  var lines = BufLineCount(bufnr)
+  var grew = lines > typed_lines->get(string(bufnr), lines)
+  typed_lines[string(bufnr)] = lines
+  if !Setting('on_type_formatting')
+    return
+  endif
+  var cl = BufClient(bufnr)
+  if cl->empty() || !cl.initialized
+    return
+  endif
+  var provider = cl.capabilities->get('documentOnTypeFormattingProvider', {})
+  if type(provider) != v:t_dict
+    return
+  endif
+  # Text before the cursor was typed after the newline, so it is that which
+  # was typed last; naming the newline here would send a position past it.
+  var before = strpart(getline('.'), 0, col('.') - 1)
+  var ch = grew && before =~# '^\s*$' ? "\n" : before->slice(-1)
+  if ch->empty()
+    return
+  endif
+  var triggers = [provider->get('firstTriggerCharacter', '')]
+	       + provider->get('moreTriggerCharacter', [])
+  if index(triggers, ch) < 0
+    return
+  endif
+  # The reply describes the buffer as it was asked about.
+  var tick = getbufvar(bufnr, 'changedtick')
+  var params = {
+    textDocument: {uri: util.PathToUri(bufname(bufnr))},
+    position: util.PosToLsp(bufnr, line('.'), col('.')),
+    ch: ch,
+    options: {tabSize: &tabstop, insertSpaces: &expandtab ? true : false},
+  }
+  listener_flush(bufnr)
+  lspclient.Request(cl, 'textDocument/onTypeFormatting', params, (result: any) => {
+    if type(result) != v:t_list || result->empty()
+	  || getbufvar(bufnr, 'changedtick') != tick
+	  || bufnr != bufnr('%')
+      return
+    endif
+    # An edit reaching the indent moves the text the cursor sits before, so
+    # the cursor goes back in front of it rather than to its old column.
+    var tail = strpart(getline('.'), col('.') - 1)
+    ApplyTextEdits(bufnr, result)
+    var now = getline('.')
+    var keep = strlen(now) - strlen(tail)
+    if keep >= 0 && strpart(now, keep) ==# tail
+      cursor(line('.'), keep + 1)
+    endif
+  })
 enddef
 
 export def Format(first: number, last: number)
