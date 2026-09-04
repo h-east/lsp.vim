@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.008'
+const VERSION = '0.2.009'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -3310,6 +3310,23 @@ def Watchers(cl: dict<any>): list<dict<any>>
   return out
 enddef
 
+# The capability a registered method stands for.
+const REGISTERED_AS = {
+  'textDocument/diagnostic': 'diagnosticProvider',
+}
+
+# What a server offers.  A registration is the later word than what was named
+# at startup: pyright registers the same method again with another answer
+# once it has read the settings.
+export def Capability(cl: dict<any>, name: string): any
+  for item in cl.registrations->values()
+    if REGISTERED_AS->get(item->get('method', ''), '') ==# name
+      return item->get('registerOptions', {})
+    endif
+  endfor
+  return cl.capabilities->get(name, 0)
+enddef
+
 def Register(cl: dict<any>, params: any)
   if type(params) != v:t_dict
     return
@@ -3544,7 +3561,10 @@ enddef
 def PullDiagnostics()
   var cl = BufClient(bufnr('%'))
   if cl->empty() || !cl.initialized
-	|| type(cl.capabilities->get('diagnosticProvider', 0)) != v:t_dict
+    return
+  endif
+  var provider = Capability(cl, 'diagnosticProvider')
+  if type(provider) != v:t_dict
 	|| lspclient.Declined(cl, 'textDocument/diagnostic')
     return
   endif
@@ -3553,7 +3573,7 @@ def PullDiagnostics()
   var params: dict<any> = {textDocument: {uri: uri}}
   # A server that answers under a name wants it back, since it may report on
   # the same file under more than one.
-  var identifier = cl.capabilities.diagnosticProvider->get('identifier', '')
+  var identifier = provider->get('identifier', '')
   if !identifier->empty()
     params.identifier = identifier
   endif

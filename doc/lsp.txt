@@ -1134,10 +1134,12 @@ it, which is what 'autoread' and |:checktime| bring about.  A file that
 something else creates, changes or deletes while Vim has no buffer for it
 goes unnoticed.
 
-This is the only thing a server is asked to register at run time.  Everything
-else this client can do is declared at the start and does not change, so a
-server has no reason to ask for it; what it asks for anyway is answered and
-then left alone.
+Diagnostics are the other thing a server may register at run time, and
+pyright is one that does: it waits until it has read the settings before
+saying whether it answers a pull.  A registration is taken as what the
+server offers from then on, over what it named at startup, and giving it up
+again puts back what was named there.  What is registered for anything else
+is answered and then left alone.
 
 ==============================================================================
 17. Limitations					*lsp-limitations*

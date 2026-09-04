@@ -148,7 +148,9 @@ def ClientCapabilities(snippet: bool, hover_format: list<string>): dict<any>
 	relatedInformation: true,
       },
       diagnostic: {
-	dynamicRegistration: false,
+	# A server that would rather register this once it has read the
+	# settings, pyright among them, offers nothing at startup without it.
+	dynamicRegistration: true,
 	# Only the file that was asked about is read out of a report, so a
 	# server has no reason to work out what it holds for other files.
 	relatedDocumentSupport: false,

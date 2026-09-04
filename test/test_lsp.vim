@@ -2028,6 +2028,95 @@ def g:Test_the_diagnostics_are_asked_for_when_they_are_not_sent()
   assert_false(prop_list(1)->empty(), 'the report should still stand')
 enddef
 
+def g:Test_a_report_is_asked_for_once_the_server_registers_for_it()
+  const REPORT = {
+    range: {start: {line: 0, character: 4}, end: {line: 0, character: 7}},
+    severity: 1,
+    message: 'a fault',
+  }
+  const REG = {
+    id: 'd1',
+    method: 'textDocument/diagnostic',
+    registerOptions: {identifier: 'late', interFileDependencies: false,
+		      workspaceDiagnostics: false},
+  }
+  # Nothing at startup: what the server offers arrives while it answers a
+  # hover, the way pyright waits until it has read the settings.
+  assert_true(t.StartServer({
+    capabilities: Offering({hoverProvider: true}),
+    replies: {'textDocument/hover': {contents: 'something'},
+	      'textDocument/diagnostic':
+		  {kind: 'full', resultId: '1', items: [REPORT]}},
+    ask: {'textDocument/hover': [{id: 'reg',
+				  method: 'client/registerCapability',
+				  params: {registrations: [REG]}}]},
+  }, ['int one;']))
+
+  setline(1, 'int two;')
+  doautocmd TextChanged
+  sleep 500m
+  assert_true(t.Sent('textDocument/diagnostic')->empty(),
+	      'nothing should be asked for before the server registers')
+
+  LspHover
+  assert_true(t.WaitFor(() =>
+		  t.Trace()->copy()
+		    ->filter((_, m) => string(m->get('id', '')) ==# "'reg'")
+		    ->len() == 1),
+	      'the registration should be answered')
+
+  # A change is what has a report asked for, and now there is a server to
+  # ask.
+  setline(1, 'int three;')
+  doautocmd TextChanged
+  assert_true(t.WaitFor(() =>
+		  !t.Sent('textDocument/diagnostic')->empty()),
+	      'a report should be asked for once the registration arrives')
+  assert_equal('late', t.Sent('textDocument/diagnostic')[0].params.identifier)
+  assert_true(t.WaitFor(() => !prop_list(1)->empty()),
+	      'the report should be shown')
+enddef
+
+def g:Test_a_report_is_left_alone_once_the_server_gives_it_up()
+  const REG = {
+    id: 'd1',
+    method: 'textDocument/diagnostic',
+    registerOptions: {interFileDependencies: false,
+		      workspaceDiagnostics: false},
+  }
+  assert_true(t.StartServer({
+    capabilities: Offering({hoverProvider: true, definitionProvider: true}),
+    replies: {'textDocument/hover': {contents: 'something'},
+	      'textDocument/definition': v:null,
+	      'textDocument/diagnostic': {kind: 'full', resultId: '1', items: []}},
+    ask: {
+      'textDocument/hover': [{id: 'reg', method: 'client/registerCapability',
+			      params: {registrations: [REG]}}],
+      'textDocument/definition': [{id: 'unreg',
+			      method: 'client/unregisterCapability',
+			      params: {unregisterations: [
+				  {id: 'd1', method: REG.method}]}}],
+    },
+  }, ['int one;']))
+
+  LspHover
+  assert_true(t.WaitFor(() => !t.Sent('textDocument/diagnostic')->empty()),
+	      'the registration should have it asked for')
+
+  LspDefinition
+  assert_true(t.WaitFor(() =>
+		  t.Trace()->copy()
+		    ->filter((_, m) => string(m->get('id', '')) ==# "'unreg'")
+		    ->len() == 1),
+	      'the server should have given it up')
+  var asked = len(t.Sent('textDocument/diagnostic'))
+  setline(1, 'int two;')
+  doautocmd TextChanged
+  sleep 500m
+  assert_equal(asked, len(t.Sent('textDocument/diagnostic')),
+	       'nothing more should be asked for')
+enddef
+
 def g:Test_a_watched_file_being_written_is_reported()
   defer popup_clear()
   const HEADER = t.SRC->substitute('\.c$', '.h', '')
