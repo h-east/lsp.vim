@@ -3332,9 +3332,20 @@ def Register(cl: dict<any>, params: any)
     return
   endif
   for item in params->get('registrations', [])
-    if type(item) == v:t_dict && !item->get('id', '')->empty()
-      cl.registrations[item.id] = item
+    if type(item) != v:t_dict || item->get('id', '')->empty()
+      continue
     endif
+    # A server changes its mind by registering the method again under
+    # another id, basedpyright among them, so the one before it goes.
+    var method = item->get('method', '')
+    if REGISTERED_AS->has_key(method)
+      for [id, was] in cl.registrations->items()
+	if was->get('method', '') ==# method
+	  remove(cl.registrations, id)
+	endif
+      endfor
+    endif
+    cl.registrations[item.id] = item
   endfor
   cl.watchers = Watchers(cl)
 enddef

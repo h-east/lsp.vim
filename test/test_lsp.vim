@@ -2077,6 +2077,62 @@ def g:Test_a_report_is_asked_for_once_the_server_registers_for_it()
 	      'the report should be shown')
 enddef
 
+def g:Test_a_method_registered_again_is_taken_as_the_later_word()
+  # basedpyright registers this once with what it can say before it has read
+  # the settings, and again under another id once it has.
+  const FIRST = {
+    id: 'd1', method: 'textDocument/diagnostic',
+    registerOptions: {identifier: 'early', interFileDependencies: false,
+		      workspaceDiagnostics: false},
+  }
+  const SECOND = {
+    id: 'd2', method: 'textDocument/diagnostic',
+    registerOptions: {identifier: 'late', interFileDependencies: true,
+		      workspaceDiagnostics: true},
+  }
+  assert_true(t.StartServer({
+    capabilities: Offering({hoverProvider: true, definitionProvider: true}),
+    replies: {'textDocument/hover': {contents: 'something'},
+	      'textDocument/definition': v:null,
+	      'textDocument/diagnostic': {kind: 'full', resultId: '1', items: []}},
+    ask: {
+      'textDocument/hover': [{id: 'r1', method: 'client/registerCapability',
+			      params: {registrations: [FIRST]}}],
+      'textDocument/definition': [{id: 'r2',
+			      method: 'client/registerCapability',
+			      params: {registrations: [SECOND]}}],
+    },
+  }, ['int one;']))
+
+  LspHover
+  assert_true(t.WaitFor(() =>
+		  t.Trace()->copy()
+		    ->filter((_, m) => string(m->get('id', '')) ==# "'r1'")
+		    ->len() == 1),
+	      'the first registration should be answered')
+  setline(1, 'int two;')
+  doautocmd TextChanged
+  assert_true(t.WaitFor(() => !t.Sent('textDocument/diagnostic')->empty()),
+	      'the first registration should have a report asked for')
+  assert_equal('early', t.Sent('textDocument/diagnostic')[0].params.identifier)
+
+  # The second one arrives under an id of its own, and is what counts from
+  # then on.
+  LspDefinition
+  assert_true(t.WaitFor(() =>
+		  t.Trace()->copy()
+		    ->filter((_, m) => string(m->get('id', '')) ==# "'r2'")
+		    ->len() == 1),
+	      'the second registration should be answered')
+  var asked = len(t.Sent('textDocument/diagnostic'))
+  setline(1, 'int three;')
+  doautocmd TextChanged
+  assert_true(t.WaitFor(() =>
+		  len(t.Sent('textDocument/diagnostic')) > asked),
+	      'a report should be asked for again')
+  assert_equal('late', t.Sent('textDocument/diagnostic')[-1].params.identifier)
+enddef
+
 def g:Test_a_report_is_left_alone_once_the_server_gives_it_up()
   const REG = {
     id: 'd1',
