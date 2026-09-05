@@ -411,7 +411,7 @@ the buffer is then left as it was: >vim9
 
 	def LspBuffer()
 	  setlocal complete^=o completeopt=menuone,popup signcolumn=yes
-	  nnoremap <buffer> K  <Cmd>LspHover<CR>
+	  setlocal keywordprg=:LspHover
 	  nnoremap <buffer> gd <Cmd>LspDefinition<CR>
 	enddef
 
@@ -528,6 +528,14 @@ Asking ~
 		cursor move, another mode, another window, another buffer, a
 		scroll.  What does not fit is reached with the keys under
 		|lsp-popup-scroll|.
+
+		An argument is taken and left alone, so this can be named in
+		'keywordprg' for |K| to reach: >vim9
+
+			setlocal keywordprg=:LspHover
+<
+		The word |K| hands over is the one under the cursor, which is
+		what the server is asked about anyway.
 
 						*:LspSignature*
 :LspSignature	Show what the call the cursor is in takes, in a popup.  See

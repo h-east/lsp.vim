@@ -50,7 +50,7 @@ command! -bar -nargs=? -complete=dir LspWorkspaceFolderAdd {
 command! -bar -nargs=1 -complete=customlist,FolderNames LspWorkspaceFolderRemove {
   lsp.WorkspaceFolderRemove(<q-args>)
 }
-command! -bar LspHover      lsp.Hover()
+command! -bar -nargs=? LspHover lsp.Hover()
 command! -bar LspDefinition lsp.Definition(<q-mods>)
 command! -bar LspDeclaration lsp.Declaration(<q-mods>)
 command! -bar LspTypeDefinition lsp.TypeDefinition(<q-mods>)

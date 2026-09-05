@@ -172,8 +172,9 @@ def LspBuffer()
   setlocal completeopt=menuone,popup
   # So the text stays put as a sign comes and goes.
   setlocal signcolumn=yes
+  # So K asks the server rather than the program it otherwise names.
+  setlocal keywordprg=:LspHover
 
-  nnoremap <buffer> K  <Cmd>LspHover<CR>
   nnoremap <buffer> gd <Cmd>LspDefinition<CR>
 enddef
 
@@ -198,8 +199,9 @@ function! s:LspBuffer()
   setlocal completeopt=menuone,popup
   " So the text stays put as a sign comes and goes.
   setlocal signcolumn=yes
+  " So K asks the server rather than the program it otherwise names.
+  setlocal keywordprg=:LspHover
 
-  nnoremap <buffer> K  <Cmd>LspHover<CR>
   nnoremap <buffer> gd <Cmd>LspDefinition<CR>
 endfunction
 
