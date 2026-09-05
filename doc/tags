@@ -47,6 +47,7 @@ lsp-ai	lsp.txt	/*lsp-ai*
 lsp-code-lens	lsp.txt	/*lsp-code-lens*
 lsp-commands	lsp.txt	/*lsp-commands*
 lsp-completion	lsp.txt	/*lsp-completion*
+lsp-config-per-filetype	lsp.txt	/*lsp-config-per-filetype*
 lsp-configuration	lsp.txt	/*lsp-configuration*
 lsp-contents	lsp.txt	/*lsp-contents*
 lsp-diagnostics	lsp.txt	/*lsp-diagnostics*

@@ -288,6 +288,20 @@ g:lsp_client_config
 		|:LspSemanticTokens| write into this Dictionary, so what they
 		turn on stays on for the rest of the session.
 
+						*lsp-config-per-filetype*
+		These hold for every server.  A setting worth having for one
+		language and not for another is turned around with a
+		|BufEnter| autocommand: each is read where it is used, so a
+		new value takes hold from there on.  |:LspStop| and
+		|:LspStart| are not needed.
+
+		Example: >vim9
+
+			autocmd BufEnter * {
+			  g:lsp_client_config.on_type_formatting =
+			    &filetype ==# 'c'
+			}
+<
 						*g:loaded_lsp_vim*
 g:loaded_lsp_vim
 		Set to 1 while the plugin script is read.  Set it yourself in
@@ -698,7 +712,6 @@ What is shown ~
 :LspDocumentLinkInfo
 		Show what the server reports about the link under the cursor,
 		in a popup.
-
 
 						*:LspInlayHint*
 :LspInlayHint	Turn the inlay hints on when they are off and off when they
