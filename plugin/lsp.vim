@@ -91,12 +91,9 @@ snoremap <expr> <Plug>(lsp-snippet-prev) lsp.SnippetKeys(-1)
 nnoremap <silent> <Plug>(lsp-document-link) <Cmd>LspDocumentLinkOpen<CR>
 
 # Nor to these; see |lsp-selection|.
-nnoremap <silent> <Plug>(lsp-selection-expand)
-      \ <Cmd>call lsp#SelectionExpand()<CR>
-xnoremap <silent> <Plug>(lsp-selection-expand)
-      \ <Cmd>call lsp#SelectionExpand()<CR>
-xnoremap <silent> <Plug>(lsp-selection-shrink)
-      \ <Cmd>call lsp#SelectionShrink()<CR>
+nnoremap <silent> <Plug>(lsp-selection-expand) <Cmd>lsp#SelectionExpand()<CR>
+xnoremap <silent> <Plug>(lsp-selection-expand) <Cmd>lsp#SelectionExpand()<CR>
+xnoremap <silent> <Plug>(lsp-selection-shrink) <Cmd>lsp#SelectionShrink()<CR>
 
 # Kept out of the autoload script, because reaching that script is what this
 # decides: a file nothing is configured for leaves the plugin asleep.

@@ -51,8 +51,9 @@ def Define()
   endfor
   # No link for this one: a line through the text means "do not use it"
   # whatever the colors around it are.
-  highlight default LspSemDeprecated term=strikethrough cterm=strikethrough
-        \ gui=strikethrough
+  hlset([{name: 'LspSemDeprecated', default: true,
+    term: {strikethrough: true}, cterm: {strikethrough: true},
+    gui: {strikethrough: true}}])
   highlight default link LspSemReadonly Constant
   defined = true
 enddef
