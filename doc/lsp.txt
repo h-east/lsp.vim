@@ -241,10 +241,10 @@ g:lsp_client_config
 
 		workspace_diagnostics
 				When true, a server that reports on the whole
-				workspace is asked to, and what it says about
-				a file no buffer holds is kept as well.  Off
-				by default: it has the server look at every
-				file in the project.  See
+				workspace is asked to, and what comes back
+				about a file no buffer holds is kept as well.
+				Off by default: it has the server look at
+				every file in the project.  See
 				|lsp-workspace-diagnostics|.
 				Default: |false|
 
@@ -873,9 +873,9 @@ be given a look of its own with |:highlight|:
 
 					*lsp-workspace-diagnostics*
 What is above is about the file being edited.  A server may also report on the
-whole workspace, files no buffer holds included, and says so by offering
-"workspaceDiagnostics".  Set "workspace_diagnostics" in |g:lsp_client_config|
-to |true| to ask it to: >vim9
+whole workspace, files no buffer holds included, and offers
+"workspaceDiagnostics" when it can.  Set "workspace_diagnostics" in
+|g:lsp_client_config| to |true| to ask it to: >vim9
 
 	g:lsp_client_config = {workspace_diagnostics: true}
 <
@@ -908,8 +908,8 @@ A report about a file that is open is left to the request made for that
 buffer, which the protocol has win over this one.  The rest is kept, and
 |:LspWorkspaceDiag| puts it, the open files included, into the |quickfix|
 list.  Reports keep arriving for as long as Vim is open, so the list is what
-the server had said by the time it was asked for, the way |:LspReferences| and
-the rest are: ask again for one that has caught up.
+the server had reported by the time it was asked for, the way |:LspReferences|
+and the rest are: ask again for one that has caught up.
 
 Opening a file from the list hands it to the server, which is asked about it
 as any other buffer is: signs and highlights appear, and putting the fault
@@ -1202,7 +1202,7 @@ something else creates, changes or deletes while Vim has no buffer for it goes
 unnoticed.
 
 Diagnostics are the other thing a server may register at run time, and pyright
-is one that does: it waits until it has read the settings before saying
+is one that does: it waits until it has read the settings before declaring
 whether it answers a pull.  A registration is taken as what the server offers
 from then on, over what it named at startup, and giving it up again puts back
 what was named there.  What is registered for anything else is answered and

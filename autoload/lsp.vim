@@ -1105,7 +1105,7 @@ enddef
 
 # The "contents" of a hover reply is a string, a Dict, or a List of either.
 # A string of its own is markdown, as is a MarkupContent that names it; a
-# MarkedString with a language is code, and plaintext is what it says.
+# MarkedString with a language is code, and plaintext is the text itself.
 def HoverText(contents: any): list<string>
   if type(contents) == v:t_string
     return Decoded(contents)->split("\n")
@@ -3744,7 +3744,7 @@ def PullWorkspace(cl: dict<any>)
     },
     (code: number) => {
       ForgetWorkspacePull(cl)
-      # Anything else is the server saying it will not answer at all.
+      # Anything else is the server declining to answer at all.
       if code == lspclient.CANCELLED
 	PullWorkspace(cl)
       else

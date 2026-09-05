@@ -2070,7 +2070,7 @@ def g:Test_a_report_is_asked_for_once_the_server_registers_for_it()
 enddef
 
 def g:Test_a_method_registered_again_is_taken_as_the_later_word()
-  # basedpyright registers this once with what it can say before it has read
+  # basedpyright registers this once with what it can offer before it has read
   # the settings, and again under another id once it has.
   const FIRST = {
     id: 'd1', method: 'textDocument/diagnostic',

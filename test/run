@@ -1,5 +1,5 @@
 #!/bin/sh
-# Run the tests and print what they said.
+# Run the tests and print what they reported.
 #
 #   ./run
 #   VIMPROG=/path/to/vim ./run       # which Vim to test

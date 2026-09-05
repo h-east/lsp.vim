@@ -8,7 +8,7 @@ What it does is read from the JSON file named by $LSP_SCENARIO:
     replies       result by method name, for requests that arrive later
     sequence      results by method name, one per request in the order they
                   are listed, the last of them answering the rest; this is
-                  how a server changes its mind about what it said before
+                  how a server changes its mind about what it reported before
     errors        error by method name, for a request to be turned down
     ask           requests of the server's own, by the method that sets
                   them off, a notification included; this is how a server
