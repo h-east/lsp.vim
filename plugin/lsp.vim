@@ -44,10 +44,12 @@ command! -bar LspStop       lsp.Stop(true)
 command! -bar LspStatus     lsp.Status()
 command! -bar LspConfigCheck lsp.ConfigCheck()
 command! -bar LspConfigReload lsp.ConfigReload()
-command! -bar -nargs=? -complete=dir LspWorkspaceFolderAdd
-      \ lsp.WorkspaceFolderAdd(<q-args>)
-command! -bar -nargs=1 -complete=customlist,FolderNames LspWorkspaceFolderRemove
-      \ lsp.WorkspaceFolderRemove(<q-args>)
+command! -bar -nargs=? -complete=dir LspWorkspaceFolderAdd {
+  lsp.WorkspaceFolderAdd(<q-args>)
+}
+command! -bar -nargs=1 -complete=customlist,FolderNames LspWorkspaceFolderRemove {
+  lsp.WorkspaceFolderRemove(<q-args>)
+}
 command! -bar LspHover      lsp.Hover()
 command! -bar LspDefinition lsp.Definition(<q-mods>)
 command! -bar LspDeclaration lsp.Declaration(<q-mods>)

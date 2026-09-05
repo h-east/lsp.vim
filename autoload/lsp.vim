@@ -596,8 +596,9 @@ def HookBuffer()
     autocmd TextChanged,BufEnter <buffer> CodeLenses()
     autocmd TextChanged,BufEnter <buffer> DocumentLinks()
     autocmd TextChanged,BufEnter <buffer> FoldingRanges()
-    autocmd TextChanged,TextChangedI,TextChangedP,BufEnter <buffer>
-          \ SemanticLater()
+    autocmd TextChanged,TextChangedI,TextChangedP,BufEnter <buffer> {
+      SemanticLater()
+    }
     autocmd TextChanged,TextChangedI,TextChangedP,BufEnter <buffer> PullLater()
     autocmd TextChangedI,TextChangedP <buffer> OnTextChanged()
     autocmd CursorMovedI <buffer> OnCursorMovedI()
@@ -613,8 +614,9 @@ def HookBuffer()
       autocmd WinScrolled * SemanticLater()
       autocmd BufWritePre * BeforeWrite(expand('<afile>:p'))
       autocmd BufWritePost * AfterWrite(expand('<afile>:p'))
-      autocmd FileChangedShellPost *
-            \ FileChanged(expand('<afile>:p'), WATCH_CHANGE, FILE_CHANGED)
+      autocmd FileChangedShellPost * {
+        FileChanged(expand('<afile>:p'), WATCH_CHANGE, FILE_CHANGED)
+      }
     augroup END
     global_hooked = true
   endif
@@ -1070,8 +1072,9 @@ def HoverPopup(raw: list<string>, contents: any)
   hover_popup = popup_atcursor(lines, options)
   augroup lsp_hover_popup
     autocmd!
-    autocmd ModeChanged,WinLeave,WinScrolled,BufLeave,VimResized
-          \ * ++once CloseHoverPopup()
+    autocmd ModeChanged,WinLeave,WinScrolled,BufLeave,VimResized * ++once {
+      CloseHoverPopup()
+    }
   augroup END
   var ft = HoverFiletype(contents)
   if !ft->empty()
@@ -2714,6 +2717,7 @@ def CallHierarchy(incoming: bool)
   var here = util.PathToUri(bufname('%'))
   lspclient.Request(cl, 'textDocument/prepareCallHierarchy', CursorParams(),
     (result: any) => {
+
       var items = type(result) == v:t_list ? result : []
       if items->empty() || type(items[0]) != v:t_dict
         util.WarningMsg('there is no call hierarchy here')
@@ -2722,9 +2726,11 @@ def CallHierarchy(incoming: bool)
       var what = incoming ? 'incoming' : 'outgoing'
       lspclient.Request(cl, 'callHierarchy/' .. what .. 'Calls',
         {item: items[0]}, (calls: any) => {
+
           var qf = LocationItems(CallLocations(calls, incoming, here))
           if qf->empty()
-            util.WarningMsg(incoming ? 'nothing calls this' : 'this calls nothing')
+            util.WarningMsg(incoming ? 'nothing calls this'
+              : 'this calls nothing')
             return
           endif
           setqflist([], ' ', {title: 'LSP ' .. what .. ' calls: '
