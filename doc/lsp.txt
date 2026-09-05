@@ -884,10 +884,17 @@ project rather than the one in front of you.
 
 Both ends have to be told.  This is what has the client take the reports; a
 server has its own setting for looking past the files that are open, and
-offers "workspaceDiagnostics" only once it is set.  For basedpyright that is
-"diagnosticMode" under "python.analysis", handed over in "settings"; see
-|g:lsp_server_list|.
+offers "workspaceDiagnostics" only once it is set.  For pyright and
+basedpyright that is "diagnosticMode" under "python.analysis", which goes in
+the "settings" of |g:lsp_server_list|.  Example: >vim9
 
+	g:lsp_server_list = [{
+	  name: 'basedpyright',
+	  filetypes: ['python'],
+	  cmd: ['basedpyright-langserver', '--stdio'],
+	  settings: {python: {analysis: {diagnosticMode: 'workspace'}}},
+	}]
+<
 The request is made once the server is ready and is left open: the protocol
 lets the server keep it that way for as long as it likes and hand over what it
 works out a piece at a time.  Each piece is taken as it arrives rather than at
