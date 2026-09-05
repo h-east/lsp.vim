@@ -46,7 +46,7 @@ export def PathToUri(path: string): string
     endif
   endif
   return 'file://' .. substitute(full, UNRESERVED .. '\@!.',
-					      (m) => PercentEncode(m[0]), 'g')
+    (m) => PercentEncode(m[0]), 'g')
 enddef
 
 # A URI with any other scheme is returned unchanged: there is no file for it
@@ -101,20 +101,20 @@ export def PosToLsp(bufnr: number, lnum: number, col: number): dict<number>
   endif
   var line = getbufline(bufnr, lnum)->get(0, '')
   var idx = encoding ==# 'utf-32' ? charidx(line, col - 1, true)
-				  : utf16idx(line, col - 1, 1)
+    : utf16idx(line, col - 1, 1)
   return {line: lnum - 1, character: idx < 0 ? 0 : idx}
 enddef
 
 # Takes the line itself rather than a buffer, so it also works for a file that
 # is not open; the encoding has to come along for the same reason.
 export def ColFromLsp(line: string, character: number,
-					  encoding: string = 'utf-16'): number
+    encoding: string = 'utf-16'): number
   if encoding ==# 'utf-8'
     var last = line->strlen()
     return (character > last ? last : character) + 1
   endif
   var idx = encoding ==# 'utf-32' ? byteidxcomp(line, character)
-				  : byteidxcomp(line, character, true)
+    : byteidxcomp(line, character, true)
   return (idx < 0 ? line->strlen() : idx) + 1
 enddef
 
@@ -174,4 +174,4 @@ if $LSP_COMPILE_CHECK != ''
   defcompile
 endif
 
-# vim: sw=2 sts=2 et
+# vim: ts=2 sw=0 et

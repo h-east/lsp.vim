@@ -32,7 +32,7 @@ enddef
 var RequestHandler: func(dict<any>, string, any, func(any)): bool
 
 export def SetRequestHandler(
-	Handler: func(dict<any>, string, any, func(any)): bool)
+    Handler: func(dict<any>, string, any, func(any)): bool)
   RequestHandler = Handler
 enddef
 
@@ -45,137 +45,137 @@ def ClientCapabilities(snippet: bool, hover_format: list<string>): dict<any>
     },
     textDocument: {
       synchronization: {
-	didSave: true,
-	willSave: true,
-	# A server that wants to put the file right on the way to disk is
-	# waited for; see |lsp-configuration| for turning that off.
-	willSaveWaitUntil: true,
-	dynamicRegistration: false,
+        didSave: true,
+        willSave: true,
+        # A server that wants to put the file right on the way to disk is
+        # waited for; see |lsp-configuration| for turning that off.
+        willSaveWaitUntil: true,
+        dynamicRegistration: false,
       },
       completion: {
-	dynamicRegistration: false,
-	contextSupport: true,
-	completionItem: {
-	  # Off unless it was asked for: what a snippet puts in needs the
-	  # mappings of |lsp-snippet| to be of use.
-	  snippetSupport: snippet,
-	  documentationFormat: ['plaintext', 'markdown'],
-	  # Not asking for labelDetailsSupport on purpose: a server that has it
-	  # leaves a bare name in "label", while the menu reads better with the
-	  # signature in there too.
-	},
+        dynamicRegistration: false,
+        contextSupport: true,
+        completionItem: {
+          # Off unless it was asked for: what a snippet puts in needs the
+          # mappings of |lsp-snippet| to be of use.
+          snippetSupport: snippet,
+          documentationFormat: ['plaintext', 'markdown'],
+        # Not asking for labelDetailsSupport on purpose: a server that has it
+        # leaves a bare name in "label", while the menu reads better with the
+        # signature in there too.
+        },
       },
       hover: {
-	# The order is the preference; "hover_format" in |lsp-configuration|
-	# turns it around.
-	contentFormat: hover_format,
-	dynamicRegistration: false,
+        # The order is the preference; "hover_format" in |lsp-configuration|
+        # turns it around.
+        contentFormat: hover_format,
+        dynamicRegistration: false,
       },
       signatureHelp: {
-	dynamicRegistration: false,
-	signatureInformation: {
-	  documentationFormat: ['plaintext', 'markdown'],
-	  activeParameterSupport: true,
-	  # Offsets into the signature rather than text to search for, so the
-	  # active parameter is found without guessing which occurrence is meant.
-	  parameterInformation: {labelOffsetSupport: true},
-	},
+        dynamicRegistration: false,
+        signatureInformation: {
+          documentationFormat: ['plaintext', 'markdown'],
+          activeParameterSupport: true,
+          # Offsets into the signature rather than text to search for, so the
+          # active parameter is found without guessing which occurrence is meant.
+          parameterInformation: {labelOffsetSupport: true},
+        },
       },
       definition: {
-	linkSupport: false,
-	dynamicRegistration: false,
+        linkSupport: false,
+        dynamicRegistration: false,
       },
       declaration: {
-	linkSupport: false,
-	dynamicRegistration: false,
+        linkSupport: false,
+        dynamicRegistration: false,
       },
       typeDefinition: {
-	linkSupport: false,
-	dynamicRegistration: false,
+        linkSupport: false,
+        dynamicRegistration: false,
       },
       implementation: {
-	linkSupport: false,
-	dynamicRegistration: false,
+        linkSupport: false,
+        dynamicRegistration: false,
       },
       documentHighlight: {
-	dynamicRegistration: false,
+        dynamicRegistration: false,
       },
       inlayHint: {
-	dynamicRegistration: false,
-	# A hint may be handed over as the text to show and nothing else, with
-	# the rest of it worked out only when it is acted on.
-	resolveSupport: {properties: ['tooltip', 'textEdits']},
+        dynamicRegistration: false,
+        # A hint may be handed over as the text to show and nothing else, with
+        # the rest of it worked out only when it is acted on.
+        resolveSupport: {properties: ['tooltip', 'textEdits']},
       },
       callHierarchy: {
-	dynamicRegistration: false,
+        dynamicRegistration: false,
       },
       foldingRange: {
-	dynamicRegistration: false,
-	lineFoldingOnly: true,
+        dynamicRegistration: false,
+        lineFoldingOnly: true,
       },
       documentSymbol: {
-	dynamicRegistration: false,
-	# The flat list a server may send instead is read as well.
-	hierarchicalDocumentSymbolSupport: true,
+        dynamicRegistration: false,
+        # The flat list a server may send instead is read as well.
+        hierarchicalDocumentSymbolSupport: true,
       },
       codeAction: {
-	dynamicRegistration: false,
-	# A server may hand over an action without the edit it stands for and
-	# fill that in only for the one that is picked.
-	dataSupport: true,
-	resolveSupport: {properties: ['edit']},
-	# Without this a server answers with Commands, which it has to be asked
-	# to run; a CodeAction carries the edit itself.  The empty string is
-	# what lets a kind this client never heard of come through.
-	codeActionLiteralSupport: {
-	  codeActionKind: {
-	    valueSet: ['', 'quickfix', 'refactor', 'refactor.extract',
-		       'refactor.inline', 'refactor.rewrite', 'source',
-		       'source.organizeImports'],
-	  },
-	},
+        dynamicRegistration: false,
+        # A server may hand over an action without the edit it stands for and
+        # fill that in only for the one that is picked.
+        dataSupport: true,
+        resolveSupport: {properties: ['edit']},
+        # Without this a server answers with Commands, which it has to be asked
+        # to run; a CodeAction carries the edit itself.  The empty string is
+        # what lets a kind this client never heard of come through.
+        codeActionLiteralSupport: {
+          codeActionKind: {
+            valueSet: ['', 'quickfix', 'refactor', 'refactor.extract',
+              'refactor.inline', 'refactor.rewrite', 'source',
+              'source.organizeImports'],
+          },
+        },
       },
       rename: {
-	dynamicRegistration: false,
-	# Ask before renaming: it reports whether there is anything to rename
-	# here, and what the name to start from is.
-	prepareSupport: true,
+        dynamicRegistration: false,
+        # Ask before renaming: it reports whether there is anything to rename
+        # here, and what the name to start from is.
+        prepareSupport: true,
       },
       onTypeFormatting: {
-	dynamicRegistration: false,
+        dynamicRegistration: false,
       },
       publishDiagnostics: {
-	relatedInformation: true,
+        relatedInformation: true,
       },
       diagnostic: {
-	# A server that would rather register this once it has read the
-	# settings, pyright among them, offers nothing at startup without it.
-	dynamicRegistration: true,
-	# Only the file that was asked about is read out of a report, so a
-	# server has no reason to work out what it holds for other files.
-	relatedDocumentSupport: false,
+        # A server that would rather register this once it has read the
+        # settings, pyright among them, offers nothing at startup without it.
+        dynamicRegistration: true,
+        # Only the file that was asked about is read out of a report, so a
+        # server has no reason to work out what it holds for other files.
+        relatedDocumentSupport: false,
       },
       semanticTokens: {
-	dynamicRegistration: false,
-	requests: {range: true, full: {delta: true}},
-	# What this client has a highlight group for; a server is free to name
-	# others in its legend and they are left to the syntax highlighting.
-	tokenTypes: ['namespace', 'type', 'class', 'enum', 'interface',
-		     'struct', 'typeParameter', 'parameter', 'variable',
-		     'property', 'enumMember', 'event', 'function', 'method',
-		     'macro', 'keyword', 'modifier', 'comment', 'string',
-		     'number', 'regexp', 'operator', 'decorator'],
-	# The bits in a token are read against this list, so a server needs it
-	# to know what it can send.
-	tokenModifiers: ['declaration', 'definition', 'readonly', 'static',
-			 'deprecated', 'abstract', 'async', 'modification',
-			 'documentation', 'defaultLibrary'],
-	formats: ['relative'],
-	overlappingTokenSupport: false,
-	multilineTokenSupport: false,
-	# Vim keeps highlighting the file the way it always did, and what the
-	# server reports is put on top of that.
-	augmentsSyntaxTokens: true,
+        dynamicRegistration: false,
+        requests: {range: true, full: {delta: true}},
+        # What this client has a highlight group for; a server is free to name
+        # others in its legend and they are left to the syntax highlighting.
+        tokenTypes: ['namespace', 'type', 'class', 'enum', 'interface',
+          'struct', 'typeParameter', 'parameter', 'variable',
+          'property', 'enumMember', 'event', 'function', 'method',
+          'macro', 'keyword', 'modifier', 'comment', 'string',
+          'number', 'regexp', 'operator', 'decorator'],
+        # The bits in a token are read against this list, so a server needs it
+        # to know what it can send.
+        tokenModifiers: ['declaration', 'definition', 'readonly', 'static',
+          'deprecated', 'abstract', 'async', 'modification',
+          'documentation', 'defaultLibrary'],
+        formats: ['relative'],
+        overlappingTokenSupport: false,
+        multilineTokenSupport: false,
+        # Vim keeps highlighting the file the way it always did, and what the
+        # server reports is put on top of that.
+        augmentsSyntaxTokens: true,
       },
     },
     workspace: {
@@ -187,9 +187,9 @@ def ClientCapabilities(snippet: bool, hover_format: list<string>): dict<any>
       # |:LspConfigReload| is what sends it.
       didChangeConfiguration: {dynamicRegistration: false},
       symbol: {
-	dynamicRegistration: false,
-	# A symbol may come with the file it is in but not the place in it.
-	resolveSupport: {properties: ['location.range']},
+        dynamicRegistration: false,
+        # A symbol may come with the file it is in but not the place in it.
+        resolveSupport: {properties: ['location.range']},
       },
       # A server that works a change out on its side hands it over this way,
       # which is how an action it runs itself comes back.
@@ -202,21 +202,21 @@ def ClientCapabilities(snippet: bool, hover_format: list<string>): dict<any>
       foldingRange: {refreshSupport: true},
       diagnostics: {refreshSupport: true},
       fileOperations: {
-	dynamicRegistration: false,
-	willCreate: true,
-	didCreate: true,
-	willRename: true,
-	didRename: true,
-	# Nothing here removes a file, so a server would never hear of one.
-	willDelete: false,
-	didDelete: false,
+        dynamicRegistration: false,
+        willCreate: true,
+        didCreate: true,
+        willRename: true,
+        didRename: true,
+        # Nothing here removes a file, so a server would never hear of one.
+        willDelete: false,
+        didDelete: false,
       },
       didChangeWatchedFiles: {
-	# The only thing a server is asked to register at run time; the rest
-	# of this dictionary holds what it can count on from the start.
-	dynamicRegistration: true,
-	# A watcher may name a base of its own to match against.
-	relativePatternSupport: true,
+        # The only thing a server is asked to register at run time; the rest
+        # of this dictionary holds what it can count on from the start.
+        dynamicRegistration: true,
+        # A watcher may name a base of its own to match against.
+        relativePatternSupport: true,
       },
     },
     window: {
@@ -236,7 +236,7 @@ def OnExit(client: dict<any>, job: job, status: number)
   client.initialized = false
   if status != 0 && !client.stopping
     util.ErrorMsg(printf('server "%s" exited with status %d',
-						      client.name, status))
+      client.name, status))
   endif
 enddef
 
@@ -288,13 +288,13 @@ def OnMessage(client: dict<any>, ch: channel, msg: dict<any>)
       var settings = client.config->get('settings', {})
       var items = msg->get('params', {})->get('items', [])
       var answer = items->mapnew(
-	  (_, item) => SettingAt(settings, item->get('section', '')))
+        (_, item) => SettingAt(settings, item->get('section', '')))
       Respond(client, msg.id, answer)
     elseif RequestHandler == null_function
-	  || !RequestHandler(client, method, msg->get('params', {}),
-			     (result) => Respond(client, msg.id, result))
+        || !RequestHandler(client, method, msg->get('params', {}),
+          (result) => Respond(client, msg.id, result))
       RespondError(client, msg.id, METHOD_NOT_FOUND,
-					  'method not supported: ' .. method)
+        'method not supported: ' .. method)
     endif
   elseif NotifyHandler != null_function
     NotifyHandler(client, method, msg->get('params', {}))
@@ -313,47 +313,47 @@ enddef
 # error hands over "OnError", which is called with the code instead of any of
 # that.  Returns the request id, for Cancel().
 export def Request(client: dict<any>, method: string, params: any,
-		   Cb: func(any),
-		   OnError: func(number) = null_function): number
+    Cb: func(any),
+    OnError: func(number) = null_function): number
   if !client.running
     return -1
   endif
   var status = ch_sendexpr(client.channel, {method: method, params: params},
-      {callback: (ch: channel, reply: dict<any>) => {
-	if reply->has_key('error')
-	  var err = reply.error
-	  var code = err->get('code', 0)
-	  if OnError != null_function
-	    OnError(code)
-	    return
-	  endif
-	  if code == CONTENT_MODIFIED || code == SERVER_CANCELLED
-	    return
-	  endif
-	  # A server may offer something and still turn down a part of it.
-	  # "method not found" reads like a fault at this end.
-	  if code == METHOD_NOT_FOUND
-	    util.WarningMsg(printf('the server does not answer %s', method))
-	  else
-	    util.ErrorMsg(printf('%s: %s', method, err->get('message', '')))
-	  endif
-	  client.declined[method] = true
-	  return
-	endif
-	Cb(reply->get('result', v:null))
-      }})
+    {callback: (ch: channel, reply: dict<any>) => {
+      if reply->has_key('error')
+        var err = reply.error
+        var code = err->get('code', 0)
+        if OnError != null_function
+          OnError(code)
+          return
+        endif
+        if code == CONTENT_MODIFIED || code == SERVER_CANCELLED
+          return
+        endif
+        # A server may offer something and still turn down a part of it.
+        # "method not found" reads like a fault at this end.
+        if code == METHOD_NOT_FOUND
+          util.WarningMsg(printf('the server does not answer %s', method))
+        else
+          util.ErrorMsg(printf('%s: %s', method, err->get('message', '')))
+        endif
+        client.declined[method] = true
+        return
+      endif
+      Cb(reply->get('result', v:null))
+    }})
   return status->get('id', -1)
 enddef
 
 # For Vim's completion functions, which have to answer on the spot; everything
 # else should use Request().  Returns v:null on an error or a timeout.
 export def RequestSync(client: dict<any>, method: string, params: any,
-						   timeout: number): any
+    timeout: number): any
   if !client.running
     return v:null
   endif
   var reply = ch_evalexpr(client.channel, {method: method, params: params},
-							{timeout: timeout})
+    {timeout: timeout})
   if type(reply) != v:t_dict || reply->empty()
     # An empty reply is what running out of time looks like; without a word
     # the user is left guessing.
@@ -365,7 +365,7 @@ export def RequestSync(client: dict<any>, method: string, params: any,
       util.WarningMsg(printf('the server does not answer %s', method))
     else
       util.ErrorMsg(printf('%s: %s', method,
-				   reply.error->get('message', '')))
+        reply.error->get('message', '')))
     endif
     return v:null
   endif
@@ -402,8 +402,8 @@ def Initialize(client: dict<any>, OnReady: func(dict<any>))
     clientInfo: {name: 'Vim', version: v:versionlong->string()},
     rootUri: util.PathToUri(client.root),
     workspaceFolders: client.folders->mapnew((_, folder) =>
-	  ({uri: util.PathToUri(folder),
-	    name: fnamemodify(folder, ':t')})),
+      ({uri: util.PathToUri(folder),
+        name: fnamemodify(folder, ':t')})),
     capabilities: ClientCapabilities(client.snippet, client.hover_format),
     trace: 'off',
   }
@@ -422,9 +422,9 @@ def Initialize(client: dict<any>, OnReady: func(dict<any>))
     # clangd answers under a name of its own, next to the capabilities
     # rather than in them, so both places are read.
     var encoding = client.capabilities->get('positionEncoding',
-					result->get('offsetEncoding', 'utf-16'))
+      result->get('offsetEncoding', 'utf-16'))
     client.encoding = type(encoding) == v:t_string && !encoding->empty()
-					      ? encoding : 'utf-16'
+      ? encoding : 'utf-16'
     Notify(client, 'initialized', {})
     client.initialized = true
     OnReady(client)
@@ -433,8 +433,8 @@ enddef
 
 # Returns an empty Dict when the server could not be started.
 export def Start(config: dict<any>, root: string,
-		 OnReady: func(dict<any>), snippet: bool = false,
-		 hover_format: list<string> = ['plaintext']): dict<any>
+    OnReady: func(dict<any>), snippet: bool = false,
+    hover_format: list<string> = ['plaintext']): dict<any>
   if !executable(config.cmd[0])
     util.ErrorMsg('cannot execute "' .. config.cmd[0] .. '"')
     return {}
@@ -512,4 +512,4 @@ if $LSP_COMPILE_CHECK != ''
   defcompile
 endif
 
-# vim: sw=2 sts=2 et
+# vim: ts=2 sw=0 et

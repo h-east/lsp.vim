@@ -47,20 +47,20 @@ export def Update(bufnr: number, items: list<any>)
     endif
     var [lnum, col] = util.PosFromLsp(bufnr, item.range->get('start', {}))
     var [end_lnum, end_col] = util.PosFromLsp(bufnr,
-					      item.range->get('end', {}))
+      item.range->get('end', {}))
     if end_lnum == lnum && end_col <= col
-      continue		# nothing to point at
+      continue          # nothing to point at
     endif
     try
       prop_add(lnum, col, {end_lnum: end_lnum, end_col: end_col,
-			   bufnr: bufnr, type: TYPE})
+        bufnr: bufnr, type: TYPE})
     catch /^Vim\%((\a\+)\)\=:E96[456]:/
       # The buffer moved on since the server looked at it; the next round
       # will line up again.
       continue
     endtry
     kept->add({lnum: lnum, col: col, end_lnum: end_lnum, end_col: end_col,
-	       link: item})
+      link: item})
   endfor
   links[string(bufnr)] = kept
 enddef
@@ -69,8 +69,8 @@ enddef
 export def At(bufnr: number, lnum: number, col: number): dict<any>
   for item in links->get(string(bufnr), [])
     if (lnum > item.lnum || (lnum == item.lnum && col >= item.col))
-	  && (lnum < item.end_lnum
-	      || (lnum == item.end_lnum && col < item.end_col))
+        && (lnum < item.end_lnum
+        || (lnum == item.end_lnum && col < item.end_col))
       return item.link
     endif
   endfor
@@ -86,3 +86,5 @@ export def Resolved(bufnr: number, link: dict<any>, full: dict<any>)
     endif
   endfor
 enddef
+
+# vim: ts=2 sw=0 et

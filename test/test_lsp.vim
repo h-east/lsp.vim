@@ -41,7 +41,7 @@ enddef
 def g:Test_what_a_server_takes_at_startup_is_handed_over()
   const OPTIONS = {semanticTokens: true, analyses: {unusedparams: true}}
   assert_true(t.StartServer({capabilities: SYNC}, ['int one;'],
-			    {initializationOptions: OPTIONS}))
+    {initializationOptions: OPTIONS}))
 
   assert_equal(OPTIONS, t.Sent('initialize')[0].params.initializationOptions)
 enddef
@@ -51,17 +51,17 @@ def g:Test_a_server_set_up_with_nothing_is_handed_nothing()
 
   # Not an empty Dictionary: a server tells the two apart.
   assert_false(t.Sent('initialize')[0].params
-		  ->has_key('initializationOptions'))
+    ->has_key('initializationOptions'))
 enddef
 
 def g:Test_didopen_carries_the_text()
   assert_true(t.StartServer({capabilities: SYNC},
-			    ['int main(void)', '{', '    return 0;', '}']),
-	      'the server should come up')
+    ['int main(void)', '{', '    return 0;', '}']),
+  'the server should come up')
 
   # The document follows the handshake, so it may still be on its way.
   assert_true(t.WaitFor(() => !t.Sent('textDocument/didOpen')->empty()),
-	      'the document should be sent')
+    'the document should be sent')
   var opened = t.Sent('textDocument/didOpen')
   assert_equal(1, len(opened))
   var doc = opened[0].params.textDocument
@@ -76,7 +76,7 @@ def g:Test_a_change_is_sent_as_a_range()
   setline(2, 'TWO')
   listener_flush()
   assert_true(t.WaitFor(() => !t.Sent('textDocument/didChange')->empty()),
-	      'the change should go out')
+    'the change should go out')
 
   var changes = t.Sent('textDocument/didChange')[0].params.contentChanges
   assert_equal(1, len(changes))
@@ -93,20 +93,20 @@ def g:Test_diagnostics_reach_the_location_list()
     message: 'a warning',
     relatedInformation: [{
       location: {uri: 'file://' .. t.SRC,
-		 range: {start: {line: 0, character: 4},
-			 end: {line: 0, character: 8}}},
+        range: {start: {line: 0, character: 4},
+          end: {line: 0, character: 8}}},
       message: 'declared here',
     }],
   }
   assert_true(t.StartServer({
     capabilities: SYNC,
     notify: [{method: 'textDocument/publishDiagnostics',
-	      params: {uri: 'file://' .. t.SRC, diagnostics: [REPORT]}}],
+      params: {uri: 'file://' .. t.SRC, diagnostics: [REPORT]}}],
   }, ['int main(void)', '{', '    return 0;', '}']))
 
   assert_true(t.WaitFor(() =>
-	    !sign_getplaced('%', {group: 'lsp'})[0].signs->empty()),
-	    'a sign should be placed')
+    !sign_getplaced('%', {group: 'lsp'})[0].signs->empty()),
+  'a sign should be placed')
 
   LspDiag
   var items = getloclist(0)
@@ -149,8 +149,8 @@ enddef
 def g:Test_nothing_is_asked_for_where_a_word_does_not_start()
   assert_true(TypeInto('    ', '('))
   assert_false(t.WaitFor(() =>
-			 !t.Sent('textDocument/completion')->empty(), 200),
-	       'the server should be left alone after a bracket')
+    !t.Sent('textDocument/completion')->empty(), 200),
+  'the server should be left alone after a bracket')
   CleanUp()
 enddef
 
@@ -158,9 +158,9 @@ enddef
 def g:Test_the_server_is_told_why_it_was_asked()
   assert_true(TypeInto('    (', '.'))
   assert_true(t.WaitFor(() => !t.Sent('textDocument/completion')->empty()),
-	      'the server should be asked after a trigger character')
+    'the server should be asked after a trigger character')
   assert_equal({triggerKind: 2, triggerCharacter: '.'},
-	       t.Sent('textDocument/completion')[0].params.context)
+    t.Sent('textDocument/completion')[0].params.context)
   CleanUp()
 enddef
 
@@ -170,7 +170,7 @@ def g:Test_a_list_the_server_cut_short_is_asked_for_again()
   assert_true(t.StartServer({
     capabilities: Offering({completionProvider: TRIGGERS}),
     replies: {'textDocument/completion': {isIncomplete: true, items: [
-		    {label: 'alpha'}, {label: 'alphabet'}]}},
+      {label: 'alpha'}, {label: 'alphabet'}]}},
   }, ['int main(void)', '{', '    al', '}']))
 
   cursor(3, 7)
@@ -179,13 +179,13 @@ def g:Test_a_list_the_server_cut_short_is_asked_for_again()
   assert_equal(v:t_dict, type(answer))
   assert_equal('always', answer.refresh)
   assert_equal(['alpha', 'alphabet'],
-	       answer.words->mapnew((_, w) => w.word))
+    answer.words->mapnew((_, w) => w.word))
   assert_equal(1, t.Sent('textDocument/completion')[0].params.context.triggerKind)
 
   # The next round asks again about the same list.
   call('lsp#OmniFunc', [0, 'alp'])
   assert_equal(3,
-	       t.Sent('textDocument/completion')[1].params.context.triggerKind)
+    t.Sent('textDocument/completion')[1].params.context.triggerKind)
   doautocmd CompleteDone
 enddef
 
@@ -194,7 +194,7 @@ def g:Test_a_list_cut_short_does_not_outlive_its_completion()
   assert_true(t.StartServer({
     capabilities: Offering({completionProvider: TRIGGERS}),
     replies: {'textDocument/completion': {isIncomplete: true, items: [
-		    {label: 'alpha'}, {label: 'alphabet'}]}},
+      {label: 'alpha'}, {label: 'alphabet'}]}},
   }, ['int main(void)', '{', '    al', '}']))
 
   cursor(3, 7)
@@ -208,14 +208,14 @@ def g:Test_a_list_cut_short_does_not_outlive_its_completion()
 
   # Asked, asked again about the same list, and asked afresh.
   assert_equal([1, 3, 1], t.Sent('textDocument/completion')
-	->mapnew((_, m) => m.params.context.triggerKind))
+    ->mapnew((_, m) => m.params.context.triggerKind))
   doautocmd CompleteDone
 enddef
 
 def g:Test_a_trigger_character_is_a_place_to_complete()
   assert_true(TypeInto('    (', '.'))
   assert_true(t.WaitFor(() => !t.Sent('textDocument/completion')->empty()),
-	      'the server should be asked after a trigger character')
+    'the server should be asked after a trigger character')
   CleanUp()
 enddef
 
@@ -228,10 +228,10 @@ def g:Test_what_is_asked_for_by_hand_reaches_the_server_anywhere()
   cursor(3, 1)
   feedkeys("A\<C-X>\<C-O>\<Esc>", 'tx')
   assert_true(t.WaitFor(() => !t.Sent('textDocument/completion')->empty()),
-	      'CTRL-X CTRL-O should ask even after a bracket')
+    'CTRL-X CTRL-O should ask even after a bracket')
   # Nothing brought it on, a key asked for it.
   assert_equal({triggerKind: 1},
-	       t.Sent('textDocument/completion')[0].params.context)
+    t.Sent('textDocument/completion')[0].params.context)
 enddef
 
 # A key asking through the entry in 'complete' is not held to a place worth
@@ -246,7 +246,7 @@ def g:Test_a_key_asking_through_complete_reaches_the_server_too()
   cursor(3, 1)
   feedkeys("A\<C-N>\<Esc>", 'tx')
   assert_true(t.WaitFor(() => !t.Sent('textDocument/completion')->empty()),
-	      'CTRL-N should ask even after a bracket')
+    'CTRL-N should ask even after a bracket')
   CleanUp()
 enddef
 
@@ -285,7 +285,7 @@ var asked_at: list<any> = []
 def g:SignatureAsked(): string
   sleep 400m
   asked_at = t.Sent('textDocument/signatureHelp')
-	       ->mapnew((_, m) => m.params.position)
+    ->mapnew((_, m) => m.params.position)
   return ''
 enddef
 
@@ -305,11 +305,11 @@ def g:Test_the_signature_of_a_call_a_completion_imported_for()
   }
   assert_true(t.StartServer({
     capabilities: Offering({completionProvider: {resolveProvider: false},
-			    signatureHelpProvider: {triggerCharacters: ['(']}}),
+      signatureHelpProvider: {triggerCharacters: ['(']}}),
     replies: {
       'textDocument/completion': {isIncomplete: false, items: [ITEM]},
       'textDocument/signatureHelp': {signatures: [{label: 'printf(fmt)'}],
-				     activeSignature: 0, activeParameter: 0},
+        activeSignature: 0, activeParameter: 0},
     },
   }, ['int main(void)', '{', '    prin', '}']))
   defer popup_clear()
@@ -329,7 +329,7 @@ def g:Test_the_signature_of_a_call_a_completion_imported_for()
   assert_equal('    printf(', getline(4))
   assert_equal(2, len(asked_at), 'asked once before the import, once after')
   assert_equal({line: 3, character: 11}, asked_at[1],
-	       'the call is asked about where the import left it')
+    'the call is asked about where the import left it')
 enddef
 
 # Where the cursor is left has to be read while Insert mode is still on, so
@@ -469,7 +469,7 @@ enddef
 
 def Answered(id: string): list<dict<any>>
   return t.Trace()->filter((_, m) => string(m->get('id', '')) ==# "'" .. id
-								      .. "'")
+    .. "'")
 enddef
 
 def g:Test_the_server_is_handed_the_settings_it_asks_for()
@@ -481,20 +481,20 @@ def g:Test_the_server_is_handed_the_settings_it_asks_for()
       id: 'cfg',
       method: 'workspace/configuration',
       params: {items: [{section: 'fake'}, {section: 'fake.nested.deep'},
-		       {section: 'nothing.here'}, {}]},
+        {section: 'nothing.here'}, {}]},
     }]},
   }, ['int one;'], {settings: SETTINGS}))
 
   var caps = t.Sent('initialize')[0].params.capabilities
   assert_true(caps.workspace.configuration,
-	      'a server has to be told it can ask')
+    'a server has to be told it can ask')
 
   LspDefinition
   assert_true(t.WaitFor(() => !Answered('cfg')->empty()),
-	      'the server should be handed what it asked for')
+    'the server should be handed what it asked for')
   # A section is a path into "settings"; an item without one takes the lot.
   assert_equal([SETTINGS.fake, 7, v:null, SETTINGS],
-	       Answered('cfg')[0].result)
+    Answered('cfg')[0].result)
 enddef
 
 def g:Test_the_servers_are_told_the_settings_changed()
@@ -514,7 +514,7 @@ def g:Test_the_servers_are_told_the_settings_changed()
   g:lsp_server_list = [entry]
   assert_match('1 server told', execute('LspConfigReload'))
   assert_true(t.WaitFor(() => !Answered('again')->empty()),
-	      'the server should ask for its settings again')
+    'the server should ask for its settings again')
   # Answered from the entry as it stands now, not the one it started with.
   assert_equal(['after'], Answered('again')[0].result)
 enddef
@@ -528,17 +528,17 @@ def g:Test_a_message_comes_with_answers_to_pick_from()
       id: 'ask',
       method: 'window/showMessageRequest',
       params: {type: 3, message: 'start over?',
-	       actions: [{title: 'Yes'}, {title: 'No'}]},
+        actions: [{title: 'Yes'}, {title: 'No'}]},
     }]},
   }, ['int one;']))
 
   LspDefinition
   assert_true(t.WaitFor(() => !popup_list()->empty()),
-	      'the answers should be put in a menu')
+    'the answers should be put in a menu')
   # The menu takes the first entry on <CR>.
   feedkeys("\<CR>", 'tx')
   assert_true(t.WaitFor(() => !Answered('ask')->empty()),
-	      'the server should be told what was picked')
+    'the server should be told what was picked')
   assert_equal('Yes', Answered('ask')[0].result.title)
 enddef
 
@@ -553,14 +553,14 @@ def g:Test_the_server_asks_for_a_file_to_be_looked_at()
       id: 'show',
       method: 'window/showDocument',
       params: {uri: 'file://' .. OTHER,
-	       selection: {start: {line: 1, character: 4},
-			   end: {line: 1, character: 9}}},
+        selection: {start: {line: 1, character: 4},
+          end: {line: 1, character: 9}}},
     }]},
   }, ['int one;']))
 
   LspDefinition
   assert_true(t.WaitFor(() => !Answered('show')->empty()),
-	      'the server should be told how it went')
+    'the server should be told how it went')
   assert_true(Answered('show')[0].result.success)
   assert_match('_more\.c$', bufname('%'), 'the file should be open')
   assert_equal([2, 5], [line('.'), col('.')], 'at the place it named')
@@ -569,7 +569,7 @@ enddef
 def g:Test_the_server_puts_the_file_right_on_the_way_to_disk()
   assert_true(t.StartServer({
     capabilities: {textDocumentSync: {change: 2, willSave: true,
-				      willSaveWaitUntil: true}},
+      willSaveWaitUntil: true}},
     replies: {'textDocument/willSaveWaitUntil': [{
       newText: '#include <stdio.h>',
       range: {start: {line: 0, character: 0}, end: {line: 0, character: 8}},
@@ -581,7 +581,7 @@ def g:Test_the_server_puts_the_file_right_on_the_way_to_disk()
   assert_equal('#include <stdio.h>', getline(1))
   assert_equal('#include <stdio.h>', readfile(t.SRC)->get(0, ''))
   assert_equal(1, len(t.Sent('textDocument/willSave')),
-	       'the server is told first, then asked')
+    'the server is told first, then asked')
   assert_equal(1, t.Sent('textDocument/willSave')[0].params.reason)
 enddef
 
@@ -609,9 +609,9 @@ def g:Test_renaming_a_file_takes_what_refers_to_it_along()
   assert_false(filereadable(t.SRC), 'and gone from the old one')
 
   assert_true(t.WaitFor(() => !t.Sent('workspace/didRenameFiles')->empty()),
-	      'the server should be told it moved')
+    'the server should be told it moved')
   assert_match('Xsrc\.c is now Xsrc_moved\.c, the server was told',
-	       LastMessage())
+    LastMessage())
   var told = t.Sent('workspace/didRenameFiles')[0].params.files[0]
   assert_match('Xsrc\.c$', told.oldUri)
   assert_match('_moved\.c$', told.newUri)
@@ -652,7 +652,7 @@ def g:Test_the_server_asks_for_things_to_be_asked_for_again()
       semanticTokensProvider: {legend: LEGEND, full: true},
       foldingRangeProvider: true,
       diagnosticProvider: {interFileDependencies: true,
-			   workspaceDiagnostics: false},
+        workspaceDiagnostics: false},
     }),
     replies: {
       'textDocument/definition': v:null,
@@ -668,28 +668,28 @@ def g:Test_the_server_asks_for_things_to_be_asked_for_again()
   }, SOURCE))
 
   assert_true(t.WaitFor(() =>
-		    len(t.Sent('textDocument/semanticTokens/full')) == 1),
-	      'asked for once to start with')
+    len(t.Sent('textDocument/semanticTokens/full')) == 1),
+  'asked for once to start with')
   var first = len(t.Sent('textDocument/diagnostic'))
   var folds = len(t.Sent('textDocument/foldingRange'))
 
   LspDefinition
   assert_true(t.WaitFor(() => !Answered('sem')->empty()
-			      && !Answered('fold')->empty()
-			      && !Answered('diag')->empty()),
-	      'all three should be answered')
+    && !Answered('fold')->empty()
+    && !Answered('diag')->empty()),
+    'all three should be answered')
   assert_true(t.WaitFor(() =>
-		    len(t.Sent('textDocument/semanticTokens/full')) == 2),
-	      'the tokens should be asked for again')
+    len(t.Sent('textDocument/semanticTokens/full')) == 2),
+  'the tokens should be asked for again')
   assert_true(t.WaitFor(() =>
-		    len(t.Sent('textDocument/foldingRange')) > folds),
-	      'the folds should be asked for again')
+    len(t.Sent('textDocument/foldingRange')) > folds),
+  'the folds should be asked for again')
   assert_true(t.WaitFor(() =>
-		    len(t.Sent('textDocument/diagnostic')) > first),
-	      'the diagnostics should be asked for again')
+    len(t.Sent('textDocument/diagnostic')) > first),
+  'the diagnostics should be asked for again')
   assert_false(t.Sent('textDocument/diagnostic')[-1].params
-		->has_key('previousResultId'),
-	       'what was reported before no longer stands')
+    ->has_key('previousResultId'),
+    'what was reported before no longer stands')
 enddef
 
 def g:Test_a_second_root_is_added_to_the_server_that_is_running()
@@ -712,16 +712,16 @@ def g:Test_a_second_root_is_added_to_the_server_that_is_running()
   execute 'edit ' .. fnameescape(DIR .. '/Xtwo.c')
   setfiletype c
   assert_true(t.WaitFor(() =>
-	      !t.Sent('workspace/didChangeWorkspaceFolders')->empty()),
-	      'the server should be told about the other root')
+    !t.Sent('workspace/didChangeWorkspaceFolders')->empty()),
+  'the server should be told about the other root')
   var added = t.Sent('workspace/didChangeWorkspaceFolders')[0]
-		  .params.event.added
+    .params.event.added
   assert_equal(1, len(added))
   assert_match('Xelsewhere/\=$', added[0].uri)
 
   # One server, not two; the folders it holds go under its own line.
   assert_equal(1, execute('LspStatus')->split("\n")
-			->filter((_, l) => l =~# 'fake@')->len())
+    ->filter((_, l) => l =~# 'fake@')->len())
 enddef
 
 def g:Test_a_folder_is_added_and_taken_back_by_hand()
@@ -738,8 +738,8 @@ def g:Test_a_folder_is_added_and_taken_back_by_hand()
   execute 'LspWorkspaceFolderAdd ' .. fnameescape(DIR)
   assert_match('now covers .*Xlibrary$', LastMessage())
   assert_true(t.WaitFor(() =>
-	      !t.Sent('workspace/didChangeWorkspaceFolders')->empty()),
-	      'the server should be told about the folder')
+    !t.Sent('workspace/didChangeWorkspaceFolders')->empty()),
+  'the server should be told about the folder')
   var event = t.Sent('workspace/didChangeWorkspaceFolders')[0].params.event
   assert_equal([], event.removed)
   assert_equal(1, len(event.added))
@@ -753,8 +753,8 @@ def g:Test_a_folder_is_added_and_taken_back_by_hand()
   execute 'LspWorkspaceFolderRemove ' .. fnameescape(DIR)
   assert_match('no longer covers .*Xlibrary$', LastMessage())
   assert_true(t.WaitFor(() =>
-	      len(t.Sent('workspace/didChangeWorkspaceFolders')) == 2),
-	      'the server should be told the folder is gone')
+    len(t.Sent('workspace/didChangeWorkspaceFolders')) == 2),
+  'the server should be told the folder is gone')
   event = t.Sent('workspace/didChangeWorkspaceFolders')[1].params.event
   assert_equal([], event.added)
   assert_equal(1, len(event.removed))
@@ -767,7 +767,7 @@ def g:Test_a_folder_is_refused_by_a_server_taking_one_root()
   assert_true(t.StartServer({capabilities: SYNC}, ['int one;']))
 
   execute 'LspWorkspaceFolderAdd '
-	  .. fnameescape(t.SRC->substitute('/[^/]*$', '', ''))
+    .. fnameescape(t.SRC->substitute('/[^/]*$', '', ''))
   assert_match('does not take workspace folders', LastMessage())
   assert_true(t.Sent('workspace/didChangeWorkspaceFolders')->empty())
 enddef
@@ -785,17 +785,17 @@ def g:Test_a_position_is_counted_the_way_the_server_said()
   }
   assert_true(t.StartServer({
     capabilities: {textDocumentSync: 2, positionEncoding: 'utf-8',
-		   hoverProvider: true},
+      hoverProvider: true},
     replies: {'textDocument/hover': {contents: 'x'}},
     notify: [{method: 'textDocument/publishDiagnostics',
-	      params: {uri: 'file://' .. t.SRC, diagnostics: [REPORT]}}],
+      params: {uri: 'file://' .. t.SRC, diagnostics: [REPORT]}}],
   }, [LINE]))
 
   assert_true(t.WaitFor(() => !prop_list(1)->empty()),
-	      'the report should be shown')
+    'the report should be shown')
   var shown = prop_list(1)[0]
   assert_equal([5, 3], [shown.col, shown.length],
-	       'the byte columns the server meant')
+    'the byte columns the server meant')
 
   # And the same the other way: the cursor after the name is at byte 7.
   popup_clear()
@@ -805,7 +805,7 @@ def g:Test_a_position_is_counted_the_way_the_server_said()
   # Waiting for the popup, not only for the request: an answer that arrives
   # after the test would put one up in the middle of the next one.
   assert_true(t.WaitFor(() => !popup_list()->empty()),
-	      'the server should be asked and answer')
+    'the server should be asked and answer')
   assert_equal(7, t.Sent('textDocument/hover')[0].params.position.character)
 enddef
 
@@ -813,7 +813,7 @@ def g:Test_a_log_message_is_kept_for_LspLog()
   assert_true(t.StartServer({
     capabilities: SYNC,
     notify: [{method: 'window/logMessage',
-	      params: {type: 4, message: 'for the record'}}],
+      params: {type: 4, message: 'for the record'}}],
   }, ['int x;']))
 
   # The notification follows "initialized", so it may not have arrived yet.
@@ -836,11 +836,11 @@ enddef
 
 def g:Test_references_land_in_the_quickfix_list()
   const HERE = {uri: 'file://' .. t.SRC,
-		range: {start: {line: 0, character: 4},
-			end: {line: 0, character: 7}}}
+    range: {start: {line: 0, character: 4},
+      end: {line: 0, character: 7}}}
   const THERE = {uri: 'file://' .. t.SRC,
-		 range: {start: {line: 1, character: 4},
-			 end: {line: 1, character: 7}}}
+    range: {start: {line: 1, character: 4},
+      end: {line: 1, character: 7}}}
   assert_true(t.StartServer({
     capabilities: Offering({referencesProvider: true}),
     replies: {'textDocument/references': [HERE, THERE]},
@@ -849,12 +849,12 @@ def g:Test_references_land_in_the_quickfix_list()
   cursor(1, 5)
   LspReferences
   assert_true(t.WaitFor(() => len(getqflist()) == 2),
-	      'both mentions should be listed')
+    'both mentions should be listed')
   var items = getqflist()
   assert_equal([1, 5, 'int one;'],
-	       [items[0].lnum, items[0].col, items[0].text])
+    [items[0].lnum, items[0].col, items[0].text])
   assert_equal([2, 5, 'int two;'],
-	       [items[1].lnum, items[1].col, items[1].text])
+    [items[1].lnum, items[1].col, items[1].text])
   cclose
 enddef
 
@@ -866,13 +866,13 @@ def g:Test_rename_changes_what_the_server_says()
   assert_true(t.StartServer({
     capabilities: Offering({renameProvider: true}),
     replies: {'textDocument/rename':
-	      {changes: {['file://' .. t.SRC]: [edit]}}},
+      {changes: {['file://' .. t.SRC]: [edit]}}},
   }, ['int one;', 'int two;']))
 
   cursor(1, 5)
   LspRename ONE
   assert_true(t.WaitFor(() => getline(1) ==# 'int ONE;'),
-	      'the name should be replaced')
+    'the name should be replaced')
   assert_equal('int two;', getline(2))
 enddef
 
@@ -886,12 +886,12 @@ def g:Test_a_rename_is_turned_down_before_it_is_sent()
   cursor(1, 4)
   LspRename ONE
   assert_true(t.WaitFor(() =>
-		    !t.Sent('textDocument/prepareRename')->empty()),
-	      'the server should be asked first')
+    !t.Sent('textDocument/prepareRename')->empty()),
+  'the server should be asked first')
   assert_true(t.WaitFor(() => LastMessage() =~# 'no name to rename'),
-	      'the answer should be passed on')
+    'the answer should be passed on')
   assert_equal([], t.Sent('textDocument/rename'),
-	       'a rename the server turned down should not be sent')
+    'a rename the server turned down should not be sent')
   assert_equal('int one;', getline(1))
 enddef
 
@@ -906,7 +906,7 @@ def g:Test_the_rename_goes_ahead_once_the_server_allows_it()
       # A bare range, which is what a server answers with when the name is
       # the text it covers.
       'textDocument/prepareRename': {start: {line: 0, character: 4},
-				     end: {line: 0, character: 7}},
+        end: {line: 0, character: 7}},
       'textDocument/rename': {changes: {['file://' .. t.SRC]: [edit]}},
     },
   }, ['int one;']))
@@ -914,7 +914,7 @@ def g:Test_the_rename_goes_ahead_once_the_server_allows_it()
   cursor(1, 5)
   LspRename ONE
   assert_true(t.WaitFor(() => getline(1) ==# 'int ONE;'),
-	      'the name should be replaced')
+    'the name should be replaced')
 enddef
 
 def g:Test_format_replaces_the_buffer_in_one_undo()
@@ -929,7 +929,7 @@ def g:Test_format_replaces_the_buffer_in_one_undo()
 
   LspFormat
   assert_true(t.WaitFor(() => getline(1) ==# 'int main(void)'),
-	      'the buffer should be formatted')
+    'the buffer should be formatted')
   assert_equal('    return 0;', getline(3))
 
   undo
@@ -949,7 +949,7 @@ def g:Test_format_asks_about_the_range_it_was_given()
 
   :2,3LspFormat
   assert_true(t.WaitFor(() => getline(3) ==# '    return 0;'),
-	      'the range should be formatted')
+    'the range should be formatted')
   # The first line is outside the range, so it is left as it is.
   assert_equal('int  main(void)', getline(1))
 
@@ -996,13 +996,13 @@ enddef
 def g:Test_a_save_is_announced()
   assert_true(t.StartServer({
     capabilities: extend(SYNC->copy(),
-	{textDocumentSync: {change: 2, save: {includeText: true}}}),
+      {textDocumentSync: {change: 2, save: {includeText: true}}}),
   }, ['int x;']))
 
   setline(1, 'int y;')
   write
   assert_true(t.WaitFor(() => !t.Sent('textDocument/didSave')->empty()),
-	      'the save should be announced')
+    'the save should be announced')
   var saved = t.Sent('textDocument/didSave')[0].params
   assert_match('/Xsrc\.c$', saved.textDocument.uri)
   # The server asked for the text, so it comes along.
@@ -1014,23 +1014,23 @@ def g:Test_a_save_without_the_text()
 
   write
   assert_true(t.WaitFor(() => !t.Sent('textDocument/didSave')->empty()),
-	      'the save should be announced')
+    'the save should be announced')
   assert_false(t.Sent('textDocument/didSave')[0].params->has_key('text'),
-	       'the text should be left out when it was not asked for')
+    'the text should be left out when it was not asked for')
 enddef
 
 def g:Test_the_server_hands_over_an_edit()
   assert_true(t.StartServer({
     capabilities: Offering({codeActionProvider: true,
-			    executeCommandProvider: {commands: ['fix']}}),
+      executeCommandProvider: {commands: ['fix']}}),
     replies: {'textDocument/codeAction': [
       {title: 'let the server do it', command: 'fix', arguments: [1]}]},
     ask: {'workspace/executeCommand': [{
       method: 'workspace/applyEdit',
       params: {edit: {changes: {['file://' .. t.SRC]: [{
-	newText: 'ONE',
-	range: {start: {line: 0, character: 4},
-		end: {line: 0, character: 7}},
+        newText: 'ONE',
+        range: {start: {line: 0, character: 4},
+          end: {line: 0, character: 7}},
       }]}}},
     }]},
   }, ['int one;', 'int two;']))
@@ -1041,15 +1041,15 @@ def g:Test_the_server_hands_over_an_edit()
   feedkeys("\<CR>", 'tx')
 
   assert_true(t.WaitFor(() =>
-	      !t.Sent('workspace/executeCommand')->empty()),
-	      'the command should be sent on')
+    !t.Sent('workspace/executeCommand')->empty()),
+  'the command should be sent on')
   var sent = t.Sent('workspace/executeCommand')[0].params
   assert_equal('fix', sent.command)
   assert_equal([1], sent.arguments)
 
   # Running it, the server hands back the change through applyEdit.
   assert_true(t.WaitFor(() => getline(1) ==# 'int ONE;'),
-	      'what the server sent should be applied')
+    'what the server sent should be applied')
   assert_equal('int two;', getline(2))
 enddef
 
@@ -1060,12 +1060,12 @@ def g:Test_the_rest_of_a_code_action_is_asked_for()
   }
   assert_true(t.StartServer({
     capabilities: Offering({codeActionProvider:
-			{resolveSupport: {properties: ['edit']}}}),
+      {resolveSupport: {properties: ['edit']}}}),
     replies: {
       # No edit, only what it would be worked out from.
       'textDocument/codeAction': [{title: 'rename it', data: 'the rest'}],
       'codeAction/resolve': {title: 'rename it',
-			     edit: {changes: {['file://' .. t.SRC]: [EDIT]}}},
+        edit: {changes: {['file://' .. t.SRC]: [EDIT]}}},
     },
   }, ['int one;', 'int two;']))
 
@@ -1074,9 +1074,9 @@ def g:Test_the_rest_of_a_code_action_is_asked_for()
   feedkeys("\<CR>", 'tx')
 
   assert_true(t.WaitFor(() => getline(1) ==# 'int ONE;'),
-	      'the edit that was asked for should be applied')
+    'the edit that was asked for should be applied')
   assert_equal('the rest', t.Sent('codeAction/resolve')[0].params.data,
-	       'the action goes back as it came')
+    'the action goes back as it came')
 enddef
 
 def g:Test_a_request_named_with_a_string()
@@ -1085,16 +1085,16 @@ def g:Test_a_request_named_with_a_string()
   const ASKED = 'e8a1-4c2f'
   assert_true(t.StartServer({
     capabilities: Offering({codeActionProvider: true,
-			    executeCommandProvider: {commands: ['fix']}}),
+      executeCommandProvider: {commands: ['fix']}}),
     replies: {'textDocument/codeAction': [
       {title: 'let the server do it', command: 'fix', arguments: []}]},
     ask: {'workspace/executeCommand': [{
       id: ASKED,
       method: 'workspace/applyEdit',
       params: {edit: {changes: {['file://' .. t.SRC]: [{
-	newText: 'ONE',
-	range: {start: {line: 0, character: 4},
-		end: {line: 0, character: 7}},
+        newText: 'ONE',
+        range: {start: {line: 0, character: 4},
+          end: {line: 0, character: 7}},
       }]}}},
     }]},
   }, ['int one;']))
@@ -1104,12 +1104,12 @@ def g:Test_a_request_named_with_a_string()
   feedkeys("\<CR>", 'tx')
 
   assert_true(t.WaitFor(() => getline(1) ==# 'int ONE;'),
-	      'what the server sent should be applied')
+    'what the server sent should be applied')
   # The answer carries the id back as it came, rather than failing to go out.
   var Answers = (): list<dict<any>> => t.Trace()->filter((_, m) =>
-			  type(m->get('id', 0)) == v:t_string && m.id ==# ASKED)
+    type(m->get('id', 0)) == v:t_string && m.id ==# ASKED)
   assert_true(t.WaitFor(() => !Answers()->empty()),
-	      'the request should be answered')
+    'the request should be answered')
   assert_equal({applied: true}, Answers()[0].result)
 enddef
 
@@ -1120,13 +1120,13 @@ def g:Test_outline_reads_a_tree_of_symbols()
     kind: 12,
     range: {start: {line: 0, character: 0}, end: {line: 3, character: 1}},
     selectionRange: {start: {line: 0, character: 4},
-		     end: {line: 0, character: 8}},
+      end: {line: 0, character: 8}},
     children: [{
       name: 'inner',
       kind: 13,
       range: {start: {line: 2, character: 4}, end: {line: 2, character: 14}},
       selectionRange: {start: {line: 2, character: 8},
-		       end: {line: 2, character: 13}},
+        end: {line: 2, character: 13}},
     }],
   }]
   assert_true(t.StartServer({
@@ -1136,12 +1136,12 @@ def g:Test_outline_reads_a_tree_of_symbols()
 
   LspOutline
   assert_true(t.WaitFor(() => len(getloclist(0)) == 2),
-	      'both symbols should be listed')
+    'both symbols should be listed')
   var items = getloclist(0)
   assert_equal([1, 5, '[Function] main'],
-	       [items[0].lnum, items[0].col, items[0].text])
+    [items[0].lnum, items[0].col, items[0].text])
   assert_equal([3, 9, '  [Variable] inner'],
-	       [items[1].lnum, items[1].col, items[1].text])
+    [items[1].lnum, items[1].col, items[1].text])
   lclose
 enddef
 
@@ -1151,8 +1151,8 @@ def g:Test_outline_reads_a_flat_list_too()
     name: 'main',
     kind: 12,
     location: {uri: 'file://' .. t.SRC,
-	       range: {start: {line: 0, character: 4},
-		       end: {line: 0, character: 8}}},
+      range: {start: {line: 0, character: 4},
+        end: {line: 0, character: 8}}},
   }]
   assert_true(t.StartServer({
     capabilities: Offering({documentSymbolProvider: true}),
@@ -1169,8 +1169,8 @@ def g:Test_a_jump_to_the_declaration()
   assert_true(t.StartServer({
     capabilities: Offering({declarationProvider: true}),
     replies: {'textDocument/declaration': {uri: 'file://' .. t.SRC,
-	      range: {start: {line: 2, character: 4},
-		      end: {line: 2, character: 7}}}},
+      range: {start: {line: 2, character: 4},
+        end: {line: 2, character: 7}}}},
   }, ['int one;', 'int two;', 'int three;']))
 
   cursor(1, 1)
@@ -1183,8 +1183,8 @@ def g:Test_a_jump_can_be_stepped_back_from()
   assert_true(t.StartServer({
     capabilities: Offering({definitionProvider: true}),
     replies: {'textDocument/definition': {uri: 'file://' .. t.SRC,
-	      range: {start: {line: 2, character: 4},
-		      end: {line: 2, character: 9}}}},
+      range: {start: {line: 2, character: 4},
+        end: {line: 2, character: 9}}}},
   }, ['int one;', 'int two;', 'int three;']))
 
   settagstack(win_getid(), {items: []})
@@ -1218,13 +1218,13 @@ def g:Test_a_file_is_opened_by_the_short_name()
   assert_true(t.StartServer({
     capabilities: Offering({definitionProvider: true}),
     replies: {'textDocument/definition': {uri: 'file://' .. OTHER,
-	      range: {start: {line: 1, character: 4},
-		      end: {line: 1, character: 7}}}},
+      range: {start: {line: 1, character: 4},
+        end: {line: 1, character: 7}}}},
   }, ['int here;']))
 
   LspDefinition
   assert_true(t.WaitFor(() => bufname('%') =~# '_more\.c$'),
-	      'the other file should open')
+    'the other file should open')
   # Not the full path the server named.
   assert_equal(fnamemodify(OTHER, ':.'), bufname('%'))
 enddef
@@ -1233,8 +1233,8 @@ def g:Test_a_jump_can_open_a_window_of_its_own()
   assert_true(t.StartServer({
     capabilities: Offering({definitionProvider: true}),
     replies: {'textDocument/definition': {uri: 'file://' .. t.SRC,
-	      range: {start: {line: 2, character: 4},
-		      end: {line: 2, character: 9}}}},
+      range: {start: {line: 2, character: 4},
+        end: {line: 2, character: 9}}}},
   }, ['int one;', 'int two;', 'int three;']))
 
   only
@@ -1255,10 +1255,10 @@ enddef
 
 def g:Test_the_status_names_the_version()
   const LINES = execute('LspStatus')->split("\n")
-			      ->filter((_, l) => l =~# '^lsp\.vim ')
+    ->filter((_, l) => l =~# '^lsp\.vim ')
   assert_equal(1, len(LINES))
   assert_match('^lsp\.vim \d\+\.\d\+\.\d\+  (Vim \d\+\.\d\+\.\d\+)$',
-	       LINES[0])
+    LINES[0])
 enddef
 
 def g:Test_a_request_the_server_does_not_offer()
@@ -1268,16 +1268,16 @@ def g:Test_a_request_the_server_does_not_offer()
   LspTypeDefinition
   sleep 100m
   assert_true(t.Sent('textDocument/typeDefinition')->empty(),
-	      'no request should go out')
+    'no request should go out')
 enddef
 
 def g:Test_the_symbol_under_the_cursor_is_marked()
   # Two mentions of "one": the second writes to it.
   const MARKS = [
     {range: {start: {line: 0, character: 4}, end: {line: 0, character: 7}},
-     kind: 2},
+      kind: 2},
     {range: {start: {line: 2, character: 0}, end: {line: 2, character: 3}},
-     kind: 3},
+      kind: 3},
   ]
   assert_true(t.StartServer({
     capabilities: Offering({documentHighlightProvider: true}),
@@ -1288,15 +1288,15 @@ def g:Test_the_symbol_under_the_cursor_is_marked()
   cursor(1, 5)
   doautocmd CursorMoved
   assert_true(t.WaitFor(() =>
-	      len(prop_list(1)) == 1 && len(prop_list(3)) == 1),
-	      'both mentions should be marked')
+    len(prop_list(1)) == 1 && len(prop_list(3)) == 1),
+  'both mentions should be marked')
 
   var read = prop_list(1)[0]
   assert_equal([5, 3, 'LspHighlightRead'],
-	       [read.col, read.length, read.type])
+    [read.col, read.length, read.type])
   var write = prop_list(3)[0]
   assert_equal([1, 3, 'LspHighlightWrite'],
-	       [write.col, write.length, write.type])
+    [write.col, write.length, write.type])
 
   # Moving takes them away again.
   cursor(2, 1)
@@ -1310,7 +1310,7 @@ def g:Test_a_trigger_character_has_the_server_look_at_the_text()
   defer execute('unlet g:lsp_client_config.on_type_formatting')
   assert_true(t.StartServer({
     capabilities: Offering({documentOnTypeFormattingProvider:
-			    {firstTriggerCharacter: "\n"}}),
+      {firstTriggerCharacter: "\n"}}),
     # Put the indent clangd would put on the line the newline opened.
     replies: {'textDocument/onTypeFormatting': [{
       newText: "\n\t",
@@ -1327,14 +1327,14 @@ def g:Test_a_trigger_character_has_the_server_look_at_the_text()
   cursor(1, 11)
   feedkeys("a\<CR>\<Cmd>doautocmd TextChangedI\<CR>\<Esc>", 'tx')
   assert_true(t.WaitFor(() =>
-	      !t.Sent('textDocument/onTypeFormatting')->empty()),
-	      'the newline should reach the server')
+    !t.Sent('textDocument/onTypeFormatting')->empty()),
+  'the newline should reach the server')
   var sent = t.Sent('textDocument/onTypeFormatting')[0].params
   assert_equal("\n", sent.ch)
   assert_equal({line: 1, character: 0}, sent.position)
 
   assert_true(t.WaitFor(() => getline(2) ==# "\t"),
-	      'the indent the server sent should be applied')
+    'the indent the server sent should be applied')
   assert_equal('if (one) {', getline(1))
   assert_equal('}', getline(3))
 enddef
@@ -1344,7 +1344,7 @@ def g:Test_a_trigger_puts_in_what_the_server_makes_of_it()
   defer execute('unlet g:lsp_client_config.on_type_formatting')
   assert_true(t.StartServer({
     capabilities: Offering({documentOnTypeFormattingProvider:
-			    {firstTriggerCharacter: '{'}}),
+      {firstTriggerCharacter: '{'}}),
     # What basedpyright answers a "{" inside a string with: the "f" that
     # makes it an f-string, put in ahead of where the cursor stands.
     replies: {'textDocument/onTypeFormatting': [{
@@ -1356,15 +1356,15 @@ def g:Test_a_trigger_puts_in_what_the_server_makes_of_it()
   cursor(1, 9)
   feedkeys("i{\<Cmd>doautocmd TextChangedI\<CR>\<Esc>", 'tx')
   assert_true(t.WaitFor(() =>
-	      !t.Sent('textDocument/onTypeFormatting')->empty()),
-	      'the trigger should reach the server')
+    !t.Sent('textDocument/onTypeFormatting')->empty()),
+  'the trigger should reach the server')
   var sent = t.Sent('textDocument/onTypeFormatting')[0].params
   assert_equal('{', sent.ch)
   # The position is where the cursor stands, past the character just typed.
   assert_equal({line: 0, character: 9}, sent.position)
 
   assert_true(t.WaitFor(() => getline(1) ==# 'x = f"abc{"'),
-	      'what the server sent should be put in')
+    'what the server sent should be put in')
 enddef
 
 def g:Test_text_typed_after_a_newline_is_not_a_newline()
@@ -1375,7 +1375,7 @@ def g:Test_text_typed_after_a_newline_is_not_a_newline()
   defer execute('unlet g:lsp_client_config.on_type_formatting')
   assert_true(t.StartServer({
     capabilities: Offering({documentOnTypeFormattingProvider:
-			    {firstTriggerCharacter: "\n"}}),
+      {firstTriggerCharacter: "\n"}}),
   }, ['if (one) {', '}']))
   setlocal noautoindent nocindent indentexpr=
 
@@ -1386,21 +1386,21 @@ def g:Test_text_typed_after_a_newline_is_not_a_newline()
   feedkeys("a\<CR>x\<Cmd>doautocmd TextChangedI\<CR>\<Esc>", 'tx')
   sleep 500m
   assert_true(t.Sent('textDocument/onTypeFormatting')->empty(),
-	      'the newline should not be reported once more was typed')
+    'the newline should not be reported once more was typed')
   assert_equal('x', getline(2))
 enddef
 
 def g:Test_the_text_is_left_alone_while_typing_when_turned_off()
   assert_true(t.StartServer({
     capabilities: Offering({documentOnTypeFormattingProvider:
-			    {firstTriggerCharacter: "\n"}}),
+      {firstTriggerCharacter: "\n"}}),
   }, ['if (one) {', '}']))
 
   cursor(1, 11)
   feedkeys("a\<CR>\<Cmd>doautocmd TextChangedI\<CR>\<Esc>", 'tx')
   sleep 500m
   assert_true(t.Sent('textDocument/onTypeFormatting')->empty(),
-	      'nothing should be sent with the setting off')
+    'nothing should be sent with the setting off')
 enddef
 
 def g:Test_a_character_the_server_did_not_name_is_left_alone()
@@ -1408,14 +1408,14 @@ def g:Test_a_character_the_server_did_not_name_is_left_alone()
   defer execute('unlet g:lsp_client_config.on_type_formatting')
   assert_true(t.StartServer({
     capabilities: Offering({documentOnTypeFormattingProvider:
-			    {firstTriggerCharacter: '}'}}),
+      {firstTriggerCharacter: '}'}}),
   }, ['int one;']))
 
   cursor(1, 8)
   feedkeys("ax\<Cmd>doautocmd TextChangedI\<CR>\<Esc>", 'tx')
   sleep 500m
   assert_true(t.Sent('textDocument/onTypeFormatting')->empty(),
-	      'only what the server named should reach it')
+    'only what the server named should reach it')
 enddef
 
 def g:Test_the_marks_are_left_alone_when_turned_off()
@@ -1425,14 +1425,14 @@ def g:Test_the_marks_are_left_alone_when_turned_off()
     capabilities: Offering({documentHighlightProvider: true}),
     replies: {'textDocument/documentHighlight': [
       {range: {start: {line: 0, character: 4},
-	       end: {line: 0, character: 7}}, kind: 2}]},
+        end: {line: 0, character: 7}}, kind: 2}]},
   }, ['int one;']))
 
   cursor(1, 5)
   doautocmd CursorMoved
   sleep 500m
   assert_true(t.Sent('textDocument/documentHighlight')->empty(),
-	      'nothing should be asked for')
+    'nothing should be asked for')
   assert_equal([], prop_list(1))
 enddef
 
@@ -1444,7 +1444,7 @@ def g:Test_a_document_link_leads_where_the_server_says()
   defer delete(HEADER)
   const LINKS = [
     {range: {start: {line: 0, character: 10}, end: {line: 0, character: 17}},
-     target: 'file://' .. HEADER, tooltip: 'the header'},
+      target: 'file://' .. HEADER, tooltip: 'the header'},
   ]
   assert_true(t.StartServer({
     capabilities: Offering({documentLinkProvider: {resolveProvider: false}}),
@@ -1453,10 +1453,10 @@ def g:Test_a_document_link_leads_where_the_server_says()
 
   doautocmd BufEnter
   assert_true(t.WaitFor(() => !prop_list(1)->empty()),
-	      'the link should be marked')
+    'the link should be marked')
   var shown = prop_list(1)[0]
   assert_equal([11, 7, 'LspDocumentLink'],
-	       [shown.col, shown.length, shown.type])
+    [shown.col, shown.length, shown.type])
 
   # What the link reports about itself, where it is.
   cursor(1, 12)
@@ -1464,9 +1464,9 @@ def g:Test_a_document_link_leads_where_the_server_says()
   defer popup_clear()
   LspDocumentLinkInfo
   assert_true(t.WaitFor(() => !popup_list()->empty()),
-	      'the tooltip should be shown')
+    'the tooltip should be shown')
   assert_equal('the header',
-	       getbufline(winbufnr(popup_list()[0]), 1)->get(0, ''))
+    getbufline(winbufnr(popup_list()[0]), 1)->get(0, ''))
 
   # And where it leads.
   LspDocumentLinkOpen
@@ -1485,26 +1485,26 @@ def g:Test_a_document_link_the_server_finishes_later()
   writefile(['int one;'], HEADER)
   defer delete(HEADER)
   const RANGE = {start: {line: 0, character: 10},
-		 end: {line: 0, character: 17}}
+    end: {line: 0, character: 17}}
   assert_true(t.StartServer({
     capabilities: Offering({documentLinkProvider: {resolveProvider: true}}),
     replies: {'textDocument/documentLink': [{range: RANGE, data: 'x'}],
-	      'documentLink/resolve': {range: RANGE, data: 'x',
-				       target: 'file://' .. HEADER}},
+      'documentLink/resolve': {range: RANGE, data: 'x',
+        target: 'file://' .. HEADER}},
   }, ['#include "Xsrc.h"', 'int two;']))
 
   doautocmd BufEnter
   assert_true(t.WaitFor(() => !prop_list(1)->empty()),
-	      'the link should be marked')
+    'the link should be marked')
 
   # A link with no target is asked about when it is opened, not before.
   assert_true(t.Sent('documentLink/resolve')->empty(),
-	      'the server should be left alone until then')
+    'the server should be left alone until then')
   cursor(1, 12)
   LspDocumentLinkOpen
   assert_true(t.WaitFor(() =>
-		    expand('%:t') ==# fnamemodify(HEADER, ':t')),
-	      'the link should lead to the header')
+    expand('%:t') ==# fnamemodify(HEADER, ':t')),
+  'the link should lead to the header')
   execute 'edit ' .. fnameescape(t.SRC)
 enddef
 
@@ -1515,7 +1515,7 @@ def g:Test_the_selection_grows_the_way_the_file_is_built()
     parent: {
       range: {start: {line: 2, character: 4}, end: {line: 2, character: 14}},
       parent: {
-	range: {start: {line: 1, character: 0}, end: {line: 3, character: 1}},
+        range: {start: {line: 1, character: 0}, end: {line: 3, character: 1}},
       },
     },
   }
@@ -1528,7 +1528,7 @@ def g:Test_the_selection_grows_the_way_the_file_is_built()
   cursor(3, 11)
   call feedkeys("\<Plug>(lsp-selection-expand)", 'x')
   assert_true(t.WaitFor(() => mode() =~# '^v'),
-	      'the innermost should be selected')
+    'the innermost should be selected')
   assert_equal([3, 9, 3, 11], [line('v'), col('v'), line('.'), col('.')])
 
   # Out to the statement, then to the block, and no further.
@@ -1558,7 +1558,7 @@ enddef
 # the cursor is outside anything it can name.
 def g:Test_a_range_with_nothing_in_it_selects_nothing()
   const EMPTY = {range: {start: {line: 0, character: 3},
-			 end: {line: 0, character: 3}}}
+    end: {line: 0, character: 3}}}
   assert_true(t.StartServer({
     capabilities: Offering({selectionRangeProvider: true}),
     replies: {'textDocument/selectionRange': [EMPTY]},
@@ -1567,8 +1567,8 @@ def g:Test_a_range_with_nothing_in_it_selects_nothing()
   cursor(1, 4)
   call feedkeys("\<Plug>(lsp-selection-expand)", 'x')
   assert_true(t.WaitFor(() =>
-		    execute('messages') =~# 'nothing to select'),
-	      'the server should be reported to have found nothing')
+    execute('messages') =~# 'nothing to select'),
+  'the server should be reported to have found nothing')
   assert_equal('n', mode())
   assert_equal([1, 4], [line('.'), col('.')])
 enddef
@@ -1578,9 +1578,9 @@ def g:Test_a_code_lens_sits_above_its_line()
   defer execute('unlet g:lsp_client_config.code_lens')
   const LENSES = [
     {range: {start: {line: 1, character: 4}, end: {line: 1, character: 10}},
-     command: {title: '2 uses', command: 'probe.say', arguments: ['one']}},
+      command: {title: '2 uses', command: 'probe.say', arguments: ['one']}},
     {range: {start: {line: 1, character: 4}, end: {line: 1, character: 10}},
-     command: {title: 'run', command: 'probe.run', arguments: []}},
+      command: {title: 'run', command: 'probe.run', arguments: []}},
   ]
   assert_true(t.StartServer({
     capabilities: Offering({codeLensProvider: {resolveProvider: false}}),
@@ -1589,7 +1589,7 @@ def g:Test_a_code_lens_sits_above_its_line()
 
   doautocmd BufEnter
   assert_true(t.WaitFor(() => !prop_list(2)->empty()),
-	      'the lens should be shown')
+    'the lens should be shown')
 
   # Both lenses of the line are one row, lined up with what they are about.
   var shown = prop_list(2)[0]
@@ -1600,9 +1600,9 @@ def g:Test_a_code_lens_sits_above_its_line()
   LspCodeLensRun
   feedkeys("j\<CR>", 'x')
   assert_true(t.WaitFor(() => !t.Sent('workspace/executeCommand')->empty()),
-	      'the command should be run')
+    'the command should be run')
   assert_equal('probe.run',
-	       t.Sent('workspace/executeCommand')[0].params.command)
+    t.Sent('workspace/executeCommand')[0].params.command)
 
   # Turning them off takes the text out of the window.
   LspCodeLens
@@ -1613,23 +1613,23 @@ def g:Test_the_rest_of_a_code_lens_is_asked_for()
   g:lsp_client_config.code_lens = true
   defer execute('unlet g:lsp_client_config.code_lens')
   const RANGE = {start: {line: 1, character: 4},
-		 end: {line: 1, character: 10}}
+    end: {line: 1, character: 10}}
   assert_true(t.StartServer({
     capabilities: Offering({codeLensProvider: {resolveProvider: true}}),
     replies: {
       # A place in the file and no text for it yet.
       'textDocument/codeLens': [{range: RANGE, data: 'the rest'}],
       'codeLens/resolve': {range: RANGE,
-			   command: {title: '2 uses', command: 'probe.say'}},
+        command: {title: '2 uses', command: 'probe.say'}},
     },
   }, ['int main(void)', '    int one;']))
 
   doautocmd BufEnter
   assert_true(t.WaitFor(() => !prop_list(2)->empty()),
-	      'what was asked for should be shown')
+    'what was asked for should be shown')
   assert_equal('    2 uses', prop_list(2)[0].text)
   assert_equal('the rest', t.Sent('codeLens/resolve')[0].params.data,
-	       'the lens goes back as it came')
+    'the lens goes back as it came')
 enddef
 
 def g:Test_the_place_of_a_workspace_symbol_is_asked_for()
@@ -1638,24 +1638,24 @@ def g:Test_the_place_of_a_workspace_symbol_is_asked_for()
     replies: {
       # The file it is in, but not where in it.
       'workspace/symbol': [{name: 'two', kind: 13, data: 'the rest',
-			    location: {uri: 'file://' .. t.SRC}}],
+        location: {uri: 'file://' .. t.SRC}}],
       'workspaceSymbol/resolve': {
-	name: 'two', kind: 13,
-	location: {uri: 'file://' .. t.SRC,
-		   range: {start: {line: 1, character: 4},
-			   end: {line: 1, character: 7}}},
+        name: 'two', kind: 13,
+        location: {uri: 'file://' .. t.SRC,
+          range: {start: {line: 1, character: 4},
+            end: {line: 1, character: 7}}},
       },
     },
   }, ['int one;', 'int two;']))
 
   LspSymbol two
   assert_true(t.WaitFor(() => !getqflist()->empty()),
-	      'the symbol should be listed')
+    'the symbol should be listed')
   var items = getqflist()
   assert_equal([2, 5], [items[0].lnum, items[0].col],
-	       'the place that was asked for')
+    'the place that was asked for')
   assert_equal('the rest', t.Sent('workspaceSymbol/resolve')[0].params.data,
-	       'the symbol goes back as it came')
+    'the symbol goes back as it came')
   cclose
 enddef
 
@@ -1663,29 +1663,29 @@ def g:Test_the_signature_goes_with_the_call_it_describes()
   popup_clear()
   defer popup_clear()
   const SIGNATURE = {signatures: [{label: 'void f(int count)',
-				   parameters: [{label: 'int count'}]}]}
+    parameters: [{label: 'int count'}]}]}
   assert_true(t.StartServer({
     capabilities: Offering({signatureHelpProvider:
-					      {triggerCharacters: ['(']}}),
+      {triggerCharacters: ['(']}}),
     sequence: {'textDocument/signatureHelp':
-			      [SIGNATURE, SIGNATURE, {signatures: []}]},
+      [SIGNATURE, SIGNATURE, {signatures: []}]},
   }, ['    f(x)']))
 
   # As if the "(" had just been typed, with the cursor right after it.
   cursor(1, 7)
   doautocmd TextChangedI
   assert_true(t.WaitFor(() => !popup_list()->empty()),
-	      'the signature should be shown')
+    'the signature should be shown')
   assert_equal('void f(int count)',
-	       getbufline(winbufnr(popup_list()[0]), 1)->get(0, ''))
+    getbufline(winbufnr(popup_list()[0]), 1)->get(0, ''))
 
   # The cursor can be taken out of the call without the text changing, so a
   # move is worth asking about too.
   cursor(1, 5)
   doautocmd CursorMovedI
   assert_true(t.WaitFor(() =>
-		    len(t.Sent('textDocument/signatureHelp')) == 2),
-	      'a move should be asked about')
+    len(t.Sent('textDocument/signatureHelp')) == 2),
+  'a move should be asked about')
 
   # The call is deleted, so there is nothing left to describe.  The server
   # reports that by answering with no signature at all.
@@ -1693,7 +1693,7 @@ def g:Test_the_signature_goes_with_the_call_it_describes()
   cursor(1, 4)
   doautocmd TextChangedI
   assert_true(t.WaitFor(() => popup_list()->empty()),
-	      'the signature should go with the call')
+    'the signature should go with the call')
   assert_equal(3, len(t.Sent('textDocument/signatureHelp')))
 enddef
 
@@ -1702,20 +1702,20 @@ def g:Test_the_signature_stands_over_the_call_it_describes()
   defer popup_clear()
   assert_true(t.StartServer({
     capabilities: Offering({signatureHelpProvider:
-					      {triggerCharacters: ['(']}}),
+      {triggerCharacters: ['(']}}),
     replies: {'textDocument/signatureHelp': {signatures: [
-		    {label: 'clear_oparg(oparg_T *oap) -> void',
-		     parameters: [{label: 'oparg_T *oap'}]}]}},
+      {label: 'clear_oparg(oparg_T *oap) -> void',
+        parameters: [{label: 'oparg_T *oap'}]}]}},
   }, ['    clear_oparg(x)']))
 
   # As if the "(" had just been typed, with the cursor right after it.
   cursor(1, 17)
   doautocmd TextChangedI
   assert_true(t.WaitFor(() => !popup_list()->empty()),
-	      'the signature should be shown')
+    'the signature should be shown')
   # The name in the signature over the name of the call, not over the cursor.
   assert_equal(screenpos(win_getid(), 1, 5).col,
-	       popup_getpos(popup_list()[0]).core_col)
+    popup_getpos(popup_list()[0]).core_col)
 enddef
 
 def g:Test_inlay_hints_are_put_in_the_window()
@@ -1724,7 +1724,7 @@ def g:Test_inlay_hints_are_put_in_the_window()
   # A parameter name before the argument, and a type after the name.
   const HINTS = [
     {position: {line: 0, character: 8}, label: 'count:', kind: 2,
-     paddingRight: true},
+      paddingRight: true},
     {position: {line: 1, character: 5}, label: [{value: ': int'}], kind: 1},
   ]
   assert_true(t.StartServer({
@@ -1734,11 +1734,11 @@ def g:Test_inlay_hints_are_put_in_the_window()
 
   doautocmd WinScrolled
   assert_true(t.WaitFor(() => !prop_list(1)->empty()),
-	      'the hint should be shown')
+    'the hint should be shown')
 
   var first = prop_list(1)[0]
   assert_equal(['count: ', 'LspInlayParameter'],
-	       [first.text, first.type])
+    [first.text, first.type])
   var second = prop_list(2)[0]
   assert_equal([': int', 'LspInlayType'], [second.text, second.type])
 
@@ -1758,7 +1758,7 @@ def g:Test_inlay_hints_stay_away_unless_asked_for()
   doautocmd WinScrolled
   sleep 200m
   assert_true(t.Sent('textDocument/inlayHint')->empty(),
-	      'nothing should be asked for while the option is off')
+    'nothing should be asked for while the option is off')
   assert_equal([], prop_list(1))
 enddef
 
@@ -1767,24 +1767,24 @@ def g:Test_the_rest_of_an_inlay_hint_is_asked_for()
   defer execute('unlet g:lsp_client_config.inlay_hint')
   defer popup_clear()
   const HINT = {position: {line: 1, character: 9}, label: ': int', kind: 1,
-		data: 'the rest'}
+    data: 'the rest'}
   assert_true(t.StartServer({
     capabilities: Offering({inlayHintProvider: {resolveProvider: true}}),
     replies: {
       'textDocument/inlayHint': [HINT],
       # What the hint carries besides the text it shows.
       'inlayHint/resolve': extend(HINT->copy(), {
-	tooltip: 'the type it works out to',
-	textEdits: [{newText: ': int',
-		     range: {start: {line: 1, character: 9},
-			     end: {line: 1, character: 9}}}],
+        tooltip: 'the type it works out to',
+        textEdits: [{newText: ': int',
+          range: {start: {line: 1, character: 9},
+            end: {line: 1, character: 9}}}],
       }),
     },
   }, ['int main(void)', '    var x = 1;']))
 
   doautocmd WinScrolled
   assert_true(t.WaitFor(() => !prop_list(2)->empty()),
-	      'the hint should be shown')
+    'the hint should be shown')
 
   # Nothing is asked for until the hint is acted on.
   assert_equal([], t.Sent('inlayHint/resolve'))
@@ -1792,16 +1792,16 @@ def g:Test_the_rest_of_an_inlay_hint_is_asked_for()
   cursor(2, 9)
   LspInlayHintInfo
   assert_true(t.WaitFor(() => !popup_list()->empty()),
-	      'what the hint reports should be shown')
+    'what the hint reports should be shown')
   assert_equal('the type it works out to',
-	       getbufline(winbufnr(popup_list()[0]), 1)->get(0, ''))
+    getbufline(winbufnr(popup_list()[0]), 1)->get(0, ''))
   assert_equal('the rest', t.Sent('inlayHint/resolve')[0].params.data,
-	       'the hint goes back as it came')
+    'the hint goes back as it came')
 
   popup_clear()
   LspInlayHintApply
   assert_true(t.WaitFor(() => getline(2) ==# '    var x: int = 1;'),
-	      'the change that goes with the hint should be made')
+    'the change that goes with the hint should be made')
 enddef
 
 def g:Test_inlay_hints_can_be_turned_on_and_off()
@@ -1817,7 +1817,7 @@ def g:Test_inlay_hints_can_be_turned_on_and_off()
 
   LspInlayHint
   assert_true(t.WaitFor(() => !prop_list(1)->empty()),
-	      'the hints should appear')
+    'the hints should appear')
   assert_true(g:lsp_client_config.inlay_hint)
 
   LspInlayHint
@@ -1828,11 +1828,11 @@ enddef
 # Five numbers per token, each counted from the one before: line, start,
 # length, type, modifiers.
 const LEGEND = {tokenTypes: ['type', 'variable', 'function'],
-		tokenModifiers: []}
+  tokenModifiers: []}
 const TOKENS = [0, 0, 3, 0, 0,
-		0, 4, 1, 1, 0,
-		1, 0, 4, 0, 0,
-		0, 5, 1, 2, 0]
+  0, 4, 1, 1, 0,
+  1, 0, 4, 0, 0,
+  0, 5, 1, 2, 0]
 const SOURCE = ['int x = 1;', 'void f(void);']
 
 def PaintedOn(lnum: number): list<list<any>>
@@ -1844,24 +1844,24 @@ def g:Test_the_server_colors_what_it_parsed()
   defer execute('unlet g:lsp_client_config.semantic_tokens')
   assert_true(t.StartServer({
     capabilities: Offering({semanticTokensProvider:
-					{legend: LEGEND, full: true}}),
+      {legend: LEGEND, full: true}}),
     replies: {'textDocument/semanticTokens/full': {data: TOKENS}},
   }, SOURCE))
 
   assert_true(t.WaitFor(() => !prop_list(1)->empty()),
-	      'the text should be colored')
+    'the text should be colored')
   assert_equal([[1, 3, 'LspSemType'], [5, 1, 'LspSemVariable']],
-	       PaintedOn(1))
+    PaintedOn(1))
   assert_equal([[1, 4, 'LspSemType'], [6, 1, 'LspSemFunction']],
-	       PaintedOn(2))
+    PaintedOn(2))
 
   # A change made in Insert mode is asked about too, so what is coming out
   # from under a comment marker does not keep its old colors until <Esc>.
   setline(1, '// int x = 1;')
   doautocmd TextChangedI
   assert_true(t.WaitFor(() =>
-		  len(t.Sent('textDocument/semanticTokens/full')) == 2),
-	      'an edit in Insert mode should be asked about')
+    len(t.Sent('textDocument/semanticTokens/full')) == 2),
+  'an edit in Insert mode should be asked about')
 enddef
 
 def g:Test_a_delta_is_folded_into_what_was_there()
@@ -1869,53 +1869,53 @@ def g:Test_a_delta_is_folded_into_what_was_there()
   defer execute('unlet g:lsp_client_config.semantic_tokens')
   assert_true(t.StartServer({
     capabilities: Offering({semanticTokensProvider:
-				{legend: LEGEND, full: {delta: true}}}),
+      {legend: LEGEND, full: {delta: true}}}),
     replies: {
       'textDocument/semanticTokens/full': {resultId: '1', data: TOKENS},
       # The first token becomes a function, the rest stays as it was.
       'textDocument/semanticTokens/full/delta':
-	  {resultId: '2',
-	   edits: [{start: 0, deleteCount: 5, data: [0, 0, 3, 2, 0]}]},
+        {resultId: '2',
+          edits: [{start: 0, deleteCount: 5, data: [0, 0, 3, 2, 0]}]},
     },
   }, SOURCE))
 
   assert_true(t.WaitFor(() => !prop_list(1)->empty()),
-	      'the text should be colored')
+    'the text should be colored')
 
   setline(1, 'int y = 1;')
   doautocmd TextChanged
   assert_true(t.WaitFor(() =>
-		  !t.Sent('textDocument/semanticTokens/full/delta')->empty()),
-	      'a change should be asked about with a delta')
+    !t.Sent('textDocument/semanticTokens/full/delta')->empty()),
+  'a change should be asked about with a delta')
   var asked = t.Sent('textDocument/semanticTokens/full/delta')[0]
   assert_equal('1', asked.params.previousResultId)
 
   assert_true(t.WaitFor(() => PaintedOn(1)[0][2] ==# 'LspSemFunction'),
-	      'the delta should reach the buffer')
+    'the delta should reach the buffer')
   assert_equal([[1, 3, 'LspSemFunction'], [5, 1, 'LspSemVariable']],
-	       PaintedOn(1))
+    PaintedOn(1))
 enddef
 
 def g:Test_a_modifier_takes_over_from_the_token_type()
   g:lsp_client_config.semantic_tokens = true
   defer execute('unlet g:lsp_client_config.semantic_tokens')
   const MODS = {tokenTypes: ['variable', 'function'],
-		tokenModifiers: ['declaration', 'readonly', 'deprecated']}
+    tokenModifiers: ['declaration', 'readonly', 'deprecated']}
   # A plain variable, a readonly one, and a deprecated function.
   const MARKED = [0, 0, 1, 0, 0,
-		  0, 2, 1, 0, 2,
-		  0, 2, 1, 1, 4]
+    0, 2, 1, 0, 2,
+    0, 2, 1, 1, 4]
   assert_true(t.StartServer({
     capabilities: Offering({semanticTokensProvider:
-					{legend: MODS, full: true}}),
+      {legend: MODS, full: true}}),
     replies: {'textDocument/semanticTokens/full': {data: MARKED}},
   }, ['a b c']))
 
   assert_true(t.WaitFor(() => len(prop_list(1)) == 3),
-	      'every token should be painted')
+    'every token should be painted')
   assert_equal([[1, 1, 'LspSemVariable'],
-		[3, 1, 'LspSemReadonly'],
-		[5, 1, 'LspSemDeprecated']], PaintedOn(1))
+    [3, 1, 'LspSemReadonly'],
+    [5, 1, 'LspSemDeprecated']], PaintedOn(1))
 
   # A group for the pair is more telling than one for the modifier alone,
   # so it is the one that is used.
@@ -1924,17 +1924,17 @@ def g:Test_a_modifier_takes_over_from_the_token_type()
   setline(1, 'a b c ')
   doautocmd TextChanged
   assert_true(t.WaitFor(() => PaintedOn(1)
-		    ->copy()
-		    ->filter((_, p) => p[2] ==# 'LspSemVariableReadonly')
-		    ->len() == 1),
-	      'the group for the pair should win')
+    ->copy()
+    ->filter((_, p) => p[2] ==# 'LspSemVariableReadonly')
+    ->len() == 1),
+    'the group for the pair should win')
 enddef
 
 def g:Test_the_colors_can_be_turned_on_and_off()
   defer execute('unlet! g:lsp_client_config.semantic_tokens')
   assert_true(t.StartServer({
     capabilities: Offering({semanticTokensProvider:
-					{legend: LEGEND, full: true}}),
+      {legend: LEGEND, full: true}}),
     replies: {'textDocument/semanticTokens/full': {data: TOKENS}},
   }, SOURCE))
 
@@ -1943,7 +1943,7 @@ def g:Test_the_colors_can_be_turned_on_and_off()
 
   LspSemanticTokens
   assert_true(t.WaitFor(() => !prop_list(1)->empty()),
-	      'the colors should appear')
+    'the colors should appear')
   assert_true(g:lsp_client_config.semantic_tokens)
 
   LspSemanticTokens
@@ -1956,14 +1956,14 @@ def g:Test_only_the_part_on_screen_without_a_full_request()
   defer execute('unlet g:lsp_client_config.semantic_tokens')
   assert_true(t.StartServer({
     capabilities: Offering({semanticTokensProvider:
-					{legend: LEGEND, range: true}}),
+      {legend: LEGEND, range: true}}),
     replies: {'textDocument/semanticTokens/range': {data: TOKENS}},
   }, SOURCE))
 
   assert_true(t.WaitFor(() => !prop_list(1)->empty()),
-	      'the text should be colored')
+    'the text should be colored')
   assert_true(t.Sent('textDocument/semanticTokens/full')->empty(),
-	      'a request the server does not offer should not be sent')
+    'a request the server does not offer should not be sent')
   var asked = t.Sent('textDocument/semanticTokens/range')[0].params.range
   assert_equal(0, asked.start.line)
   assert_equal(1, asked.end.line)
@@ -1975,16 +1975,16 @@ def g:Test_a_request_that_was_turned_down_is_not_asked_again()
   # A server can offer the tokens and turn every request for them down.
   assert_true(t.StartServer({
     capabilities: Offering({semanticTokensProvider:
-					{legend: LEGEND, full: true}}),
+      {legend: LEGEND, full: true}}),
     errors: {'textDocument/semanticTokens/full':
-	     {code: -32603, message: 'semantictokens are disabled'}},
+      {code: -32603, message: 'semantictokens are disabled'}},
   }, SOURCE))
 
   # The reply is what the message comes from, so the request being on its way
   # is not far enough.
   assert_true(t.WaitFor(() =>
-	      execute('messages') =~# 'semantictokens are disabled'),
-	      'the turn-down should be reported')
+    execute('messages') =~# 'semantictokens are disabled'),
+  'the turn-down should be reported')
 
   # Every change after that leaves the server alone.
   setline(1, 'int y = 2;')
@@ -2001,8 +2001,8 @@ def g:Test_the_diagnostics_are_asked_for_when_they_are_not_sent()
   }
   assert_true(t.StartServer({
     capabilities: Offering({diagnosticProvider:
-			{identifier: 'test', interFileDependencies: false,
-			 workspaceDiagnostics: false}}),
+      {identifier: 'test', interFileDependencies: false,
+        workspaceDiagnostics: false}}),
     sequence: {'textDocument/diagnostic': [
       {kind: 'full', resultId: '1', items: [REPORT]},
       {kind: 'unchanged', resultId: '1'},
@@ -2010,21 +2010,21 @@ def g:Test_the_diagnostics_are_asked_for_when_they_are_not_sent()
   }, ['int main(void)', '{', '}']))
 
   assert_true(t.WaitFor(() => !prop_list(1)->empty()),
-	      'the report should be shown')
+    'the report should be shown')
   var first = t.Sent('textDocument/diagnostic')[0].params
   assert_equal('test', first.identifier)
   assert_false(first->has_key('previousResultId'),
-	       'there is nothing to hand back the first time')
+    'there is nothing to hand back the first time')
 
   # The answer to the second one reports nothing changed, so what is on the
   # screen is what was reported before.
   setline(2, '{ ')
   doautocmd TextChanged
   assert_true(t.WaitFor(() =>
-		    len(t.Sent('textDocument/diagnostic')) == 2),
-	      'a change should be asked about')
+    len(t.Sent('textDocument/diagnostic')) == 2),
+  'a change should be asked about')
   assert_equal('1',
-	       t.Sent('textDocument/diagnostic')[1].params.previousResultId)
+    t.Sent('textDocument/diagnostic')[1].params.previousResultId)
   assert_false(prop_list(1)->empty(), 'the report should still stand')
 enddef
 
@@ -2038,35 +2038,35 @@ def g:Test_a_report_is_asked_for_once_the_server_registers_for_it()
     id: 'd1',
     method: 'textDocument/diagnostic',
     registerOptions: {identifier: 'late', interFileDependencies: false,
-		      workspaceDiagnostics: false},
+      workspaceDiagnostics: false},
   }
   # Nothing at startup: what the server offers arrives while it answers a
   # hover, the way pyright waits until it has read the settings.
   assert_true(t.StartServer({
     capabilities: Offering({hoverProvider: true}),
     replies: {'textDocument/hover': {contents: 'something'},
-	      'textDocument/diagnostic':
-		  {kind: 'full', resultId: '1', items: [REPORT]}},
+      'textDocument/diagnostic':
+        {kind: 'full', resultId: '1', items: [REPORT]}},
     ask: {'textDocument/hover': [{id: 'reg',
-				  method: 'client/registerCapability',
-				  params: {registrations: [REG]}}]},
+      method: 'client/registerCapability',
+      params: {registrations: [REG]}}]},
   }, ['int one;']))
 
   setline(1, 'int two;')
   doautocmd TextChanged
   sleep 500m
   assert_true(t.Sent('textDocument/diagnostic')->empty(),
-	      'nothing should be asked for before the server registers')
+    'nothing should be asked for before the server registers')
 
   # The registration itself is what has the buffer asked about: waiting for
   # the next change would leave a file just opened with nothing on it.
   LspHover
   assert_true(t.WaitFor(() =>
-		  !t.Sent('textDocument/diagnostic')->empty()),
-	      'a report should be asked for once the registration arrives')
+    !t.Sent('textDocument/diagnostic')->empty()),
+  'a report should be asked for once the registration arrives')
   assert_equal('late', t.Sent('textDocument/diagnostic')[0].params.identifier)
   assert_true(t.WaitFor(() => !prop_list(1)->empty()),
-	      'the report should be shown')
+    'the report should be shown')
 enddef
 
 def g:Test_a_method_registered_again_is_taken_as_the_later_word()
@@ -2075,53 +2075,53 @@ def g:Test_a_method_registered_again_is_taken_as_the_later_word()
   const FIRST = {
     id: 'd1', method: 'textDocument/diagnostic',
     registerOptions: {identifier: 'early', interFileDependencies: false,
-		      workspaceDiagnostics: false},
+      workspaceDiagnostics: false},
   }
   const SECOND = {
     id: 'd2', method: 'textDocument/diagnostic',
     registerOptions: {identifier: 'late', interFileDependencies: true,
-		      workspaceDiagnostics: true},
+      workspaceDiagnostics: true},
   }
   assert_true(t.StartServer({
     capabilities: Offering({hoverProvider: true, definitionProvider: true}),
     replies: {'textDocument/hover': {contents: 'something'},
-	      'textDocument/definition': v:null,
-	      'textDocument/diagnostic': {kind: 'full', resultId: '1', items: []}},
+      'textDocument/definition': v:null,
+      'textDocument/diagnostic': {kind: 'full', resultId: '1', items: []}},
     ask: {
       'textDocument/hover': [{id: 'r1', method: 'client/registerCapability',
-			      params: {registrations: [FIRST]}}],
+        params: {registrations: [FIRST]}}],
       'textDocument/definition': [{id: 'r2',
-			      method: 'client/registerCapability',
-			      params: {registrations: [SECOND]}}],
+        method: 'client/registerCapability',
+        params: {registrations: [SECOND]}}],
     },
   }, ['int one;']))
 
   LspHover
   assert_true(t.WaitFor(() =>
-		  t.Trace()->copy()
-		    ->filter((_, m) => string(m->get('id', '')) ==# "'r1'")
-		    ->len() == 1),
-	      'the first registration should be answered')
+    t.Trace()->copy()
+    ->filter((_, m) => string(m->get('id', '')) ==# "'r1'")
+    ->len() == 1),
+  'the first registration should be answered')
   setline(1, 'int two;')
   doautocmd TextChanged
   assert_true(t.WaitFor(() => !t.Sent('textDocument/diagnostic')->empty()),
-	      'the first registration should have a report asked for')
+    'the first registration should have a report asked for')
   assert_equal('early', t.Sent('textDocument/diagnostic')[0].params.identifier)
 
   # The second one arrives under an id of its own, and is what counts from
   # then on.
   LspDefinition
   assert_true(t.WaitFor(() =>
-		  t.Trace()->copy()
-		    ->filter((_, m) => string(m->get('id', '')) ==# "'r2'")
-		    ->len() == 1),
-	      'the second registration should be answered')
+    t.Trace()->copy()
+    ->filter((_, m) => string(m->get('id', '')) ==# "'r2'")
+    ->len() == 1),
+  'the second registration should be answered')
   var asked = len(t.Sent('textDocument/diagnostic'))
   setline(1, 'int three;')
   doautocmd TextChanged
   assert_true(t.WaitFor(() =>
-		  len(t.Sent('textDocument/diagnostic')) > asked),
-	      'a report should be asked for again')
+    len(t.Sent('textDocument/diagnostic')) > asked),
+  'a report should be asked for again')
   assert_equal('late', t.Sent('textDocument/diagnostic')[-1].params.identifier)
 enddef
 
@@ -2130,39 +2130,39 @@ def g:Test_a_report_is_left_alone_once_the_server_gives_it_up()
     id: 'd1',
     method: 'textDocument/diagnostic',
     registerOptions: {interFileDependencies: false,
-		      workspaceDiagnostics: false},
+      workspaceDiagnostics: false},
   }
   assert_true(t.StartServer({
     capabilities: Offering({hoverProvider: true, definitionProvider: true}),
     replies: {'textDocument/hover': {contents: 'something'},
-	      'textDocument/definition': v:null,
-	      'textDocument/diagnostic': {kind: 'full', resultId: '1', items: []}},
+      'textDocument/definition': v:null,
+      'textDocument/diagnostic': {kind: 'full', resultId: '1', items: []}},
     ask: {
       'textDocument/hover': [{id: 'reg', method: 'client/registerCapability',
-			      params: {registrations: [REG]}}],
+        params: {registrations: [REG]}}],
       'textDocument/definition': [{id: 'unreg',
-			      method: 'client/unregisterCapability',
-			      params: {unregisterations: [
-				  {id: 'd1', method: REG.method}]}}],
+        method: 'client/unregisterCapability',
+        params: {unregisterations: [
+          {id: 'd1', method: REG.method}]}}],
     },
   }, ['int one;']))
 
   LspHover
   assert_true(t.WaitFor(() => !t.Sent('textDocument/diagnostic')->empty()),
-	      'the registration should have it asked for')
+    'the registration should have it asked for')
 
   LspDefinition
   assert_true(t.WaitFor(() =>
-		  t.Trace()->copy()
-		    ->filter((_, m) => string(m->get('id', '')) ==# "'unreg'")
-		    ->len() == 1),
-	      'the server should have given it up')
+    t.Trace()->copy()
+    ->filter((_, m) => string(m->get('id', '')) ==# "'unreg'")
+    ->len() == 1),
+  'the server should have given it up')
   var asked = len(t.Sent('textDocument/diagnostic'))
   setline(1, 'int two;')
   doautocmd TextChanged
   sleep 500m
   assert_equal(asked, len(t.Sent('textDocument/diagnostic')),
-	       'nothing more should be asked for')
+    'nothing more should be asked for')
 enddef
 
 def g:Test_the_workspace_is_pulled_for_as_long_as_the_server_answers()
@@ -2178,15 +2178,15 @@ def g:Test_the_workspace_is_pulled_for_as_long_as_the_server_answers()
     kind: 'full',
     resultId: 'b',
     items: [{range: {start: {line: 0, character: 4},
-		     end: {line: 0, character: 7}},
-	     severity: 2, source: 'test', message: 'a fault there'}],
+      end: {line: 0, character: 7}},
+    severity: 2, source: 'test', message: 'a fault there'}],
   }
   # The report arrives as a part while the request is still open; the answer
   # itself is empty, which is what the protocol asks of a server that streams.
   assert_true(t.StartServer({
     capabilities: Offering({diagnosticProvider:
-			{identifier: 'test', interFileDependencies: true,
-			 workspaceDiagnostics: true}}),
+      {identifier: 'test', interFileDependencies: true,
+        workspaceDiagnostics: true}}),
     replies: {'workspace/diagnostic': {items: []}},
     ask: {'workspace/diagnostic': [{
       notify: true, before: true, method: '$/progress',
@@ -2195,7 +2195,7 @@ def g:Test_the_workspace_is_pulled_for_as_long_as_the_server_answers()
   }, ['int one;']))
 
   assert_true(t.WaitFor(() => !t.Sent('workspace/diagnostic')->empty()),
-	      'the workspace should be asked about on its own')
+    'the workspace should be asked about on its own')
   var sent = t.Sent('workspace/diagnostic')[0].params
   assert_equal('test', sent.identifier)
   assert_equal([], sent.previousResultIds)
@@ -2204,14 +2204,14 @@ def g:Test_the_workspace_is_pulled_for_as_long_as_the_server_answers()
   # The answer closed the request, so it goes out again; by then the part
   # that came before it has been taken.
   assert_true(t.WaitFor(() => len(t.Sent('workspace/diagnostic')) >= 2),
-	      'a closed request should be sent again')
+    'a closed request should be sent again')
   var again = t.Sent('workspace/diagnostic')[1].params
   assert_equal([{uri: 'file://' .. HEADER, value: 'b'}],
-	       again.previousResultIds)
+    again.previousResultIds)
 
   LspWorkspaceDiag
   var items = getqflist()->copy()
-	      ->filter((_, e) => e.text =~# 'a fault there')
+    ->filter((_, e) => e.text =~# 'a fault there')
   assert_equal(1, len(items))
   assert_equal('W', items[0].type)
   assert_equal(HEADER, fnamemodify(bufname(items[0].bufnr), ':p'))
@@ -2223,25 +2223,25 @@ def g:Test_the_workspace_is_left_alone_where_the_server_says_no()
   defer execute('unlet g:lsp_client_config.workspace_diagnostics')
   assert_true(t.StartServer({
     capabilities: Offering({diagnosticProvider:
-			{interFileDependencies: false,
-			 workspaceDiagnostics: false}}),
+      {interFileDependencies: false,
+        workspaceDiagnostics: false}}),
   }, ['int one;']))
 
   sleep 300m
   assert_true(t.Sent('workspace/diagnostic')->empty(),
-	      'nothing should be asked for')
+    'nothing should be asked for')
 enddef
 
 def g:Test_the_workspace_is_left_alone_when_turned_off()
   assert_true(t.StartServer({
     capabilities: Offering({diagnosticProvider:
-			{interFileDependencies: false,
-			 workspaceDiagnostics: true}}),
+      {interFileDependencies: false,
+        workspaceDiagnostics: true}}),
   }, ['int one;']))
 
   sleep 300m
   assert_true(t.Sent('workspace/diagnostic')->empty(),
-	      'nothing should be asked for with the setting off')
+    'nothing should be asked for with the setting off')
   LspWorkspaceDiag
   assert_equal('lsp: "workspace_diagnostics" is off', LastMessage())
 enddef
@@ -2258,25 +2258,25 @@ def g:Test_a_watched_file_being_written_is_reported()
   assert_true(t.StartServer({
     capabilities: Offering({hoverProvider: true, definitionProvider: true}),
     replies: {'textDocument/hover': {contents: 'something'},
-	      'textDocument/definition': v:null},
+      'textDocument/definition': v:null},
     # The server asks for the watch while answering a hover, and gives it up
     # again while answering a definition.
     ask: {
       'textDocument/hover': [{id: 'reg', method: 'client/registerCapability',
-			      params: {registrations: [WATCH]}}],
+        params: {registrations: [WATCH]}}],
       'textDocument/definition': [{id: 'unreg',
-			      method: 'client/unregisterCapability',
-			      params: {unregisterations: [
-				  {id: 'w1', method: WATCH.method}]}}],
+        method: 'client/unregisterCapability',
+        params: {unregisterations: [
+          {id: 'w1', method: WATCH.method}]}}],
     },
   }, ['int one;']))
 
   LspHover
   assert_true(t.WaitFor(() =>
-		  t.Trace()->copy()
-		    ->filter((_, m) => string(m->get('id', '')) ==# "'reg'")
-		    ->len() == 1),
-	      'the registration should be answered')
+    t.Trace()->copy()
+    ->filter((_, m) => string(m->get('id', '')) ==# "'reg'")
+    ->len() == 1),
+  'the registration should be answered')
 
   # This one is not watched, so writing it reports nothing.
   write
@@ -2284,8 +2284,8 @@ def g:Test_a_watched_file_being_written_is_reported()
   setline(1, '// a header')
   write
   assert_true(t.WaitFor(() =>
-		  !t.Sent('workspace/didChangeWatchedFiles')->empty()),
-	      'writing a watched file should be reported')
+    !t.Sent('workspace/didChangeWatchedFiles')->empty()),
+  'writing a watched file should be reported')
   var sent = t.Sent('workspace/didChangeWatchedFiles')
   assert_equal(1, len(sent), 'only the watched one should be reported')
   assert_match('Xsrc\.h$', sent[0].params.changes[0].uri)
@@ -2294,12 +2294,12 @@ def g:Test_a_watched_file_being_written_is_reported()
   # Once the watch is given up there is nothing left to report.
   LspDefinition
   assert_true(t.WaitFor(() => !t.Sent('textDocument/definition')->empty()),
-	      'the server should be asked')
+    'the server should be asked')
   sleep 100m
   write
   sleep 100m
   assert_equal(1, len(t.Sent('workspace/didChangeWatchedFiles')),
-	       'a watch that was given up should report nothing')
+    'a watch that was given up should report nothing')
 enddef
 
 def g:Test_folds_come_from_the_server()
@@ -2318,11 +2318,11 @@ def g:Test_folds_come_from_the_server()
 
   LspFolding
   assert_true(t.WaitFor(() => &foldmethod ==# 'expr'),
-	      'folding should be handed over')
+    'folding should be handed over')
   assert_equal('lsp#FoldExpr(v:lnum)', &foldexpr)
   # The inner range sits inside the outer one, so those lines are deeper.
   assert_equal(['1', '2', '2', '1', '1'],
-	       range(1, 5)->mapnew((_, l) => lsp#FoldExpr(l)))
+    range(1, 5)->mapnew((_, l) => lsp#FoldExpr(l)))
 
   LspFolding
   assert_equal('manual', &foldmethod, 'what was there should come back')
@@ -2331,33 +2331,33 @@ enddef
 
 def g:Test_who_calls_this()
   const ITEM = {name: 'callee', kind: 12, uri: 'file://' .. t.SRC,
-		range: {start: {line: 0, character: 0},
-			end: {line: 0, character: 6}},
-		selectionRange: {start: {line: 0, character: 0},
-				 end: {line: 0, character: 6}}}
+    range: {start: {line: 0, character: 0},
+      end: {line: 0, character: 6}},
+    selectionRange: {start: {line: 0, character: 0},
+      end: {line: 0, character: 6}}}
   const CALLS = [{
     from: {name: 'caller', kind: 12, uri: 'file://' .. t.SRC,
-	   range: {start: {line: 2, character: 0},
-		   end: {line: 2, character: 6}},
-	   selectionRange: {start: {line: 2, character: 0},
-			    end: {line: 2, character: 6}}},
+      range: {start: {line: 2, character: 0},
+        end: {line: 2, character: 6}},
+      selectionRange: {start: {line: 2, character: 0},
+        end: {line: 2, character: 6}}},
     fromRanges: [{start: {line: 2, character: 4},
-		  end: {line: 2, character: 10}}],
+      end: {line: 2, character: 10}}],
   }]
   assert_true(t.StartServer({
     capabilities: Offering({callHierarchyProvider: true}),
     replies: {'textDocument/prepareCallHierarchy': [ITEM],
-	      'callHierarchy/incomingCalls': CALLS},
+      'callHierarchy/incomingCalls': CALLS},
   }, ['callee();', '', '    callee();']))
 
   cursor(1, 1)
   LspIncomingCalls
   assert_true(t.WaitFor(() => len(getqflist()) == 1),
-	      'the call should be listed')
+    'the call should be listed')
   var item = getqflist()[0]
   # The place the call is written, named after the function it sits in.
   assert_equal([3, 5, '[Function] caller'],
-	       [item.lnum, item.col, item.text])
+    [item.lnum, item.col, item.text])
   cclose
 
   # What was asked about is what prepare answered with.
@@ -2367,23 +2367,23 @@ enddef
 
 def g:Test_what_this_calls()
   const ITEM = {name: 'caller', kind: 12, uri: 'file://' .. t.SRC,
-		range: {start: {line: 0, character: 0},
-			end: {line: 0, character: 6}},
-		selectionRange: {start: {line: 0, character: 0},
-				 end: {line: 0, character: 6}}}
+    range: {start: {line: 0, character: 0},
+      end: {line: 0, character: 6}},
+    selectionRange: {start: {line: 0, character: 0},
+      end: {line: 0, character: 6}}}
   const CALLS = [{
     to: {name: 'callee', kind: 12, uri: 'file:///elsewhere.c',
-	 range: {start: {line: 9, character: 0},
-		 end: {line: 9, character: 6}},
-	 selectionRange: {start: {line: 9, character: 0},
-			  end: {line: 9, character: 6}}},
+      range: {start: {line: 9, character: 0},
+        end: {line: 9, character: 6}},
+      selectionRange: {start: {line: 9, character: 0},
+        end: {line: 9, character: 6}}},
     fromRanges: [{start: {line: 1, character: 4},
-		  end: {line: 1, character: 10}}],
+      end: {line: 1, character: 10}}],
   }]
   assert_true(t.StartServer({
     capabilities: Offering({callHierarchyProvider: true}),
     replies: {'textDocument/prepareCallHierarchy': [ITEM],
-	      'callHierarchy/outgoingCalls': CALLS},
+      'callHierarchy/outgoingCalls': CALLS},
   }, ['caller();', '    callee();']))
 
   cursor(1, 1)
@@ -2392,33 +2392,33 @@ def g:Test_what_this_calls()
   var item = getqflist()[0]
   # An outgoing call is written here, whatever file the callee lives in.
   assert_equal([2, 5, '[Function] callee'],
-	       [item.lnum, item.col, item.text])
+    [item.lnum, item.col, item.text])
   assert_match('Xsrc\.c$', bufname(item.bufnr))
   cclose
 enddef
 
 def g:Test_what_a_type_is_derived_from()
   const ITEM = {name: 'Derived', kind: 23, uri: 'file://' .. t.SRC,
-		range: {start: {line: 2, character: 0},
-			end: {line: 2, character: 7}},
-		selectionRange: {start: {line: 2, character: 7},
-				 end: {line: 2, character: 14}}}
+    range: {start: {line: 2, character: 0},
+      end: {line: 2, character: 7}},
+    selectionRange: {start: {line: 2, character: 7},
+      end: {line: 2, character: 14}}}
   const SUPER = [{name: 'Middle', kind: 23, uri: 'file://' .. t.SRC,
-		  range: {start: {line: 1, character: 0},
-			  end: {line: 1, character: 40}},
-		  selectionRange: {start: {line: 1, character: 7},
-				   end: {line: 1, character: 13}}}]
+    range: {start: {line: 1, character: 0},
+      end: {line: 1, character: 40}},
+    selectionRange: {start: {line: 1, character: 7},
+      end: {line: 1, character: 13}}}]
   assert_true(t.StartServer({
     capabilities: Offering({typeHierarchyProvider: true}),
     replies: {'textDocument/prepareTypeHierarchy': [ITEM],
-	      'typeHierarchy/supertypes': SUPER},
+      'typeHierarchy/supertypes': SUPER},
   }, ['struct Base {};', 'struct Middle : Base {};',
-      'struct Derived : Middle {};']))
+    'struct Derived : Middle {};']))
 
   cursor(3, 8)
   LspSuperTypes
   assert_true(t.WaitFor(() => len(getqflist()) == 1),
-	      'the type above should be listed')
+    'the type above should be listed')
   var item = getqflist()[0]
   # The name is where one wants to land, not the start of the line.
   assert_equal([2, 8, '[Struct] Middle'], [item.lnum, item.col, item.text])
@@ -2433,31 +2433,31 @@ def g:Test_a_part_the_server_turns_down()
   # A server can offer something and still turn down a part of it, as clangd
   # does with outgoing calls.  That should not read like a fault here.
   const ITEM = {name: 'f', kind: 12, uri: 'file://' .. t.SRC,
-		range: {start: {line: 0, character: 0},
-			end: {line: 0, character: 1}},
-		selectionRange: {start: {line: 0, character: 0},
-				 end: {line: 0, character: 1}}}
+  range: {start: {line: 0, character: 0},
+    end: {line: 0, character: 1}},
+  selectionRange: {start: {line: 0, character: 0},
+    end: {line: 0, character: 1}}}
   assert_true(t.StartServer({
     capabilities: Offering({callHierarchyProvider: true}),
     replies: {'textDocument/prepareCallHierarchy': [ITEM]},
     errors: {'callHierarchy/outgoingCalls':
-	     {code: -32601, message: 'method not found'}},
+      {code: -32601, message: 'method not found'}},
   }, ['f();']))
 
   cursor(1, 1)
   LspOutgoingCalls
   assert_true(t.WaitFor(() =>
-	      execute('messages') =~# 'does not answer'),
-	      'the turn-down should be reported')
+    execute('messages') =~# 'does not answer'),
+  'the turn-down should be reported')
   assert_match('the server does not answer callHierarchy/outgoingCalls',
-	       execute('messages'))
+    execute('messages'))
 enddef
 
 def g:Test_the_format_a_hover_is_asked_for()
   assert_true(t.StartServer({capabilities: Offering({})}, ['int x;']))
   var caps = t.Sent('initialize')[0].params.capabilities
   assert_equal(['plaintext', 'markdown'],
-	       caps.textDocument.hover.contentFormat)
+    caps.textDocument.hover.contentFormat)
 
   t.StopServer()
   g:lsp_client_config.hover_format = 'markdown'
@@ -2466,7 +2466,7 @@ def g:Test_the_format_a_hover_is_asked_for()
   caps = t.Sent('initialize')[0].params.capabilities
   # Both are named either way, only the order turns around.
   assert_equal(['markdown', 'plaintext'],
-	       caps.textDocument.hover.contentFormat)
+    caps.textDocument.hover.contentFormat)
 enddef
 
 def g:Test_a_hover_is_drawn_in_the_filetype_the_server_named()
@@ -2483,18 +2483,18 @@ def g:Test_a_hover_is_drawn_in_the_filetype_the_server_named()
 
   def Filetype(): string
     return popup_list()->empty()
-	 ? ''
-	 : getbufvar(winbufnr(popup_list()[0]), '&filetype')
+      ? ''
+      : getbufvar(winbufnr(popup_list()[0]), '&filetype')
   enddef
 
   LspHover
   assert_true(t.WaitFor(() => Filetype() ==# 'markdown'),
-	      'a MarkupContent that names markdown')
+    'a MarkupContent that names markdown')
   popup_clear()
 
   LspHover
   assert_true(t.WaitFor(() => Filetype() ==# 'c'),
-	      'the language of a MarkedString')
+    'the language of a MarkedString')
   popup_clear()
 
   # A server names the filetype, so what is not one is turned down.
@@ -2544,8 +2544,8 @@ def g:Test_the_character_references_in_a_hover()
     capabilities: Offering({hoverProvider: true}),
     sequence: {'textDocument/hover': [
       {contents: {kind: 'markdown',
-		  value: 'a&nbsp;b &lt;T&gt; &quot;q&quot; &amp;amp; &#39;'
-			 .. ' &#x41; &unknown; &42;'}},
+        value: 'a&nbsp;b &lt;T&gt; &quot;q&quot; &amp;amp; &#39;'
+          .. ' &#x41; &unknown; &42;'}},
       {contents: {kind: 'plaintext', value: 'a&nbsp;b'}},
       {contents: {language: 'c', value: 'a&nbsp;b'}},
       {contents: 'a&nbsp;b'},
@@ -2554,15 +2554,15 @@ def g:Test_the_character_references_in_a_hover()
 
   def Text(): string
     return popup_list()->empty()
-	 ? ''
-	 : getbufline(winbufnr(popup_list()[0]), 1)->get(0, '')
+      ? ''
+      : getbufline(winbufnr(popup_list()[0]), 1)->get(0, '')
   enddef
 
   # What is left out of the table, and a number that is none, stay as they are.
   LspHover
   assert_true(t.WaitFor(() =>
-	      Text() ==# 'a b <T> "q" &amp; '' A &unknown; &42;'),
-	      'the references markdown is written with')
+    Text() ==# 'a b <T> "q" &amp; '' A &unknown; &42;'),
+  'the references markdown is written with')
   popup_clear()
 
   # Plaintext and code are the characters they hold.
@@ -2584,13 +2584,13 @@ def g:Test_the_hover_popup_scrolls_from_the_keyboard()
   assert_true(t.StartServer({
     capabilities: Offering({hoverProvider: true}),
     replies: {'textDocument/hover': {contents:
-	      range(1, 200)->mapnew((_, n) => printf('line %d', n))->join("\n")}},
+      range(1, 200)->mapnew((_, n) => printf('line %d', n))->join("\n")}},
   }, ['int x;']))
   defer popup_clear()
 
   LspHover
   assert_true(t.WaitFor(() => !popup_list()->empty()),
-	      'the server should answer with a popup')
+    'the server should answer with a popup')
   var id = popup_list()[0]
   var height = popup_getpos(id).core_height
   assert_true(height > 2, 'the popup should be taller than a page step')
@@ -2627,7 +2627,7 @@ def g:Test_the_hover_popup_leaves_other_keys_alone()
 
   LspHover
   assert_true(t.WaitFor(() => !popup_list()->empty()),
-	      'the server should answer with a popup')
+    'the server should answer with a popup')
 
   var first = line('w0')
   feedkeys("\<C-F>", 'xt')
@@ -2659,8 +2659,8 @@ def g:Test_a_hover_popup_makes_way_for_the_next_one()
   cursor(5, 1)
   LspHover
   assert_true(t.WaitFor(() =>
-	      popup_list()->len() == 1 && popup_list()[0] != first),
-	      'the popup that was up should have made way for the new one')
+    popup_list()->len() == 1 && popup_list()[0] != first),
+  'the popup that was up should have made way for the new one')
 enddef
 
 # A mode is entered where the cursor stands, so what closes the popup on a
@@ -2733,7 +2733,7 @@ def g:Test_a_popup_is_drawn_the_way_it_was_asked_for()
 
   LspHover
   assert_true(t.WaitFor(() => !popup_list()->empty()),
-	      'the server should answer with a popup')
+    'the server should answer with a popup')
   var opts = popup_getoptions(popup_list()[0])
   assert_equal(['-', '|', '-', '|', '+', '+', '+', '+'], opts.borderchars)
   assert_equal(80, opts.opacity)
@@ -2753,20 +2753,20 @@ def g:Test_a_popup_with_nothing_said_follows_pumopt()
   set pumopt=border:ascii
   LspHover
   assert_true(t.WaitFor(() => !popup_list()->empty()),
-	      'the server should answer with a popup')
+    'the server should answer with a popup')
   assert_equal(['-', '|', '-', '|', '+', '+', '+', '+'],
-	       popup_getoptions(popup_list()[0]).borderchars)
+    popup_getoptions(popup_list()[0]).borderchars)
 
   popup_clear()
   set pumopt=
   LspHover
   assert_true(t.WaitFor(() => !popup_list()->empty()),
-	      'and answer a second time')
+    'and answer a second time')
   var opts = popup_getoptions(popup_list()[0])
   assert_true(opts->has_key('border'),
-	      'the border it has always had, where "pumopt" names none')
+    'the border it has always had, where "pumopt" names none')
   assert_false(opts->has_key('borderchars'),
-	       'and the characters Vim draws a border with')
+    'and the characters Vim draws a border with')
 
   # Only naming none takes it away.
   popup_clear()
@@ -2774,9 +2774,9 @@ def g:Test_a_popup_with_nothing_said_follows_pumopt()
   defer execute('unlet g:lsp_client_config.hover_popup')
   LspHover
   assert_true(t.WaitFor(() => !popup_list()->empty()),
-	      'and answer a third time')
+    'and answer a third time')
   assert_false(popup_getoptions(popup_list()[0])->has_key('border'),
-	       'no border where the popup was asked for without one')
+    'no border where the popup was asked for without one')
 enddef
 
 def g:Test_a_popup_asked_for_in_a_way_that_cannot_be_read()
@@ -2789,14 +2789,14 @@ def g:Test_a_popup_asked_for_in_a_way_that_cannot_be_read()
   }, ['int x;']))
   defer popup_clear()
   assert_match('g:lsp_client_config.signature_popup: cannot read "popup:round"',
-	       execute('messages'))
+    execute('messages'))
   # And kept, since what a server reports as it starts washes it away.
   assert_match('g:lsp_client_config.signature_popup: cannot read "popup:round"',
-	       execute('LspStatus'))
+    execute('LspStatus'))
   # :LspConfigCheck comes out the same however often it is asked.
   for _ in [1, 2]
     assert_match('g:lsp_client_config.signature_popup: cannot read "popup:round"',
-		 execute('LspConfigCheck'))
+      execute('LspConfigCheck'))
   endfor
   unlet g:lsp_client_config.signature_popup
   assert_match('the configuration is good', execute('LspConfigCheck'))
@@ -2823,10 +2823,10 @@ def g:Test_a_popup_asked_for_in_a_way_that_cannot_be_read()
   defer execute('unlet! g:lsp_client_config.hover_popup')
   LspHover
   assert_true(t.WaitFor(() => !popup_list()->empty()),
-	      'the server should answer with a popup')
+    'the server should answer with a popup')
   assert_match('cannot read "popup:round"', execute('messages'))
   assert_match('"height:9" is for the completion menu alone',
-	       execute('messages'))
+    execute('messages'))
   assert_equal(60, popup_getoptions(popup_list()[0]).opacity)
 
   # The same keys in 'pumopt' are the menu's own, so borrowing them reports
@@ -2838,7 +2838,7 @@ def g:Test_a_popup_asked_for_in_a_way_that_cannot_be_read()
   defer execute('set pumopt=')
   LspHover
   assert_true(t.WaitFor(() => !popup_list()->empty()),
-	      'and answer a second time')
+    'and answer a second time')
   assert_notmatch('height', execute('messages'))
   assert_notmatch('margin', execute('messages'))
 enddef
@@ -2849,6 +2849,8 @@ def g:Test_hover_needs_the_server_to_offer_it()
   LspHover
   sleep 100m
   assert_true(t.Sent('textDocument/hover')->empty(),
-	      'nothing should be asked of a server that cannot answer')
+    'nothing should be asked of a server that cannot answer')
   assert_match('does not offer hover', execute('messages'))
 enddef
+
+# vim: ts=2 sw=0 et

@@ -45,9 +45,9 @@ command! -bar LspStatus     lsp.Status()
 command! -bar LspConfigCheck lsp.ConfigCheck()
 command! -bar LspConfigReload lsp.ConfigReload()
 command! -bar -nargs=? -complete=dir LspWorkspaceFolderAdd
-	\ lsp.WorkspaceFolderAdd(<q-args>)
+      \ lsp.WorkspaceFolderAdd(<q-args>)
 command! -bar -nargs=1 -complete=customlist,FolderNames LspWorkspaceFolderRemove
-	\ lsp.WorkspaceFolderRemove(<q-args>)
+      \ lsp.WorkspaceFolderRemove(<q-args>)
 command! -bar LspHover      lsp.Hover()
 command! -bar LspDefinition lsp.Definition(<q-mods>)
 command! -bar LspDeclaration lsp.Declaration(<q-mods>)
@@ -101,7 +101,7 @@ xnoremap <silent> <Plug>(lsp-selection-shrink)
 def HasServer(): bool
   for config in get(g:, 'lsp_server_list', [])
     if type(config) == v:t_dict
-	  && index(config->get('filetypes', []), &filetype) >= 0
+        && index(config->get('filetypes', []), &filetype) >= 0
       return true
     endif
   endfor
@@ -118,4 +118,4 @@ if $LSP_COMPILE_CHECK != ''
   defcompile
 endif
 
-# vim: sw=2 sts=2 et
+# vim: ts=2 sw=0 et

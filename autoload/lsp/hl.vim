@@ -58,10 +58,10 @@ export def Update(bufnr: number, items: list<any>)
     var kind = item->get('kind', KIND_TEXT)
     try
       prop_add(lnum, col, {
-	bufnr: bufnr,
-	end_lnum: end_lnum,
-	end_col: end_col,
-	type: TYPES->get(kind, TYPES[KIND_TEXT]),
+        bufnr: bufnr,
+        end_lnum: end_lnum,
+        end_col: end_col,
+        type: TYPES->get(kind, TYPES[KIND_TEXT]),
       })
     catch /E96[4-6]/
       # The buffer moved on while the answer was on its way; the next one
@@ -75,4 +75,4 @@ if $LSP_COMPILE_CHECK != ''
   defcompile
 endif
 
-# vim: sw=2 sts=2 et
+# vim: ts=2 sw=0 et

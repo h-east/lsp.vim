@@ -53,4 +53,4 @@ if $LSP_COMPILE_CHECK != ''
   defcompile
 endif
 
-# vim: sw=2 sts=2 et
+# vim: ts=2 sw=0 et

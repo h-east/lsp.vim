@@ -48,8 +48,8 @@ def LabelText(hint: dict<any>): string
     return ''
   endif
   return label->mapnew((_, part) =>
-		    type(part) == v:t_dict ? part->get('value', '') : '')
-	      ->join('')
+    type(part) == v:t_dict ? part->get('value', '') : '')
+  ->join('')
 enddef
 
 # What was put in each buffer, so that the hint at the cursor can be found
@@ -106,9 +106,9 @@ export def Update(bufnr: number, hints: list<any>)
     var [lnum, col] = util.PosFromLsp(bufnr, hint->get('position', {}))
     try
       prop_add(lnum, col, {
-	bufnr: bufnr,
-	type: TYPES->get(hint->get('kind', KIND_TYPE), TYPES[KIND_TYPE]),
-	text: text,
+        bufnr: bufnr,
+        type: TYPES->get(hint->get('kind', KIND_TYPE), TYPES[KIND_TYPE]),
+        text: text,
       })
       here->add({lnum: lnum, col: col, hint: hint})
     catch /E96[4-6]/
@@ -123,4 +123,4 @@ if $LSP_COMPILE_CHECK != ''
   defcompile
 endif
 
-# vim: sw=2 sts=2 et
+# vim: ts=2 sw=0 et

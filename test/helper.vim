@@ -7,7 +7,7 @@ const TRACE = HERE .. '/Xtrace.jsonl'
 # What runs fakeserver.py.  Windows installs "python", elsewhere it is
 # "python3"; $PYTHON names another one.
 const PYTHON = !empty($PYTHON) ? $PYTHON
-	    : !empty(exepath('python3')) ? 'python3' : 'python'
+  : !empty(exepath('python3')) ? 'python3' : 'python'
 
 # Waits for something to become true, checking often enough that a test does
 # not spend its time asleep.
@@ -34,7 +34,7 @@ export const SRC = HERE .. '/Xsrc.c'
 # filetype is what attaches it, and a server started without a scenario to
 # read gives up at once.  Returns false when the server never came up.
 export def StartServer(scenario: dict<any>, lines: list<string>,
-						  server: dict<any> = {}): bool
+    server: dict<any> = {}): bool
   writefile([json_encode(scenario)], SCENARIO)
   delete(TRACE)
   $LSP_SCENARIO = SCENARIO
@@ -56,8 +56,8 @@ export def StartServer(scenario: dict<any>, lines: list<string>,
   if !ready
     # Report what the server did instead, there is no guessing from "false".
     add(v:errors, 'the server did not come up; status: '
-		  .. execute('LspStatus')->trim()
-		  .. '; stderr: ' .. string(execute('LspLog')->trim()))
+      .. execute('LspStatus')->trim()
+      .. '; stderr: ' .. string(execute('LspLog')->trim()))
   endif
   return ready
 enddef
@@ -93,3 +93,5 @@ enddef
 export def Sent(method: string): list<dict<any>>
   return Trace()->filter((_, m) => m->get('method', '') ==# method)
 enddef
+
+# vim: ts=2 sw=0 et

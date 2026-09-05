@@ -10,20 +10,20 @@ import autoload './util.vim'
 # arrives without one, which the protocol allows; it is treated as an error.
 const SEVERITY = [
   {label: 'Error', sign: 'LspDiagErrorSign', prop: 'LspDiagErrorText',
-   qf: 'E', priority: 40},
+    qf: 'E', priority: 40},
   {label: 'Error', sign: 'LspDiagErrorSign', prop: 'LspDiagErrorText',
-   qf: 'E', priority: 40},
+    qf: 'E', priority: 40},
   {label: 'Warning', sign: 'LspDiagWarningSign', prop: 'LspDiagWarningText',
-   qf: 'W', priority: 30},
+    qf: 'W', priority: 30},
   {label: 'Info', sign: 'LspDiagInfoSign', prop: 'LspDiagInfoText',
-   qf: 'I', priority: 20},
+    qf: 'I', priority: 20},
   {label: 'Hint', sign: 'LspDiagHintSign', prop: 'LspDiagHintText',
-   qf: 'N', priority: 10},
+    qf: 'N', priority: 10},
 ]
 
 const SIGN_GROUP = 'lsp'
 const PROP_TYPES = ['LspDiagErrorText', 'LspDiagWarningText',
-		    'LspDiagInfoText', 'LspDiagHintText']
+  'LspDiagInfoText', 'LspDiagHintText']
 
 var diagnostics: dict<list<dict<any>>> = {}
 
@@ -91,7 +91,7 @@ def Draw(bufnr: number)
     var [lnum, col] = util.PosFromLsp(bufnr, range->get('start', {}))
     var [end_lnum, end_col] = util.PosFromLsp(bufnr, range->get('end', {}))
     signs->add({buffer: bufnr, group: SIGN_GROUP, lnum: lnum,
-		name: kind.sign, priority: kind.priority})
+      name: kind.sign, priority: kind.priority})
 
     # A zero-width range would not be visible, widen it to one character.
     if end_lnum == lnum && end_col <= col
@@ -99,7 +99,7 @@ def Draw(bufnr: number)
     endif
     try
       prop_add(lnum, col, {end_lnum: end_lnum, end_col: end_col,
-			   bufnr: bufnr, type: kind.prop})
+        bufnr: bufnr, type: kind.prop})
     catch /^Vim\%((\a\+)\)\=:E96[456]:/
       # The buffer moved on since the server looked at it; the next round
       # will line up again.
@@ -137,21 +137,21 @@ enddef
 
 export def ForLine(bufnr: number, lnum: number): list<dict<any>>
   return diagnostics->get(string(bufnr), [])
-		    ->copy()
-		    ->filter((_, item) => StartLine(bufnr, item) == lnum)
+    ->copy()
+    ->filter((_, item) => StartLine(bufnr, item) == lnum)
 enddef
 
 # A code action request carries these, so the server knows which reports it is
 # being asked to act on.
 export def ForRange(bufnr: number, first: number, last: number): list<dict<any>>
   return diagnostics->get(string(bufnr), [])
-		    ->copy()
-		    ->filter((_, item) => {
-		      var range = item->get('range', {})
-		      var from = range->get('start', {})->get('line', 0) + 1
-		      var to = range->get('end', {})->get('line', 0) + 1
-		      return from <= last && to >= first
-		    })
+    ->copy()
+    ->filter((_, item) => {
+      var range = item->get('range', {})
+      var from = range->get('start', {})->get('line', 0) + 1
+      var to = range->get('end', {})->get('line', 0) + 1
+      return from <= last && to >= first
+    })
 enddef
 
 def Truncate(s: string, width: number): string
@@ -177,7 +177,7 @@ export def EchoAtCursor()
   endif
   var item = items[0]
   var text = printf('%s: %s', Kind(item).label,
-		    item->get('message', '')->substitute('\n', ' ', 'g'))
+    item->get('message', '')->substitute('\n', ' ', 'g'))
   echo Truncate(text, v:echospace)
 enddef
 
@@ -201,7 +201,7 @@ def RelatedEntries(bufnr: number, item: dict<any>): list<dict<any>>
       filename: path,
       lnum: lnum,
       col: util.ColFromLsp(line, start->get('character', 0),
-			   util.Encoding(bufnr)),
+        util.Encoding(bufnr)),
       text: '  ' .. related->get('message', '')->substitute('\n', ' ', 'g'),
     })
   endfor
@@ -231,7 +231,7 @@ export def Entries(path: string, items: list<any>): list<dict<any>>
       col: col,
       type: Kind(item).qf,
       text: (source->empty() ? '' : '[' .. source .. '] ')
-	    .. item->get('message', '')->substitute('\n', ' ', 'g'),
+        .. item->get('message', '')->substitute('\n', ' ', 'g'),
     })
     if bufnr > 0
       entries += RelatedEntries(bufnr, item)
@@ -247,7 +247,7 @@ export def ToLocList(bufnr: number)
     return
   endif
   setloclist(0, [], ' ', {title: 'LSP diagnostics',
-			  items: Entries(bufname(bufnr), items)})
+    items: Entries(bufname(bufnr), items)})
   lopen
 enddef
 
@@ -260,4 +260,4 @@ if $LSP_COMPILE_CHECK != ''
   defcompile
 endif
 
-# vim: sw=2 sts=2 et
+# vim: ts=2 sw=0 et

@@ -136,20 +136,20 @@ def PopupStyle(name: string): dict<any>
     if token =~# '^border:'
       var chars = BorderChars(token[7 : ])
       if chars->empty()
-	Complain(where, printf('cannot read "%s"', token))
+        Complain(where, printf('cannot read "%s"', token))
       else
-	opts.border = []
-	opts.borderchars = chars
+        opts.border = []
+        opts.borderchars = chars
       endif
     elseif token =~# '^opacity:'
       var percent = str2nr(token[8 : ])
       if token[8 : ] !~ '^\d\+$' || percent > 100
-	Complain(where, printf('cannot read "%s"', token))
+        Complain(where, printf('cannot read "%s"', token))
       else
-	opts.opacity = percent
+        opts.opacity = percent
       endif
     elseif !named
-      # The menu's own, borrowed with the rest of 'pumopt'.
+    # The menu's own, borrowed with the rest of 'pumopt'.
     elseif index(PUMOPT_MENU_ONLY, matchstr(token, '^\a\+:\=')) >= 0
       Complain(where, printf('"%s" is for the completion menu alone', token))
     else
@@ -168,7 +168,7 @@ def PopupStyle(name: string): dict<any>
     # 'winhighlight' does not reach, so what is named for it is handed to
     # popup_create() as the border highlight instead.
     var border = highlights->split(',')
-		 ->filter((_, s) => s =~# '^PopupBorder:')
+      ->filter((_, s) => s =~# '^PopupBorder:')
     if !border->empty()
       opts.borderhighlight = [border[-1]->matchstr(':\zs.*')]
     endif
@@ -209,7 +209,7 @@ def TakesFolders(cl: dict<any>): bool
   endif
   var folders = space->get('workspaceFolders', {})
   return type(folders) == v:t_dict && folders->get('supported', false)
-	  && !folders->get('changeNotifications', false)->empty()
+    && !folders->get('changeNotifications', false)->empty()
 enddef
 
 # The client that covers this root: the one started for it, one that took it
@@ -228,7 +228,7 @@ def ClientFor(name: string, root: string): string
       cl.folders->add(root)
       adopted[root] = at
       lspclient.Notify(cl, 'workspace/didChangeWorkspaceFolders',
-		       {event: {added: [Folder(root)], removed: []}})
+        {event: {added: [Folder(root)], removed: []}})
       return at
     endif
   endfor
@@ -271,7 +271,7 @@ enddef
 # back when the buffer is detached.
 def SetBufferOptions(cl: dict<any>, bufnr: number)
   if !cl.capabilities->has_key('completionProvider')
-	|| !Setting('omnifunc')
+      || !Setting('omnifunc')
     return
   endif
   setbufvar(bufnr, 'lsp_omnifunc_save', getbufvar(bufnr, '&omnifunc'))
@@ -368,7 +368,7 @@ def WillSave(bufnr: number)
     return
   endif
   var params = {textDocument: {uri: util.PathToUri(bufname(bufnr))},
-		reason: SAVE_MANUAL}
+    reason: SAVE_MANUAL}
   if !Sync(cl, 'willSave') && !Sync(cl, 'willSaveWaitUntil')
     return
   endif
@@ -380,7 +380,7 @@ def WillSave(bufnr: number)
     return
   endif
   var edits = lspclient.RequestSync(cl, 'textDocument/willSaveWaitUntil',
-				    params, WILL_SAVE_TIMEOUT)
+    params, WILL_SAVE_TIMEOUT)
   if type(edits) == v:t_list && !edits->empty()
     ApplyTextEdits(bufnr, edits)
   endif
@@ -403,7 +403,7 @@ enddef
 # Vim hands a listener five arguments.  The three in the middle repeat what
 # each item of the change list already holds, so they are taken and dropped.
 def OnChange(bufnr: number, _: number, _: number, _: number,
-	     changes: list<dict<any>>)
+    changes: list<dict<any>>)
   var cl = BufClient(bufnr)
   if cl->empty() || !cl.initialized
     return
@@ -597,7 +597,7 @@ def HookBuffer()
     autocmd TextChanged,BufEnter <buffer> DocumentLinks()
     autocmd TextChanged,BufEnter <buffer> FoldingRanges()
     autocmd TextChanged,TextChangedI,TextChangedP,BufEnter <buffer>
-	  \ SemanticLater()
+          \ SemanticLater()
     autocmd TextChanged,TextChangedI,TextChangedP,BufEnter <buffer> PullLater()
     autocmd TextChangedI,TextChangedP <buffer> OnTextChanged()
     autocmd CursorMovedI <buffer> OnCursorMovedI()
@@ -614,7 +614,7 @@ def HookBuffer()
       autocmd BufWritePre * BeforeWrite(expand('<afile>:p'))
       autocmd BufWritePost * AfterWrite(expand('<afile>:p'))
       autocmd FileChangedShellPost *
-	    \ FileChanged(expand('<afile>:p'), WATCH_CHANGE, FILE_CHANGED)
+            \ FileChanged(expand('<afile>:p'), WATCH_CHANGE, FILE_CHANGED)
     augroup END
     global_hooked = true
   endif
@@ -655,7 +655,7 @@ export def Attach(loud: bool = false)
   if key->empty()
     key = ClientKey(config.name, root)
     var fresh = lspclient.Start(config, root, OnReady,
-				Setting('snippet'), HoverFormat())
+      Setting('snippet'), HoverFormat())
     if fresh->empty()
       return
     endif
@@ -672,7 +672,7 @@ export def Attach(loud: bool = false)
   endif
   if loud
     echomsg printf('lsp: %s has this buffer, rooted at %s',
-		   config.name, cl.root)
+      config.name, cl.root)
   endif
 enddef
 
@@ -732,22 +732,22 @@ export def Stop(loud: bool = false)
   util.ClearEncodings()
   if loud
     echomsg running == 0 ? 'lsp: no server was running'
-			 : printf('lsp: %d server%s stopped', running,
-				  running == 1 ? '' : 's')
+      : printf('lsp: %d server%s stopped', running,
+        running == 1 ? '' : 's')
   endif
 enddef
 
 def TypeName(want: number): string
   return {[v:t_string]: 'a String', [v:t_number]: 'a Number',
-	  [v:t_bool]: 'true or false', [v:t_list]: 'a List',
-	  [v:t_dict]: 'a Dictionary'}->get(want, 'something else')
+    [v:t_bool]: 'true or false', [v:t_list]: 'a List',
+    [v:t_dict]: 'a Dictionary'}->get(want, 'something else')
 enddef
 
 # True when "value" is of the type "want", with a Number taken where true or
 # false is wanted.
 def IsType(value: any, want: number): bool
   return type(value) == want
-      || (want == v:t_bool && type(value) == v:t_number)
+    || (want == v:t_bool && type(value) == v:t_number)
 enddef
 
 def CheckList(where: string, key: string, value: list<any>, needed: bool)
@@ -774,24 +774,24 @@ def CheckClientConfig()
       Complain(WHERE, printf('has no such key as "%s"', key))
     elseif !IsType(value, type(DEFAULTS[key]))
       Complain(WHERE, printf('"%s" takes %s', key,
-			     TypeName(type(DEFAULTS[key]))))
+        TypeName(type(DEFAULTS[key]))))
     elseif key ==# 'hover_format' && index(HOVER_FORMATS, value) < 0
       Complain(WHERE, printf('"hover_format" takes "%s"',
-			     HOVER_FORMATS->join('" or "')))
+        HOVER_FORMATS->join('" or "')))
     endif
   endfor
   for name in POPUPS
     var popup = conf->get(name, {})
     if type(popup) != v:t_dict
-      continue		# reported already
+      continue          # reported already
     endif
     for [key, value] in popup->items()
       if !POPUP_KEYS->has_key(key)
-	Complain(WHERE .. '.' .. name,
-		 printf('has no such key as "%s"', key))
+        Complain(WHERE .. '.' .. name,
+          printf('has no such key as "%s"', key))
       elseif type(value) != POPUP_KEYS[key]
-	Complain(WHERE .. '.' .. name, printf('"%s" takes %s', key,
-					      TypeName(POPUP_KEYS[key])))
+        Complain(WHERE .. '.' .. name, printf('"%s" takes %s', key,
+          TypeName(POPUP_KEYS[key])))
       endif
     endfor
     # And what "opt" holds.
@@ -816,17 +816,17 @@ def CheckServerList()
     endif
     for key in SERVER_NEEDED
       if !config->has_key(key)
-	Complain(where, printf('has no "%s"', key))
+        Complain(where, printf('has no "%s"', key))
       endif
     endfor
     for [key, value] in config->items()
       if !SERVER_KEYS->has_key(key)
-	Complain(where, printf('has no such key as "%s"', key))
+        Complain(where, printf('has no such key as "%s"', key))
       elseif type(value) != SERVER_KEYS[key]
-	Complain(where, printf('"%s" takes %s', key,
-			       TypeName(SERVER_KEYS[key])))
+        Complain(where, printf('"%s" takes %s', key,
+          TypeName(SERVER_KEYS[key])))
       elseif SERVER_KEYS[key] == v:t_list
-	CheckList(where, key, value, key !=# 'rootPatterns')
+        CheckList(where, key, value, key !=# 'rootPatterns')
       endif
     endfor
   endfor
@@ -866,18 +866,18 @@ export def ConfigReload()
       cl.config = config
     endif
     lspclient.Notify(cl, 'workspace/didChangeConfiguration',
-		     {settings: v:null})
+      {settings: v:null})
     told += 1
   endfor
   echomsg told == 0 ? 'lsp: no server is running'
-		    : printf('lsp: %d server%s told', told,
-			     told == 1 ? '' : 's')
+    : printf('lsp: %d server%s told', told,
+      told == 1 ? '' : 's')
 enddef
 
 export def Status()
   var long = v:versionlong
   echo printf('lsp.vim %s  (Vim %d.%d.%04d)', VERSION,
-	      long / 1000000, long / 10000 % 100, long % 10000)
+    long / 1000000, long / 10000 % 100, long % 10000)
   # A word about a setting is easily lost among what a server reports as it
   # starts.
   for text in complained->keys()->sort()
@@ -889,13 +889,13 @@ export def Status()
   endif
   for [key, cl] in clients->items()
     echo printf('%s  %s  %d buffer(s)  %d diagnostic(s) here', key,
-	cl.initialized ? 'ready' : 'starting', len(cl.documents),
-	diag.Count(bufnr('%')))
+      cl.initialized ? 'ready' : 'starting', len(cl.documents),
+      diag.Count(bufnr('%')))
     # The root is in the key already, so one folder is worth no list.
     if len(cl.folders) > 1
       for i in range(len(cl.folders))
-	echo printf('%s%s', i == 0 ? '  folders: ' : '           ',
-		    cl.folders[i])
+        echo printf('%s%s', i == 0 ? '  folders: ' : '           ',
+          cl.folders[i])
       endfor
     endif
   endfor
@@ -931,7 +931,7 @@ def AsFolder(path: string): string
   # ":p" ends a directory with a separator, a backslash on Windows.  What is
   # left has to be the folder itself: its tail is the name sent to a server.
   return fnamemodify(path, ':p')
-	    ->substitute(has('win32') ? '[\\/]\+$' : '/\+$', '', '')
+    ->substitute(has('win32') ? '[\\/]\+$' : '/\+$', '', '')
 enddef
 
 export def WorkspaceFolderAdd(path: string)
@@ -952,7 +952,7 @@ export def WorkspaceFolderAdd(path: string)
   # A file under it that is opened later finds this server again.
   adopted[dir] = ClientKey(cl.name, cl.root)
   lspclient.Notify(cl, 'workspace/didChangeWorkspaceFolders',
-		   {event: {added: [Folder(dir)], removed: []}})
+    {event: {added: [Folder(dir)], removed: []}})
   echomsg printf('lsp: %s now covers %s', cl.name, dir)
 enddef
 
@@ -978,7 +978,7 @@ export def WorkspaceFolderRemove(path: string)
     remove(adopted, dir)
   endif
   lspclient.Notify(cl, 'workspace/didChangeWorkspaceFolders',
-		   {event: {added: [], removed: [Folder(dir)]}})
+    {event: {added: [], removed: [Folder(dir)]}})
   echomsg printf('lsp: %s no longer covers %s', cl.name, dir)
 enddef
 
@@ -1000,8 +1000,8 @@ def HoverFiletype(contents: any): string
     return ''
   endif
   var ft = contents->get('kind', '') ==# 'markdown'
-	 ? 'markdown'
-	 : contents->get('language', '')
+    ? 'markdown'
+    : contents->get('language', '')
   return type(ft) == v:t_string && ft =~# '^\a[[:alnum:]._-]*$' ? ft : ''
 enddef
 
@@ -1071,7 +1071,7 @@ def HoverPopup(raw: list<string>, contents: any)
   augroup lsp_hover_popup
     autocmd!
     autocmd ModeChanged,WinLeave,WinScrolled,BufLeave,VimResized
-	  \ * ++once CloseHoverPopup()
+          \ * ++once CloseHoverPopup()
   augroup END
   var ft = HoverFiletype(contents)
   if !ft->empty()
@@ -1100,7 +1100,7 @@ enddef
 
 def Decoded(text: string): string
   return text->substitute('&\(#\d\+\|#[xX]\x\+\|\a\+\);',
-			  '\=EntityChar(submatch(0), submatch(1))', 'g')
+    '\=EntityChar(submatch(0), submatch(1))', 'g')
 enddef
 
 # The "contents" of a hover reply is a string, a Dict, or a List of either.
@@ -1120,7 +1120,7 @@ def HoverText(contents: any): list<string>
   if type(contents) == v:t_dict
     var text = contents->get('value', '')
     return (contents->get('kind', '') ==# 'markdown' ? Decoded(text) : text)
-	   ->split("\n")
+      ->split("\n")
   endif
   return []
 enddef
@@ -1154,18 +1154,18 @@ export def Hover()
     return
   endif
   lspclient.Request(cl, 'textDocument/hover', CursorParams(),
-      (result: any) => {
-	if type(result) != v:t_dict
-	  util.WarningMsg('no information')
-	  return
-	endif
-	var lines = HoverText(result->get('contents', ''))
-	if lines->empty()
-	  util.WarningMsg('no information')
-	  return
-	endif
-	HoverPopup(lines, result->get('contents', ''))
-      })
+    (result: any) => {
+      if type(result) != v:t_dict
+        util.WarningMsg('no information')
+        return
+      endif
+      var lines = HoverText(result->get('contents', ''))
+      if lines->empty()
+        util.WarningMsg('no information')
+        return
+      endif
+      HoverPopup(lines, result->get('contents', ''))
+    })
 enddef
 
 # Kept and updated rather than made anew, since it stays up while the call is
@@ -1229,7 +1229,7 @@ enddef
 
 # What the popup costs beyond its text: a space either side, and a border all
 # round where one was asked for.
-const SIGNATURE_PADDING = [0, 1, 0, 1]	# top, right, bottom, left
+const SIGNATURE_PADDING = [0, 1, 0, 1]  # top, right, bottom, left
 
 def SignatureBorder(): number
   return PopupStyle('signature_popup')->has_key('border') ? 1 : 0
@@ -1264,13 +1264,13 @@ def ClearOfMenu(pum: dict<any>, need: number): dict<any>
   var bottom = mbot > 0 && mbot < row ? mtop - 1 : row - 1
   if bottom >= need
     return {line: bottom, col: 'cursor', pos: 'botleft',
-	    maxheight: bottom - BorderRows()}
+      maxheight: bottom - BorderRows()}
   endif
   # Below: "top" to the last row, starting past the menu when it is there.
   var top = mtop > row ? mbot + 1 : row + 1
   if last - top + 1 >= need
     return {line: top, col: 'cursor', pos: 'topleft',
-	    maxheight: last - top + 1 - BorderRows()}
+      maxheight: last - top + 1 - BorderRows()}
   endif
   return {}
 enddef
@@ -1290,10 +1290,10 @@ enddef
 # Above or below the cursor, with the room that side has.
 def Side(up: bool, above: number, below: number): dict<any>
   return up
-      ? {line: 'cursor-1', col: 'cursor', pos: 'botleft',
-	 maxheight: max([1, above - BorderRows()])}
-      : {line: 'cursor+1', col: 'cursor', pos: 'topleft',
-	 maxheight: max([1, below - BorderRows()])}
+    ? {line: 'cursor-1', col: 'cursor', pos: 'botleft',
+      maxheight: max([1, above - BorderRows()])}
+    : {line: 'cursor+1', col: 'cursor', pos: 'topleft',
+      maxheight: max([1, below - BorderRows()])}
 enddef
 
 # The screen column to start the popup at, so that the name in the signature
@@ -1344,7 +1344,7 @@ def SignatureWhere(text: string): dict<any>
     # open is not worth guessing at; MoveSignature() moves out of its way
     # once it is up.
     where = Side(above >= need || (below < need && above >= below),
-		 above, below)
+      above, below)
   endif
   return AtCall(where)
 enddef
@@ -1391,13 +1391,13 @@ def ShowSignature(help: any)
 
   # A signature may name the active parameter itself.
   var active = signature->get('activeParameter',
-					help->get('activeParameter', -1))
+    help->get('activeParameter', -1))
   var range = ActiveRange(signature, active)
   var text: any = label
   if !range->empty()
     DefineSignatureProp()
     text = {text: label, props: [{col: range[0] + 1, length: range[1],
-				  type: 'LspSignatureActive'}]}
+      type: 'LspSignatureActive'}]}
   endif
 
   var where = SignatureWhere(label)
@@ -1437,11 +1437,11 @@ export def Signature()
   signature_seq += 1
   var seq = signature_seq
   lspclient.Request(cl, 'textDocument/signatureHelp', CursorParams(),
-      (result: any) => {
-	if seq == signature_seq
-	  ShowSignature(result)
-	endif
-      })
+    (result: any) => {
+      if seq == signature_seq
+        ShowSignature(result)
+      endif
+    })
 enddef
 
 # Asked for after a character the server named as a trigger, and again on
@@ -1489,7 +1489,7 @@ enddef
 
 def LocationRange(loc: dict<any>): dict<any>
   return loc->get('range', loc->get('targetSelectionRange',
-				    loc->get('targetRange', {})))
+    loc->get('targetRange', {})))
 enddef
 
 # A definition reply is a Location, a list of them, or a list of LocationLink.
@@ -1534,7 +1534,7 @@ enddef
 
 # The command modifiers that ask for a window of the jump's own.
 const SPLIT_MODS = '\<\(aboveleft\|belowright\|botright\|horizontal'
-		.. '\|leftabove\|rightbelow\|tab\|topleft\|vertical\)\>'
+  .. '\|leftabove\|rightbelow\|tab\|topleft\|vertical\)\>'
 
 # Four requests have this shape: what comes back is a place to go to.
 def JumpTo(method: string, provider: string, what: string, mods: string)
@@ -1555,7 +1555,7 @@ def JumpTo(method: string, provider: string, what: string, mods: string)
     # Where the jump began, so CTRL-T leads back, and CTRL-O too where the
     # jump stays in the file.
     settagstack(win_getid(), {items: [{tagname: expand('<cword>'),
-			      from: [bufnr('%'), line('.'), col('.'), 0]}]}, 't')
+      from: [bufnr('%'), line('.'), col('.'), 0]}]}, 't')
     normal! m'
     var path = util.UriToPath(loc.uri)->util.OpenName()
     if mods =~# SPLIT_MODS
@@ -1564,7 +1564,7 @@ def JumpTo(method: string, provider: string, what: string, mods: string)
       execute mods 'edit' fnameescape(path)
     endif
     var [lnum, col] = util.PosFromLsp(bufnr('%'),
-			  loc->get('range', {})->get('start', {}))
+      loc->get('range', {})->get('start', {}))
     cursor(lnum, col)
     normal! zv
   })
@@ -1572,22 +1572,22 @@ enddef
 
 export def Definition(mods: string = '')
   JumpTo('textDocument/definition', 'definitionProvider', 'the definition',
-	 mods)
+    mods)
 enddef
 
 export def Declaration(mods: string = '')
   JumpTo('textDocument/declaration', 'declarationProvider',
-	 'the declaration', mods)
+    'the declaration', mods)
 enddef
 
 export def TypeDefinition(mods: string = '')
   JumpTo('textDocument/typeDefinition', 'typeDefinitionProvider',
-	 'the type definition', mods)
+    'the type definition', mods)
 enddef
 
 export def Implementation(mods: string = '')
   JumpTo('textDocument/implementation', 'implementationProvider',
-	 'the implementation', mods)
+    'the implementation', mods)
 enddef
 
 def BufLineCount(bufnr: number): number
@@ -1598,15 +1598,15 @@ enddef
 # later ones go first.  The protocol forbids them from overlapping.
 def SortedEdits(edits: list<any>): list<any>
   return edits->copy()
-      ->filter((_, e) => type(e) == v:t_dict)
-      ->sort((a, b) => {
-	var pa = a->get('range', {})->get('start', {})
-	var pb = b->get('range', {})->get('start', {})
-	var la = pa->get('line', 0)
-	var lb = pb->get('line', 0)
-	return la == lb ? pb->get('character', 0) - pa->get('character', 0)
-			: lb - la
-      })
+    ->filter((_, e) => type(e) == v:t_dict)
+    ->sort((a, b) => {
+      var pa = a->get('range', {})->get('start', {})
+      var pb = b->get('range', {})->get('start', {})
+      var la = pa->get('line', 0)
+      var lb = pb->get('line', 0)
+      return la == lb ? pb->get('character', 0) - pa->get('character', 0)
+        : lb - la
+    })
 enddef
 
 # A range covers whole lines only by accident, so what is before it on its
@@ -1628,13 +1628,13 @@ def EditLines(lines: list<string>, edit: dict<any>): list<string>
     el = sl
   endif
   var head = strpart(lines[sl], 0,
-		     util.ColFromLsp(lines[sl], start->get('character', 0)) - 1)
+    util.ColFromLsp(lines[sl], start->get('character', 0)) - 1)
   var tail = strpart(lines[el],
-		     util.ColFromLsp(lines[el], last->get('character', 0)) - 1)
+    util.ColFromLsp(lines[el], last->get('character', 0)) - 1)
   var before = sl > 0 ? lines[0 : sl - 1] : []
   var after = el + 1 < len(lines) ? lines[el + 1 : ] : []
   return before + split(head .. edit->get('newText', '') .. tail, "\n", true)
-	 + after
+    + after
 enddef
 
 # How many lines the edits above "lnum" put in, less what they take out.
@@ -1707,7 +1707,7 @@ def OnTypeFormat()
     return
   endif
   var triggers = [provider->get('firstTriggerCharacter', '')]
-	       + provider->get('moreTriggerCharacter', [])
+    + provider->get('moreTriggerCharacter', [])
   if index(triggers, ch) < 0
     return
   endif
@@ -1722,8 +1722,8 @@ def OnTypeFormat()
   listener_flush(bufnr)
   lspclient.Request(cl, 'textDocument/onTypeFormatting', params, (result: any) => {
     if type(result) != v:t_list || result->empty()
-	  || getbufvar(bufnr, 'changedtick') != tick
-	  || bufnr != bufnr('%')
+        || getbufvar(bufnr, 'changedtick') != tick
+        || bufnr != bufnr('%')
       return
     endif
     # An edit reaching the indent moves the text the cursor sits before, so
@@ -1748,10 +1748,10 @@ export def Format(first: number, last: number)
   # may offer only one of the two.
   var whole = first <= 1 && last >= BufLineCount(bufnr)
   var provider = whole ? 'documentFormattingProvider'
-		       : 'documentRangeFormattingProvider'
+    : 'documentRangeFormattingProvider'
   if !cl.capabilities->has_key(provider)
     var msg = whole ? 'the server does not offer formatting'
-		    : 'the server does not offer formatting a range'
+      : 'the server does not offer formatting a range'
     util.WarningMsg(msg)
     return
   endif
@@ -1768,7 +1768,7 @@ export def Format(first: number, last: number)
     }
   endif
   var method = whole ? 'textDocument/formatting'
-		     : 'textDocument/rangeFormatting'
+    : 'textDocument/rangeFormatting'
   lspclient.Request(cl, method, params, (result: any) => {
     if type(result) != v:t_list || result->empty()
       util.WarningMsg('nothing to format')
@@ -1800,12 +1800,12 @@ def WorkspaceEditFiles(edit: dict<any>): list<dict<any>>
   if type(changes) == v:t_list && !changes->empty()
     for change in changes
       if type(change) != v:t_dict || !change->has_key('edits')
-	util.WarningMsg('the server wants to create or remove files, '
-			.. 'which is not supported')
-	return []
+        util.WarningMsg('the server wants to create or remove files, '
+          .. 'which is not supported')
+        return []
       endif
       out->add({uri: change->get('textDocument', {})->get('uri', ''),
-		edits: change.edits})
+        edits: change.edits})
     endfor
     return out
   endif
@@ -1859,7 +1859,7 @@ def Placeholder(result: any): string
 enddef
 
 def AskAndRename(cl: dict<any>, newname: string, placeholder: string,
-						      params: dict<any>)
+    params: dict<any>)
   var name = newname
   if name->empty()
     name = input('lsp: new name: ', placeholder)
@@ -1876,7 +1876,7 @@ def AskAndRename(cl: dict<any>, newname: string, placeholder: string,
     var done = ApplyWorkspaceEdit(result)
     if done > 0
       echomsg printf('lsp: renamed to %s in %d file%s, not written yet',
-					  name, done, done == 1 ? '' : 's')
+        name, done, done == 1 ? '' : 's')
     endif
   })
 enddef
@@ -1902,16 +1902,16 @@ export def Rename(newname: string)
     return
   endif
   lspclient.Request(cl, 'textDocument/prepareRename', params->copy(),
-      (result: any) => {
-	if result == v:null
-	  util.WarningMsg('there is no name to rename here')
-	  return
-	endif
-	var placeholder = Placeholder(result)
-	AskAndRename(cl, newname,
-		     placeholder->empty() ? expand('<cword>') : placeholder,
-		     params)
-      })
+    (result: any) => {
+      if result == v:null
+        util.WarningMsg('there is no name to rename here')
+        return
+      endif
+      var placeholder = Placeholder(result)
+      AskAndRename(cl, newname,
+        placeholder->empty() ? expand('<cword>') : placeholder,
+        params)
+    })
 enddef
 
 # A reply holds Commands, CodeActions, or a mix.  A Command is run by the
@@ -1925,7 +1925,7 @@ def ActionTitle(action: dict<any>): string
   # Dict of its own and a bare Command at the top level.
   var cmd = action->get('command', '')
   return type(cmd) == v:t_dict ? cmd->get('command', '')
-       : type(cmd) == v:t_string ? cmd : ''
+    : type(cmd) == v:t_string ? cmd : ''
 enddef
 
 # Whether the server fills the rest of an item in when it is handed back.
@@ -1936,7 +1936,7 @@ def Resolves(cl: dict<any>, provider: string): bool
     return false
   endif
   return options->get('resolveProvider', false)
-	  || type(options->get('resolveSupport', 0)) == v:t_dict
+    || type(options->get('resolveSupport', 0)) == v:t_dict
 enddef
 
 def DoAction(cl: dict<any>, action: dict<any>)
@@ -1944,7 +1944,7 @@ def DoAction(cl: dict<any>, action: dict<any>)
     var done = ApplyWorkspaceEdit(action.edit)
     if done > 0
       echomsg printf('lsp: %s, %d file%s changed and not written yet',
-			  ActionTitle(action), done, done == 1 ? '' : 's')
+        ActionTitle(action), done, done == 1 ? '' : 's')
     endif
     return
   endif
@@ -1962,7 +1962,7 @@ def DoAction(cl: dict<any>, action: dict<any>)
   lspclient.Request(cl, 'workspace/executeCommand', {
     command: name,
     arguments: wrapped ? cmd->get('arguments', [])
-		       : action->get('arguments', []),
+      : action->get('arguments', []),
   }, (_) => {
     echomsg printf('lsp: %s', ActionTitle(action))
   })
@@ -1972,13 +1972,13 @@ enddef
 # only for the one that is picked.  A bare Command has nothing to fill in.
 def RunAction(cl: dict<any>, action: dict<any>)
   if type(action->get('command', {})) == v:t_string
-	|| action->has_key('edit') || !Resolves(cl, 'codeActionProvider')
+      || action->has_key('edit') || !Resolves(cl, 'codeActionProvider')
     DoAction(cl, action)
     return
   endif
   lspclient.Request(cl, 'codeAction/resolve', action, (result: any) =>
-      DoAction(cl, type(result) == v:t_dict && !result->empty()
-						      ? result : action))
+    DoAction(cl, type(result) == v:t_dict && !result->empty()
+    ? result : action))
 enddef
 
 export def CodeAction(first: number, last: number)
@@ -2001,7 +2001,7 @@ export def CodeAction(first: number, last: number)
   }
   lspclient.Request(cl, 'textDocument/codeAction', params, (result: any) => {
     var actions = type(result) == v:t_list
-		  ? result->copy()->filter((_, a) => type(a) == v:t_dict) : []
+      ? result->copy()->filter((_, a) => type(a) == v:t_dict) : []
     if actions->empty()
       util.WarningMsg('the server offers nothing here')
       return
@@ -2011,7 +2011,7 @@ export def CodeAction(first: number, last: number)
     var options = MENU_OPTIONS->extendnew(PopupStyle('menu_popup'))
     options.callback = (_, idx) => {
       if idx > 0 && idx <= len(actions)
-	RunAction(cl, actions[idx - 1])
+        RunAction(cl, actions[idx - 1])
       endif
     }
     popup_menu(actions->mapnew((_, a) => ActionTitle(a)), options)
@@ -2026,8 +2026,8 @@ def InlayHints()
   endif
   var cl = BufClient(bufnr('%'))
   if cl->empty() || !cl.initialized
-	|| !cl.capabilities->has_key('inlayHintProvider')
-	|| lspclient.Declined(cl, 'textDocument/inlayHint')
+      || !cl.capabilities->has_key('inlayHintProvider')
+      || lspclient.Declined(cl, 'textDocument/inlayHint')
     return
   endif
   var bufnr = bufnr('%')
@@ -2111,7 +2111,7 @@ def SemanticTokens()
     semantic_asked[string(bufnr)] = tick
     var previous = semtok.ResultId(bufnr)
     if type(full) == v:t_dict && full->get('delta', false)
-	  && !previous->empty()
+        && !previous->empty()
       method = 'textDocument/semanticTokens/full/delta'
       params.previousResultId = previous
     else
@@ -2211,22 +2211,22 @@ def FoldingRanges()
   endif
   var cl = BufClient(bufnr('%'))
   if cl->empty() || !cl.initialized
-	|| !cl.capabilities->has_key('foldingRangeProvider')
-	|| lspclient.Declined(cl, 'textDocument/foldingRange')
+      || !cl.capabilities->has_key('foldingRangeProvider')
+      || lspclient.Declined(cl, 'textDocument/foldingRange')
     return
   endif
   var bufnr = bufnr('%')
   lspclient.Request(cl, 'textDocument/foldingRange',
-		    {textDocument: {uri: util.PathToUri(bufname(bufnr))}},
-		    (result: any) => {
-    fold.Update(bufnr, type(result) == v:t_list ? result : [])
-    SetFolding(bufnr)
-    # The levels changed under 'foldexpr', which Vim does not know to ask
-    # about again.
-    if bufnr == bufnr('%')
-      setbufvar(bufnr, '&foldmethod', 'expr')
-    endif
-  })
+    {textDocument: {uri: util.PathToUri(bufname(bufnr))}},
+    (result: any) => {
+      fold.Update(bufnr, type(result) == v:t_list ? result : [])
+      SetFolding(bufnr)
+      # The levels changed under 'foldexpr', which Vim does not know to ask
+      # about again.
+      if bufnr == bufnr('%')
+        setbufvar(bufnr, '&foldmethod', 'expr')
+      endif
+    })
 enddef
 
 export def ToggleFolding()
@@ -2268,7 +2268,7 @@ def WithHint(want: string, Use: func(dict<any>))
     return
   endif
   lspclient.Request(cl, 'inlayHint/resolve', hint, (result: any) =>
-      Use(type(result) == v:t_dict && !result->empty() ? result : hint))
+    Use(type(result) == v:t_dict && !result->empty() ? result : hint))
 enddef
 
 export def InlayHintApply()
@@ -2316,46 +2316,46 @@ def CodeLenses()
   endif
   var cl = BufClient(bufnr('%'))
   if cl->empty() || !cl.initialized
-	|| !cl.capabilities->has_key('codeLensProvider')
-	|| lspclient.Declined(cl, 'textDocument/codeLens')
+      || !cl.capabilities->has_key('codeLensProvider')
+      || lspclient.Declined(cl, 'textDocument/codeLens')
     return
   endif
   var bufnr = bufnr('%')
   lspclient.Request(cl, 'textDocument/codeLens',
-      {textDocument: {uri: util.PathToUri(bufname(bufnr))}}, (result: any) => {
-    if bufnr != bufnr('%')
-      return
-    endif
-    var lenses = type(result) == v:t_list ? result : []
-    lens.Update(bufnr, lenses)
+    {textDocument: {uri: util.PathToUri(bufname(bufnr))}}, (result: any) => {
+      if bufnr != bufnr('%')
+        return
+      endif
+      var lenses = type(result) == v:t_list ? result : []
+      lens.Update(bufnr, lenses)
 
-    # A lens may arrive without the command it stands for, which is both its
-    # text and what it runs, so the rest of it is asked for.
-    if !Resolves(cl, 'codeLensProvider')
-      return
-    endif
-    var left = 0
-    for item in lenses
-      if type(item) == v:t_dict && !item->has_key('command')
-	left += 1
+      # A lens may arrive without the command it stands for, which is both its
+      # text and what it runs, so the rest of it is asked for.
+      if !Resolves(cl, 'codeLensProvider')
+        return
       endif
-    endfor
-    for i in range(len(lenses))
-      if type(lenses[i]) != v:t_dict || lenses[i]->has_key('command')
-	continue
-      endif
-      var at = i
-      lspclient.Request(cl, 'codeLens/resolve', lenses[at], (full: any) => {
-	if type(full) == v:t_dict && full->has_key('command')
-	  lenses[at] = full
-	endif
-	left -= 1
-	if left == 0 && bufexists(bufnr)
-	  lens.Update(bufnr, lenses)
-	endif
-      })
-    endfor
-  })
+      var left = 0
+      for item in lenses
+        if type(item) == v:t_dict && !item->has_key('command')
+          left += 1
+        endif
+      endfor
+      for i in range(len(lenses))
+        if type(lenses[i]) != v:t_dict || lenses[i]->has_key('command')
+          continue
+        endif
+        var at = i
+        lspclient.Request(cl, 'codeLens/resolve', lenses[at], (full: any) => {
+          if type(full) == v:t_dict && full->has_key('command')
+            lenses[at] = full
+          endif
+          left -= 1
+          if left == 0 && bufexists(bufnr)
+            lens.Update(bufnr, lenses)
+          endif
+        })
+      endfor
+    })
 enddef
 
 export def ToggleCodeLens()
@@ -2380,17 +2380,17 @@ def DocumentLinks()
   endif
   var cl = BufClient(bufnr('%'))
   if cl->empty() || !cl.initialized
-	|| !cl.capabilities->has_key('documentLinkProvider')
-	|| lspclient.Declined(cl, 'textDocument/documentLink')
+      || !cl.capabilities->has_key('documentLinkProvider')
+      || lspclient.Declined(cl, 'textDocument/documentLink')
     return
   endif
   var bufnr = bufnr('%')
   lspclient.Request(cl, 'textDocument/documentLink',
-      {textDocument: {uri: util.PathToUri(bufname(bufnr))}}, (result: any) => {
-    if bufnr == bufnr('%')
-      link.Update(bufnr, type(result) == v:t_list ? result : [])
-    endif
-  })
+    {textDocument: {uri: util.PathToUri(bufname(bufnr))}}, (result: any) => {
+      if bufnr == bufnr('%')
+        link.Update(bufnr, type(result) == v:t_list ? result : [])
+      endif
+    })
 enddef
 
 export def ToggleDocumentLink()
@@ -2487,17 +2487,17 @@ def SelectionStep(by: number)
   var params = CursorParams()
   selection_asked = true
   lspclient.Request(cl, 'textDocument/selectionRange',
-      {textDocument: params.textDocument, positions: [params.position]},
-      (result: any) => {
-    selection_asked = false
-    if bufnr != bufnr('%')
-      return
-    endif
-    select.Remember(bufnr, type(result) == v:t_list ? result->get(0, {}) : {})
-    if !select.Start()
-      util.WarningMsg('the server found nothing to select here')
-    endif
-  })
+    {textDocument: params.textDocument, positions: [params.position]},
+    (result: any) => {
+      selection_asked = false
+      if bufnr != bufnr('%')
+        return
+      endif
+      select.Remember(bufnr, type(result) == v:t_list ? result->get(0, {}) : {})
+      if !select.Start()
+        util.WarningMsg('the server found nothing to select here')
+      endif
+    })
 enddef
 
 export def SelectionExpand()
@@ -2531,7 +2531,7 @@ export def RunCodeLens()
     endif
   }
   popup_menu(found->mapnew((_, l) =>
-		    l->get('command', {})->get('title', '')), options)
+    l->get('command', {})->get('title', '')), options)
 enddef
 
 # Once the cursor has come to rest.  A timer of this plugin decides when that
@@ -2552,7 +2552,7 @@ def HighlightLater()
     return
   endif
   highlight_timer = timer_start(Setting('highlight_delay'),
-				(_) => HighlightSymbol())
+    (_) => HighlightSymbol())
 enddef
 
 def HighlightSymbol()
@@ -2561,19 +2561,19 @@ def HighlightSymbol()
   endif
   var cl = BufClient(bufnr('%'))
   if cl->empty() || !cl.initialized
-	|| !cl.capabilities->has_key('documentHighlightProvider')
-	|| lspclient.Declined(cl, 'textDocument/documentHighlight')
+      || !cl.capabilities->has_key('documentHighlightProvider')
+      || lspclient.Declined(cl, 'textDocument/documentHighlight')
     return
   endif
   var at = [bufnr('%'), line('.'), col('.')]
   lspclient.Request(cl, 'textDocument/documentHighlight', CursorParams(),
-      (result: any) => {
-	# The answer is about where the cursor was.
-	if at != [bufnr('%'), line('.'), col('.')]
-	  return
-	endif
-	hl.Update(at[0], type(result) == v:t_list ? result : [])
-      })
+    (result: any) => {
+      # The answer is about where the cursor was.
+      if at != [bufnr('%'), line('.'), col('.')]
+        return
+      endif
+      hl.Update(at[0], type(result) == v:t_list ? result : [])
+    })
 enddef
 
 export def References()
@@ -2616,26 +2616,26 @@ enddef
 # A SymbolKind is a number from 1 to 26, named the way the protocol names it.
 #                    1         2         3         4         5         6
 const SYMBOL_KINDS = ['File', 'Module', 'Namespace', 'Package', 'Class',
-    'Method', 'Property', 'Field', 'Constructor', 'Enum', 'Interface',
-    'Function', 'Variable', 'Constant', 'String', 'Number', 'Boolean',
-    'Array', 'Object', 'Key', 'Null', 'EnumMember', 'Struct', 'Event',
-    'Operator', 'TypeParameter']
+  'Method', 'Property', 'Field', 'Constructor', 'Enum', 'Interface',
+  'Function', 'Variable', 'Constant', 'String', 'Number', 'Boolean',
+  'Array', 'Object', 'Key', 'Null', 'EnumMember', 'Struct', 'Event',
+  'Operator', 'TypeParameter']
 
 # Worth more than the line the symbol sits on.
 def SymbolText(sym: dict<any>): string
   var kind = sym->get('kind', 0)
   var name = kind >= 1 && kind <= len(SYMBOL_KINDS)
-					      ? SYMBOL_KINDS[kind - 1] : ''
+    ? SYMBOL_KINDS[kind - 1] : ''
   var container = sym->get('containerName', '')
   return (name->empty() ? '' : '[' .. name .. '] ')
-	 .. (container->empty() ? '' : container .. '::')
-	 .. sym->get('name', '')
+    .. (container->empty() ? '' : container .. '::')
+    .. sym->get('name', '')
 enddef
 
 # A reply about one file is a flat list of SymbolInformation or a tree of
 # DocumentSymbol.  Both end up as one list, the depth showing as indent.
 def FlattenSymbols(syms: any, depth: number, uri: string,
-		   out: list<dict<any>>)
+    out: list<dict<any>>)
   if type(syms) != v:t_list
     return
   endif
@@ -2644,7 +2644,7 @@ def FlattenSymbols(syms: any, depth: number, uri: string,
       continue
     endif
     var where = sym->has_key('location') ? SymbolLocation(sym)
-	: {uri: uri, range: sym->get('selectionRange', sym->get('range', {}))}
+      : {uri: uri, range: sym->get('selectionRange', sym->get('range', {}))}
     if !where->get('uri', '')->empty()
       out->add(extend(where, {text: repeat('  ', depth) .. SymbolText(sym)}))
     endif
@@ -2663,17 +2663,17 @@ export def Outline()
   endif
   var uri = util.PathToUri(bufname('%'))
   lspclient.Request(cl, 'textDocument/documentSymbol',
-		    {textDocument: {uri: uri}}, (result: any) => {
-    var locs: list<dict<any>> = []
-    FlattenSymbols(result, 0, uri, locs)
-    var items = LocationItems(locs)
-    if items->empty()
-      util.WarningMsg('the server found no symbols here')
-      return
-    endif
-    setloclist(0, [], ' ', {title: 'LSP symbols in this file', items: items})
-    lopen
-  })
+    {textDocument: {uri: uri}}, (result: any) => {
+      var locs: list<dict<any>> = []
+      FlattenSymbols(result, 0, uri, locs)
+      var items = LocationItems(locs)
+      if items->empty()
+        util.WarningMsg('the server found no symbols here')
+        return
+      endif
+      setloclist(0, [], ' ', {title: 'LSP symbols in this file', items: items})
+      lopen
+    })
 enddef
 
 # What comes back holds the function at the other end and the places the call
@@ -2695,7 +2695,7 @@ def CallLocations(calls: any, incoming: bool, here: string): list<dict<any>>
     var text = SymbolText(other)
     for range in call->get('fromRanges', [])
       if type(range) == v:t_dict
-	locs->add({uri: uri, range: range, text: text})
+        locs->add({uri: uri, range: range, text: text})
       endif
     endfor
   endfor
@@ -2713,25 +2713,25 @@ def CallHierarchy(incoming: bool)
   endif
   var here = util.PathToUri(bufname('%'))
   lspclient.Request(cl, 'textDocument/prepareCallHierarchy', CursorParams(),
-      (result: any) => {
-    var items = type(result) == v:t_list ? result : []
-    if items->empty() || type(items[0]) != v:t_dict
-      util.WarningMsg('there is no call hierarchy here')
-      return
-    endif
-    var what = incoming ? 'incoming' : 'outgoing'
-    lspclient.Request(cl, 'callHierarchy/' .. what .. 'Calls',
-		      {item: items[0]}, (calls: any) => {
-      var qf = LocationItems(CallLocations(calls, incoming, here))
-      if qf->empty()
-	util.WarningMsg(incoming ? 'nothing calls this' : 'this calls nothing')
-	return
+    (result: any) => {
+      var items = type(result) == v:t_list ? result : []
+      if items->empty() || type(items[0]) != v:t_dict
+        util.WarningMsg('there is no call hierarchy here')
+        return
       endif
-      setqflist([], ' ', {title: 'LSP ' .. what .. ' calls: '
-			  .. items[0]->get('name', ''), items: qf})
-      copen
+      var what = incoming ? 'incoming' : 'outgoing'
+      lspclient.Request(cl, 'callHierarchy/' .. what .. 'Calls',
+        {item: items[0]}, (calls: any) => {
+          var qf = LocationItems(CallLocations(calls, incoming, here))
+          if qf->empty()
+            util.WarningMsg(incoming ? 'nothing calls this' : 'this calls nothing')
+            return
+          endif
+          setqflist([], ' ', {title: 'LSP ' .. what .. ' calls: '
+            .. items[0]->get('name', ''), items: qf})
+          copen
+        })
     })
-  })
 enddef
 
 export def IncomingCalls()
@@ -2753,7 +2753,7 @@ def TypeLocations(types: any): list<dict<any>>
     var range = item->get('selectionRange', item->get('range', {}))
     if type(range) == v:t_dict && !range->empty()
       locs->add({uri: item->get('uri', ''), range: range,
-		 text: SymbolText(item)})
+        text: SymbolText(item)})
     endif
   endfor
   return locs
@@ -2771,27 +2771,27 @@ def TypeHierarchy(up: bool)
     return
   endif
   lspclient.Request(cl, 'textDocument/prepareTypeHierarchy', CursorParams(),
-      (result: any) => {
-    var items = type(result) == v:t_list ? result : []
-    if items->empty() || type(items[0]) != v:t_dict
-      util.WarningMsg('there is no type hierarchy here')
-      return
-    endif
-    var what = up ? 'supertypes' : 'subtypes'
-    lspclient.Request(cl, 'typeHierarchy/' .. what, {item: items[0]},
-		      (types: any) => {
-      var qf = LocationItems(TypeLocations(types))
-      if qf->empty()
-	var msg = up ? 'nothing is above this one'
-		     : 'nothing is below this one'
-	util.WarningMsg(msg)
-	return
+    (result: any) => {
+      var items = type(result) == v:t_list ? result : []
+      if items->empty() || type(items[0]) != v:t_dict
+        util.WarningMsg('there is no type hierarchy here')
+        return
       endif
-      setqflist([], ' ', {title: 'LSP ' .. what .. ': '
-			  .. items[0]->get('name', ''), items: qf})
-      copen
+      var what = up ? 'supertypes' : 'subtypes'
+      lspclient.Request(cl, 'typeHierarchy/' .. what, {item: items[0]},
+        (types: any) => {
+          var qf = LocationItems(TypeLocations(types))
+          if qf->empty()
+            var msg = up ? 'nothing is above this one'
+              : 'nothing is below this one'
+            util.WarningMsg(msg)
+            return
+          endif
+          setqflist([], ' ', {title: 'LSP ' .. what .. ': '
+            .. items[0]->get('name', ''), items: qf})
+          copen
+        })
     })
-  })
 enddef
 
 export def SuperTypes()
@@ -2812,7 +2812,7 @@ enddef
 
 def ShowSymbols(query: string, syms: list<any>)
   var items = LocationItems(syms->mapnew((_, s) =>
-			extend(SymbolLocation(s), {text: SymbolText(s)})))
+    extend(SymbolLocation(s), {text: SymbolText(s)})))
   if items->empty()
     util.WarningMsg('no symbol matches ' .. query)
     return
@@ -2844,9 +2844,9 @@ export def Symbol(query: string)
     var left = 0
     if Resolves(cl, 'workspaceSymbolProvider')
       for sym in syms
-	if NeedsRange(sym)
-	  left += 1
-	endif
+        if NeedsRange(sym)
+          left += 1
+        endif
       endfor
     endif
     if left == 0
@@ -2855,19 +2855,19 @@ export def Symbol(query: string)
     endif
     for i in range(len(syms))
       if !NeedsRange(syms[i])
-	continue
+        continue
       endif
       var at = i
       lspclient.Request(cl, 'workspaceSymbol/resolve', syms[at],
-	  (full: any) => {
-	if type(full) == v:t_dict && !NeedsRange(full)
-	  syms[at] = full
-	endif
-	left -= 1
-	if left == 0
-	  ShowSymbols(query, syms)
-	endif
-      })
+        (full: any) => {
+          if type(full) == v:t_dict && !NeedsRange(full)
+            syms[at] = full
+          endif
+          left -= 1
+          if left == 0
+            ShowSymbols(query, syms)
+          endif
+        })
     endfor
   })
 enddef
@@ -2930,7 +2930,7 @@ def ExpandSnippet(snippet: string): list<any>
     # not tied to one another.
     var nr = str2nr(matchstr(found, '\d\+'))
     stops->add({at: start, len: strlen(out) - start,
-		key: (nr == 0 ? 100000 : nr) * 1000 + len(stops)})
+      key: (nr == 0 ? 100000 : nr) * 1000 + len(stops)})
   endwhile
   return [out, stops->sort((a, b) => a.key - b.key)]
 enddef
@@ -2982,7 +2982,7 @@ enddef
 def CompletionTrigger(cl: dict<any>, typed: string): bool
   var provider = cl.capabilities->get('completionProvider', {})
   return type(provider) == v:t_dict
-	  && index(provider->get('triggerCharacters', []), typed) >= 0
+    && index(provider->get('triggerCharacters', []), typed) >= 0
 enddef
 
 # 'omnifunc' for a buffer with a server, see |complete-functions|.
@@ -3023,7 +3023,7 @@ export def OmniFunc(findstart: number, base: string): any
     # Where Vim asked on its own, a word to go on or a character the server
     # named as a trigger is what makes it a place to complete.
     if complete_info(['auto']).auto && started.word == started.cursor
-	  && !CompletionTrigger(cl, before->slice(-1))
+        && !CompletionTrigger(cl, before->slice(-1))
       completion_incomplete = false
       return -3
     endif
@@ -3036,7 +3036,7 @@ export def OmniFunc(findstart: number, base: string): any
   var params = CursorParams()
   params.context = CompletionContext(cl, before)
   var result = lspclient.RequestSync(cl, 'textDocument/completion',
-					   params, timeout)
+    params, timeout)
   var items: list<any> = []
   var incomplete = false
   if type(result) == v:t_dict
@@ -3047,8 +3047,8 @@ export def OmniFunc(findstart: number, base: string): any
   endif
   completion_incomplete = incomplete
   var words = items->filter((_, it) => type(it) == v:t_dict
-					      && ItemMatches(it, base))
-		   ->mapnew((_, it) => ToCompleteItem(it))
+    && ItemMatches(it, base))
+    ->mapnew((_, it) => ToCompleteItem(it))
   # What was cut short is asked for again as the word grows.
   return incomplete ? {words: words, refresh: 'always'} : words
 enddef
@@ -3062,7 +3062,7 @@ var resolve_seq = 0
 def ResolveProvider(cl: dict<any>): bool
   var provider = cl.capabilities->get('completionProvider', {})
   return type(provider) == v:t_dict
-			  && provider->get('resolveProvider', false)
+    && provider->get('resolveProvider', false)
 enddef
 
 def ShowInfo(text: string)
@@ -3092,7 +3092,7 @@ def OnCompleteChanged()
 
   var cl = BufClient(bufnr('%'))
   if cl->empty() || !cl.initialized || !ResolveProvider(cl)
-	|| item->has_key('documentation')
+      || item->has_key('documentation')
     return
   endif
   var seq = resolve_seq
@@ -3136,19 +3136,19 @@ enddef
 # to the one before.  What a stop stands for is selected, so that it is typed
 # over.  An empty string means there was nowhere to go, which lets a mapping
 # fall back on what its key does otherwise: >vim
-#	inoremap <expr> <Tab> lsp.SnippetKeys(1) ?? "\<Tab>"
+#       inoremap <expr> <Tab> lsp.SnippetKeys(1) ?? "\<Tab>"
 export def SnippetKeys(dir: number = 1): string
   if !stop_type_added
     return ''
   endif
   var found = prop_list(1, {bufnr: bufnr('%'), end_lnum: line('$'),
-			    types: [STOP_TYPE]})
+    types: [STOP_TYPE]})
   var at = get(b:, 'lsp_snippet_at', 0)
   var next: dict<any> = {}
   for stop in found
     if (dir > 0 ? stop.id > at : stop.id < at)
-	  && (next->empty()
-	      || (dir > 0 ? stop.id < next.id : stop.id > next.id))
+        && (next->empty()
+        || (dir > 0 ? stop.id < next.id : stop.id > next.id))
       next = stop
     endif
   endfor
@@ -3159,13 +3159,13 @@ export def SnippetKeys(dir: number = 1): string
   # Normal mode first, so that the column is the one that was worked out and
   # not what leaving Insert mode makes of it.
   var keys = printf("\<C-\>\<C-n>:call cursor(%d, %d)\<CR>",
-						      next.lnum, next.col)
+    next.lnum, next.col)
   if next.length <= 0
     # cursor() cannot go past the last byte, so the far end needs "a".
     return keys .. (next.col > strlen(getline(next.lnum)) ? 'a' : 'i')
   endif
   var over = strpart(getline(next.lnum), next.col - 1, next.length)
-			  ->strchars()
+    ->strchars()
   return keys .. 'v' .. (over > 1 ? printf('%dl', over - 1) : '') .. "\<C-g>"
 enddef
 
@@ -3175,14 +3175,14 @@ def TextPos(lnum: number, head: string, text: string, at: number): list<number>
   var before = head .. strpart(text, 0, at)
   var nl = strridx(before, "\n")
   return [lnum + count(before, "\n"),
-	  nl < 0 ? strlen(before) + 1 : strlen(before) - nl]
+    nl < 0 ? strlen(before) + 1 : strlen(before) - nl]
 enddef
 
 # Puts "text" in place of the bytes from "from" to "to" of line "lnum", marks
 # the stops, and leaves the cursor on the first of them.  The change belongs
 # to the keystroke that took the item, hence the |:undojoin|.
 def PutText(lnum: number, from: number, to: number, text: string,
-					      stops: list<dict<number>> = [])
+    stops: list<dict<number>> = [])
   var line = getline(lnum)
   var head = strpart(line, 0, from)
   var tail = strpart(line, to)
@@ -3214,7 +3214,7 @@ def PutText(lnum: number, from: number, to: number, text: string,
     endtry
   endfor
   var [to_lnum, to_col] = TextPos(lnum, head, text,
-			      stops->empty() ? strlen(text) : stops[0].at)
+    stops->empty() ? strlen(text) : stops[0].at)
   cursor(to_lnum, to_col)
 enddef
 
@@ -3225,7 +3225,7 @@ enddef
 def FixWiderEdit(item: dict<any>): bool
   var edit = item->get('textEdit', {})
   if started->empty() || type(edit) != v:t_dict || !edit->has_key('range')
-	|| line('.') != started.lnum
+      || line('.') != started.lnum
     return false
   endif
   var first = edit.range->get('start', {})
@@ -3233,7 +3233,7 @@ def FixWiderEdit(item: dict<any>): bool
     return false
   endif
   var from = util.ColFromLsp(started.line, first->get('character', 0),
-			     util.Encoding(bufnr('%'))) - 1
+    util.Encoding(bufnr('%'))) - 1
   if from >= started.word
     return false
   endif
@@ -3258,7 +3258,7 @@ def FinishSnippet(item: dict<any>, word: string)
   var from = to - strlen(word)
   # Only what the menu is known to have put in is replaced.
   if word->empty() || from < 0
-	|| strpart(getline(lnum), from, strlen(word)) !=# word
+      || strpart(getline(lnum), from, strlen(word)) !=# word
     return
   endif
   var [text, stops] = ExpandSnippet(ItemText(item))
@@ -3324,22 +3324,22 @@ def Watchers(cl: dict<any>): list<dict<any>>
     endif
     for watcher in item->get('registerOptions', {})->get('watchers', [])
       if type(watcher) != v:t_dict
-	continue
+        continue
       endif
       var pattern = watcher->get('globPattern', '')
       var base = cl.root
       # A pattern may come with a base of its own, either a folder or a bare
       # URI.
       if type(pattern) == v:t_dict
-	var uri = pattern->get('baseUri', '')
-	base = util.UriToPath(type(uri) == v:t_dict ? uri->get('uri', '') : uri)
-	pattern = pattern->get('pattern', '')
+        var uri = pattern->get('baseUri', '')
+        base = util.UriToPath(type(uri) == v:t_dict ? uri->get('uri', '') : uri)
+        pattern = pattern->get('pattern', '')
       endif
       if type(pattern) != v:t_string || pattern->empty()
-	continue
+        continue
       endif
       out->add({base: base, pat: glob2regpat(pattern),
-		kind: watcher->get('kind', WATCH_ALL)})
+        kind: watcher->get('kind', WATCH_ALL)})
     endfor
   endfor
   return out
@@ -3375,9 +3375,9 @@ def Register(cl: dict<any>, params: any)
     var method = item->get('method', '')
     if REGISTERED_AS->has_key(method)
       for [id, was] in cl.registrations->items()
-	if was->get('method', '') ==# method
-	  remove(cl.registrations, id)
-	endif
+        if was->get('method', '') ==# method
+          remove(cl.registrations, id)
+        endif
       endfor
     endif
     cl.registrations[item.id] = item
@@ -3396,7 +3396,7 @@ def Unregister(cl: dict<any>, params: any)
   # The protocol spells it "unregisterations"; a server that spells it the
   # other way is understood as well.
   for item in params->get('unregisterations',
-			  params->get('unregistrations', []))
+      params->get('unregistrations', []))
     if type(item) == v:t_dict && cl.registrations->has_key(item->get('id', ''))
       remove(cl.registrations, item.id)
     endif
@@ -3417,12 +3417,12 @@ def Watched(cl: dict<any>, path: string, kind: number): bool
     endif
     var base = watcher.base .. '/'
     if strpart(path, 0, strlen(base)) ==# base
-	  && strpart(path, strlen(base)) =~# watcher.pat
+        && strpart(path, strlen(base)) =~# watcher.pat
       return true
     endif
     for name in RelativeTo(cl, path)
       if name =~# watcher.pat
-	return true
+        return true
       endif
     endfor
   endfor
@@ -3440,7 +3440,7 @@ def FileChanged(path: string, kind: number, event: number)
   for cl in clients->values()
     if cl.running && cl.initialized && Watched(cl, full, kind)
       lspclient.Notify(cl, 'workspace/didChangeWatchedFiles',
-		    {changes: [{uri: util.PathToUri(full), type: event}]})
+        {changes: [{uri: util.PathToUri(full), type: event}]})
     endif
   endfor
 enddef
@@ -3472,7 +3472,7 @@ def WantsFileOp(cl: dict<any>, op: string, path: string): bool
     endif
     var pattern = filter->get('pattern', {})
     if type(pattern) != v:t_dict
-	  || pattern->get('matches', 'file') !=# 'file'
+        || pattern->get('matches', 'file') !=# 'file'
       continue
     endif
     var glob = pattern->get('glob', '')
@@ -3484,7 +3484,7 @@ def WantsFileOp(cl: dict<any>, op: string, path: string): bool
     var pat = glob2regpat(glob)
     for name in RelativeTo(cl, path)
       if name =~# pat
-	return true
+        return true
       endif
     endfor
   endfor
@@ -3496,7 +3496,7 @@ const FILE_OP_TIMEOUT = 1000
 
 def FileOpEdits(cl: dict<any>, method: string, files: list<any>)
   var edit = lspclient.RequestSync(cl, method, {files: files},
-				   FILE_OP_TIMEOUT)
+    FILE_OP_TIMEOUT)
   if type(edit) == v:t_dict && !edit->empty()
     ApplyWorkspaceEdit(edit)
   endif
@@ -3511,7 +3511,7 @@ def BeforeWrite(path: string)
   for cl in clients->values()
     if cl.running && cl.initialized && WantsFileOp(cl, 'willCreate', full)
       FileOpEdits(cl, 'workspace/willCreateFiles',
-		  [{uri: util.PathToUri(full)}])
+        [{uri: util.PathToUri(full)}])
     endif
   endfor
 enddef
@@ -3521,13 +3521,13 @@ def AfterWrite(path: string)
   if !write_existed
     for cl in clients->values()
       if cl.running && cl.initialized && WantsFileOp(cl, 'didCreate', full)
-	lspclient.Notify(cl, 'workspace/didCreateFiles',
-			 {files: [{uri: util.PathToUri(full)}]})
+        lspclient.Notify(cl, 'workspace/didCreateFiles',
+          {files: [{uri: util.PathToUri(full)}]})
       endif
     endfor
   endif
   FileChanged(path, write_existed ? WATCH_CHANGE : WATCH_CREATE,
-	      write_existed ? FILE_CHANGED : FILE_CREATED)
+    write_existed ? FILE_CHANGED : FILE_CREATED)
 enddef
 
 # Renaming a file is not something Vim does on its own, so it is a command of
@@ -3589,8 +3589,8 @@ export def RenameFile(newname: string)
     endif
   endif
   echomsg printf('lsp: %s is now %s%s', fnamemodify(old, ':t'),
-		 fnamemodify(new, ':t'),
-		 heard ? ', the server was told' : '')
+    fnamemodify(new, ':t'),
+    heard ? ', the server was told' : '')
 enddef
 
 # A server may report on its own with "textDocument/publishDiagnostics", or
@@ -3615,7 +3615,7 @@ def PullDiagnostics()
   endif
   var provider = Capability(cl, 'diagnosticProvider')
   if type(provider) != v:t_dict
-	|| lspclient.Declined(cl, 'textDocument/diagnostic')
+      || lspclient.Declined(cl, 'textDocument/diagnostic')
     return
   endif
   var bufnr = bufnr('%')
@@ -3646,7 +3646,7 @@ def PullDiagnostics()
     if result->get('kind', 'full') ==# 'full'
       cl.diagnostics[uri] = result->get('items', [])
       if bufexists(bufnr)
-	diag.Update(bufnr, cl.diagnostics[uri])
+        diag.Update(bufnr, cl.diagnostics[uri])
       endif
     endif
   })
@@ -3709,14 +3709,14 @@ def PullWorkspace(cl: dict<any>)
   endif
   var provider = Capability(cl, 'diagnosticProvider')
   if type(provider) != v:t_dict || !provider->get('workspaceDiagnostics', false)
-	|| lspclient.Declined(cl, 'workspace/diagnostic')
+      || lspclient.Declined(cl, 'workspace/diagnostic')
     return
   endif
   workspace_asked += 1
   cl.workspace_token = 'lsp-workspace-diagnostic-' .. workspace_asked
   var params: dict<any> = {
     previousResultIds: cl.workspace_ids->keys()
-		   ->mapnew((_, u) => ({uri: u, value: cl.workspace_ids[u]})),
+      ->mapnew((_, u) => ({uri: u, value: cl.workspace_ids[u]})),
     partialResultToken: cl.workspace_token,
   }
   var identifier = provider->get('identifier', '')
@@ -3727,16 +3727,16 @@ def PullWorkspace(cl: dict<any>)
   AwaitPartial(cl.workspace_token, (value: any) => {
     if type(value) == v:t_dict
       for report in value->get('items', [])
-	TakeWorkspaceReport(cl, report)
+        TakeWorkspaceReport(cl, report)
       endfor
     endif
   })
   cl.workspace_pull = lspclient.Request(cl, 'workspace/diagnostic', params,
     (result: any) => {
       if type(result) == v:t_dict
-	for report in result->get('items', [])
-	  TakeWorkspaceReport(cl, report)
-	endfor
+        for report in result->get('items', [])
+          TakeWorkspaceReport(cl, report)
+        endfor
       endif
       # The server closed it, so it is asked again.
       ForgetWorkspacePull(cl)
@@ -3746,9 +3746,9 @@ def PullWorkspace(cl: dict<any>)
       ForgetWorkspacePull(cl)
       # Anything else is the server declining to answer at all.
       if code == lspclient.CANCELLED
-	PullWorkspace(cl)
+        PullWorkspace(cl)
       else
-	lspclient.Decline(cl, 'workspace/diagnostic')
+        lspclient.Decline(cl, 'workspace/diagnostic')
       endif
     })
 enddef
@@ -3842,11 +3842,11 @@ def ShowMessageRequest(params: any, Answer: func(any))
   endif
   var options = MENU_OPTIONS->extendnew(PopupStyle('menu_popup'))
   options.title = ' ' .. params->get('message', '')
-			      ->substitute('\n', ' ', 'g') .. ' '
+    ->substitute('\n', ' ', 'g') .. ' '
   options.callback = (_, idx) =>
-      Answer(idx > 0 && idx <= len(actions) ? actions[idx - 1] : v:null)
+    Answer(idx > 0 && idx <= len(actions) ? actions[idx - 1] : v:null)
   popup_menu(actions->mapnew((_, action) =>
-	  type(action) == v:t_dict ? action->get('title', '') : ''), options)
+    type(action) == v:t_dict ? action->get('title', '') : ''), options)
 enddef
 
 # |:URLOpen| hands it to whatever the system opens such a thing with, and
@@ -3888,7 +3888,7 @@ enddef
 # What a server asks of the editor.  Anything not answered here is turned
 # down by the caller.
 def OnRequest(cl: dict<any>, method: string, params: any,
-	      Answer: func(any)): bool
+    Answer: func(any)): bool
   if method ==# 'window/workDoneProgress/create'
     Answer(v:null)
     return true
@@ -3940,7 +3940,7 @@ def OnRequest(cl: dict<any>, method: string, params: any,
     return true
   endif
   if method ==# 'client/registerCapability'
-	|| method ==# 'client/unregisterCapability'
+      || method ==# 'client/unregisterCapability'
     if method ==# 'client/registerCapability'
       Register(cl, params)
     else
@@ -3960,7 +3960,7 @@ def OnRequest(cl: dict<any>, method: string, params: any,
   var done = ApplyWorkspaceEdit(edit)
   if done > 0
     echomsg printf('lsp: the server changed %d file%s, not written yet',
-					  done, done == 1 ? '' : 's')
+      done, done == 1 ? '' : 's')
   endif
   Answer({applied: done > 0})
   return true
@@ -3974,4 +3974,4 @@ if $LSP_COMPILE_CHECK != ''
   defcompile
 endif
 
-# vim: sw=2 sts=2 et
+# vim: ts=2 sw=0 et

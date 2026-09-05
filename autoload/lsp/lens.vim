@@ -64,7 +64,7 @@ export def Update(bufnr: number, items: list<any>)
       continue
     endif
     var lnum = util.PosFromLsp(bufnr,
-			  lens->get('range', {})->get('start', {}))[0]
+      lens->get('range', {})->get('start', {}))[0]
     if !here->has_key(string(lnum))
       here[string(lnum)] = []
       order->add(lnum)
@@ -74,11 +74,11 @@ export def Update(bufnr: number, items: list<any>)
   for lnum in order
     try
       prop_add(lnum, 0, {
-	bufnr: bufnr,
-	type: TYPE,
-	text: Indent(bufnr, lnum) .. here[string(lnum)]
-		->mapnew((_, l) => Title(l))->join(' | '),
-	text_align: 'above',
+        bufnr: bufnr,
+        type: TYPE,
+        text: Indent(bufnr, lnum) .. here[string(lnum)]
+          ->mapnew((_, l) => Title(l))->join(' | '),
+        text_align: 'above',
       })
     catch /E96[4-6]/
       # The buffer moved on while the answer was on its way.
@@ -104,4 +104,4 @@ if $LSP_COMPILE_CHECK != ''
   defcompile
 endif
 
-# vim: sw=2 sts=2 et
+# vim: ts=2 sw=0 et

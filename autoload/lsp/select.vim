@@ -36,8 +36,8 @@ enddef
 # What the remembered step put on screen is what has to be there still.
 def Fresh(): bool
   return !steps->empty() && at >= 0
-      && for_buf == bufnr('%') && for_tick == b:changedtick
-      && mode() =~# "^[vV\<C-v>]" && Now() == steps[at]
+    && for_buf == bufnr('%') && for_tick == b:changedtick
+    && mode() =~# "^[vV\<C-v>]" && Now() == steps[at]
 enddef
 
 # The character before a position, which is where a range ends for Vim: the
@@ -67,12 +67,12 @@ export def Remember(bufnr: number, chain: any)
   while type(node) == v:t_dict && type(node->get('range', 0)) == v:t_dict
     var [lnum, col] = util.PosFromLsp(bufnr, node.range->get('start', {}))
     var [end_lnum, end_col] = util.PosFromLsp(bufnr,
-					      node.range->get('end', {}))
+      node.range->get('end', {}))
     # A range with nothing in it holds nothing to select.
     if end_lnum > lnum || end_col > col
       var step = [lnum, col] + Before(end_lnum, end_col)
       if steps->empty() || step != steps[-1]
-	steps->add(step)
+        steps->add(step)
       endif
     endif
     node = node->get('parent', 0)
@@ -133,3 +133,5 @@ export def Start(): bool
   redraw
   return true
 enddef
+
+# vim: ts=2 sw=0 et

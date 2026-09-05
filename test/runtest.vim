@@ -23,11 +23,11 @@ execute 'source ' .. fnameescape(PLUGIN .. '/plugin/lsp.vim')
 # every test failing on a missing command.  Report what is wrong instead.
 if !exists(':LspStart')
   writefile(['This Vim cannot run the plugin, so nothing was tested.',
-	     'It needs 9.2.1004 or later with +job and +channel; this one is '
-	     .. v:versionlong .. (has('job') ? '' : ' without +job')
-	     .. (has('channel') ? '' : ' without +channel') .. '.',
-	     'Name another with $VIMPROG:',
-	     '    VIMPROG=/path/to/vim ./run'], HERE .. '/messages')
+    'It needs 9.2.1004 or later with +job and +channel; this one is '
+    .. v:versionlong .. (has('job') ? '' : ' without +job')
+    .. (has('channel') ? '' : ' without +channel') .. '.',
+    'Name another with $VIMPROG:',
+    '    VIMPROG=/path/to/vim ./run'], HERE .. '/messages')
   cquit 1
 endif
 
@@ -76,12 +76,12 @@ def Main()
   for file in glob(HERE .. '/test_*.vim', false, true)->sort()
     execute 'source ' .. fnameescape(file)
     var names = getcompletion('Test_', 'function')
-		    ->mapnew((_, n) => n->substitute('()\=$', '', ''))
-		    ->sort()
+      ->mapnew((_, n) => n->substitute('()\=$', '', ''))
+      ->sort()
     # $TEST_FILTER narrows a run down to what is being looked at.
     for name in names
       if $TEST_FILTER ==# '' || name =~ $TEST_FILTER
-	RunOne(name)
+        RunOne(name)
       endif
     endfor
     # The next file brings its own; these would otherwise run again.
@@ -102,6 +102,8 @@ try
   Main()
 catch
   writefile(['the runner itself failed:', v:throwpoint, v:exception],
-	    HERE .. '/messages')
+    HERE .. '/messages')
   cquit 1
 endtry
+
+# vim: ts=2 sw=0 et

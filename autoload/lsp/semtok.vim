@@ -52,7 +52,7 @@ def Define()
   # No link for this one: a line through the text means "do not use it"
   # whatever the colors around it are.
   highlight default LspSemDeprecated term=strikethrough cterm=strikethrough
-	\ gui=strikethrough
+        \ gui=strikethrough
   highlight default link LspSemReadonly Constant
   defined = true
 enddef
@@ -102,7 +102,7 @@ def GroupFor(type_name: string, mods: list<string>): string
     for name in mods
       var group = base .. toupper(name[0]) .. name[1 : ]
       if hlexists(group)
-	return group
+        return group
       endif
     endfor
   endif
@@ -169,7 +169,7 @@ def Paint(bufnr: number, legend: dict<any>, data: list<number>)
     var key = data[at + 3] .. ':' .. data[at + 4]
     if !by_token->has_key(key)
       by_token[key] = GroupFor(token_types->get(data[at + 3], ''),
-			       ModNames(mod_names, data[at + 4]))
+        ModNames(mod_names, data[at + 4]))
     endif
     var group = by_token[key]
     at += 5
@@ -223,21 +223,21 @@ export def Update(bufnr: number, legend: dict<any>, result: any): bool
     # An edit names a place in the data as it was, so a later one is applied
     # before an earlier one moves it.
     for edit in result.edits->copy()->sort((a, b) =>
-					  b->get('start', 0) - a->get('start', 0))
+        b->get('start', 0) - a->get('start', 0))
       var start = edit->get('start', 0)
       var deleted = edit->get('deleteCount', 0)
       if start < 0 || start > len(data) || start + deleted > len(data)
-	# There is nothing to apply the delta to, so it is dropped and the
-	# next answer is asked for in full.
-	Forget(bufnr)
-	return false
+        # There is nothing to apply the delta to, so it is dropped and the
+        # next answer is asked for in full.
+        Forget(bufnr)
+        return false
       endif
       if deleted > 0
-	remove(data, start, start + deleted - 1)
+        remove(data, start, start + deleted - 1)
       endif
       var added = edit->get('data', [])
       if !added->empty()
-	extend(data, added, start)
+        extend(data, added, start)
       endif
     endfor
   else
@@ -253,4 +253,4 @@ if $LSP_COMPILE_CHECK != ''
   defcompile
 endif
 
-# vim: sw=2 sts=2 et
+# vim: ts=2 sw=0 et
