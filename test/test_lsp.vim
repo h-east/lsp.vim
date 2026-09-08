@@ -629,6 +629,36 @@ def g:Test_the_commands_say_what_they_did()
   assert_match('no server was running', LastMessage())
 enddef
 
+def g:LspTestCommand(): list<string>
+  return t.CMD
+enddef
+
+# A "cmd" may be a Funcref, called when the server starts.
+def g:Test_the_command_can_come_from_a_function()
+  assert_true(t.StartServer({capabilities: SYNC}, ['int one;'],
+    {cmd: function('g:LspTestCommand')}))
+  assert_match('ready', execute('LspStatus'))
+enddef
+
+# The function of a plugin that is not installed is reported when the server
+# would start, not when the vimrc is read.
+def g:Test_a_command_from_a_plugin_that_is_not_there()
+  var saved = g:lsp_server_list
+  defer execute('g:lsp_server_list = ' .. string(saved))
+  g:lsp_server_list = [{name: 'ghost', filetypes: ['ghostft'],
+    cmd: function('nosuchplugin#Command')}]
+  assert_match('the configuration is good', execute('LspConfigCheck'))
+
+  var file = fnamemodify(t.SRC, ':h') .. '/Xghost.txt'
+  writefile([''], file)
+  defer delete(file)
+  messages clear
+  execute 'edit! ' .. fnameescape(file)
+  defer execute('bwipe!')
+  setfiletype ghostft
+  assert_match('server "ghost": .*E117.*nosuchplugin#Command', LastMessage())
+enddef
+
 def g:Test_a_file_that_is_there_is_not_written_over()
   const OTHER = t.SRC->substitute('\.c$', '_taken.c', '')
   writefile(['do not lose me'], OTHER)

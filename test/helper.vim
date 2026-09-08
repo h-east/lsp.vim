@@ -8,6 +8,7 @@ const TRACE = HERE .. '/Xtrace.jsonl'
 # "python3"; $PYTHON names another one.
 const PYTHON = !empty($PYTHON) ? $PYTHON
   : !empty(exepath('python3')) ? 'python3' : 'python'
+export const CMD = [PYTHON, HERE .. '/fakeserver.py']
 
 # Waits for something to become true, checking often enough that a test does
 # not spend its time asleep.
@@ -42,7 +43,7 @@ export def StartServer(scenario: dict<any>, lines: list<string>,
   g:lsp_server_list = [extend({
     name: 'fake',
     filetypes: ['c'],
-    cmd: [PYTHON, HERE .. '/fakeserver.py'],
+    cmd: CMD,
     rootPatterns: ['.git'],
   }, server)]
 

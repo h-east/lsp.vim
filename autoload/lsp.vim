@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.012'
+const VERSION = '0.2.013'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -824,9 +824,12 @@ def CheckServerList()
     for [key, value] in config->items()
       if !SERVER_KEYS->has_key(key)
         Complain(where, printf('has no such key as "%s"', key))
+      elseif key ==# 'cmd' && type(value) == v:t_func
+        # Called when the server starts.
+        continue
       elseif type(value) != SERVER_KEYS[key]
         Complain(where, printf('"%s" takes %s', key,
-          TypeName(SERVER_KEYS[key])))
+          key ==# 'cmd' ? 'a List or a Funcref' : TypeName(SERVER_KEYS[key])))
       elseif SERVER_KEYS[key] == v:t_list
         CheckList(where, key, value, key !=# 'rootPatterns')
       endif

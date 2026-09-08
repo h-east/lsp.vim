@@ -93,7 +93,13 @@ g:lsp_server_list
 		filetypes	List of 'filetype' values the server is used
 				for.
 		cmd		The command to run, as a List, the way
-				|job_start()| takes it.
+				|job_start()| takes it, or a Funcref that
+				returns that List.  The Funcref is called when
+				the server starts, so a command that another
+				plugin builds does not need that plugin when
+				the vimrc is read: >
+					cmd: function('vim9ls#Command'),
+<
 		rootPatterns	Optional List of file or directory names.
 				The first one found from the file upwards
 				marks the root of the workspace.  When none is

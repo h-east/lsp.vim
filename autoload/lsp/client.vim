@@ -435,8 +435,23 @@ enddef
 export def Start(config: dict<any>, root: string,
     OnReady: func(dict<any>), snippet: bool = false,
     hover_format: list<string> = ['plaintext']): dict<any>
-  if !executable(config.cmd[0])
-    util.ErrorMsg('cannot execute "' .. config.cmd[0] .. '"')
+  var cmd = config.cmd
+  if type(cmd) == v:t_func
+    # Built by another plugin at this point, so that plugin does not have
+    # to be there when the vimrc is read.
+    try
+      cmd = call(cmd, [])
+    catch
+      util.ErrorMsg('server "' .. config.name .. '": ' .. v:exception)
+      return {}
+    endtry
+    if type(cmd) != v:t_list || cmd->empty()
+      util.ErrorMsg('server "' .. config.name .. '": "cmd" gave no List')
+      return {}
+    endif
+  endif
+  if !executable(cmd[0])
+    util.ErrorMsg('cannot execute "' .. cmd[0] .. '"')
     return {}
   endif
 
@@ -473,7 +488,7 @@ export def Start(config: dict<any>, root: string,
     workspace_ids: {},
   }
 
-  var job = job_start(config.cmd, {
+  var job = job_start(cmd, {
     in_mode: 'lsp',
     out_mode: 'lsp',
     err_mode: 'nl',
