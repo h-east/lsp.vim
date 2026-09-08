@@ -1718,6 +1718,33 @@ def g:Test_the_signature_stands_over_the_call_it_describes()
     popup_getpos(popup_list()[0]).core_col)
 enddef
 
+# An argument list that goes on over lines: the popup goes above the line
+# the call opens on, not over it.
+def g:Test_the_signature_keeps_clear_of_a_call_that_started_above()
+  popup_clear()
+  defer popup_clear()
+  assert_true(t.StartServer({
+    capabilities: Offering({signatureHelpProvider:
+      {triggerCharacters: [',']}}),
+    replies: {'textDocument/signatureHelp': {signatures: [
+      {label: 'printf(fmt, x)', parameters: [{label: 'fmt'}, {label: 'x'}]}],
+      activeParameter: 1}},
+  }, ['int main(void)', '{', '', '', '    printf("%d",', '        1,2', '}']))
+
+  # As if the "," had just been typed, with the cursor right after it.
+  cursor(6, 11)
+  doautocmd TextChangedI
+  assert_true(t.WaitFor(() => !popup_list()->empty()),
+    'the signature should be shown')
+  var pos = popup_getpos(popup_list()[0])
+  var call_row = screenpos(win_getid(), 5, 5).row
+  assert_true(pos.line + pos.height - 1 < call_row,
+    $'the popup ending at row {pos.line + pos.height - 1} should stay above'
+    .. $' the call on row {call_row}')
+  assert_equal(screenpos(win_getid(), 5, 5).col, pos.core_col,
+    'the popup should stand over the name of the call')
+enddef
+
 def g:Test_inlay_hints_are_put_in_the_window()
   g:lsp_client_config.inlay_hint = true
   defer execute('unlet g:lsp_client_config.inlay_hint')

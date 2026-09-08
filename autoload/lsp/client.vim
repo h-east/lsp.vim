@@ -235,7 +235,7 @@ def OnExit(client: dict<any>, job: job, status: number)
   client.running = false
   client.initialized = false
   if status != 0 && !client.stopping
-    util.ErrorMsg(printf('server "%s" exited with status %d',
+    util.ErrorMsg(printf('server "%s" exited with status %d, see :LspLog',
       client.name, status))
   endif
 enddef

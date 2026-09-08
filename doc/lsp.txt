@@ -929,15 +929,15 @@ right takes them away again without waiting for a write.
 While a call is being typed the server is asked what it takes, and the answer
 appears in a popup a line away, with the parameter being filled in
 highlighted.  It stands over the name of the call rather than over the cursor,
-so the two names read as one; where there is no name on the line to line up
-with, the cursor marks where it goes.  The server names the characters that
-start this, "(" and "," for a C server.  From there on every change and every
-move of the cursor is asked about, and the popup goes when the answer holds no
-signature: that is what a server returns once the cursor is out of the call,
-whether the closing paren was typed, the call deleted or the cursor moved
-away.  Leaving Insert mode closes it as well.  |:LspSignature| asks at any
-other moment, and setting "signature_help" to |false| leaves the asking to
-that command alone.
+even when the call started on a line above, so the two names read as one;
+where there is no name to line up with, the cursor marks where it goes.  The
+server names the characters that start this, "(" and "," for a C server.  From
+there on every change and every move of the cursor is asked about, and the
+popup goes when the answer holds no signature: that is what a server returns
+once the cursor is out of the call, whether the closing paren was typed, the
+call deleted or the cursor moved away.  Leaving Insert mode closes it as well.
+|:LspSignature| asks at any other moment, and setting "signature_help" to
+|false| leaves the asking to that command alone.
 
 This works while the completion menu is up as well, which is where
 'autocomplete' puts one on every keystroke.  The menu is drawn over popups

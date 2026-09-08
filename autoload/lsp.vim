@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.011'
+const VERSION = '0.2.012'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -1250,10 +1250,20 @@ enddef
 # screenrow() answers about the menu rather than the cursor when called from
 # CompleteChanged, so it is read once, here, and remembered.
 var signature_row = 0
+# The screen row of the line the call being typed opens on: the cursor's
+# row, unless the "(" is on a line above.  The popup keeps clear of the
+# whole call, not only of the cursor line.
+var call_row = 0
 
-# Where the signature fits without covering the cursor line or the menu.
-# Above the cursor is tried first, since that is where a call being typed is
-# read from.  Empty when neither side has room.
+# The position of the "(" that opens the call being typed, [lnum, col], or
+# [0, 0] when there is none.
+def CallOpen(): list<number>
+  return searchpairpos('(', '', ')', 'bnW')
+enddef
+
+# Where the signature fits without covering the call or the menu.  Above the
+# call is tried first, since that is where a call being typed is read from.
+# Empty when neither side has room.
 def ClearOfMenu(pum: dict<any>, need: number): dict<any>
   var last = &lines - &cmdheight
   var row = signature_row
@@ -1264,7 +1274,7 @@ def ClearOfMenu(pum: dict<any>, need: number): dict<any>
 
   # Above: rows 1 to "bottom", which stops short of the menu when it is up
   # there too.
-  var bottom = mbot > 0 && mbot < row ? mtop - 1 : row - 1
+  var bottom = min([call_row - 1, mbot > 0 && mbot < row ? mtop - 1 : row - 1])
   if bottom >= need
     return {line: bottom, col: 'cursor', pos: 'botleft',
       maxheight: bottom - BorderRows()}
@@ -1290,10 +1300,10 @@ def SignatureWidth(): number
   return max([1, &columns - BorderCols()])
 enddef
 
-# Above or below the cursor, with the room that side has.
+# Above the call or below the cursor, with the room that side has.
 def Side(up: bool, above: number, below: number): dict<any>
   return up
-    ? {line: 'cursor-1', col: 'cursor', pos: 'botleft',
+    ? {line: call_row - 1, col: 'cursor', pos: 'botleft',
       maxheight: max([1, above - BorderRows()])}
     : {line: 'cursor+1', col: 'cursor', pos: 'topleft',
       maxheight: max([1, below - BorderRows()])}
@@ -1301,13 +1311,13 @@ enddef
 
 # The screen column to start the popup at, so that the name in the signature
 # stands over the name of the call being typed.  Zero where there is no name
-# on this line to line up with, leaving the cursor to mark where it goes.
+# to line up with, leaving the cursor to mark where it goes.
 def SignatureCol(): number
-  var open = searchpairpos('(', '', ')', 'bnW')
-  if open[0] != line('.')
+  var open = CallOpen()
+  if open[0] == 0
     return 0
   endif
-  var name = matchstr(strpart(getline('.'), 0, open[1] - 1), '\k*$')
+  var name = matchstr(strpart(getline(open[0]), 0, open[1] - 1), '\k*$')
   if name->empty()
     return 0
   endif
@@ -1329,8 +1339,12 @@ enddef
 
 def SignatureWhere(text: string): dict<any>
   signature_row = screenrow()
+  var open = CallOpen()
+  var open_row = open[0] == 0 ? 0
+    : screenpos(win_getid(), open[0], open[1])->get('row', 0)
+  call_row = open_row > 0 ? open_row : signature_row
   var need = SignatureRows(text)
-  var above = signature_row - 1
+  var above = call_row - 1
   var below = &lines - &cmdheight - signature_row
 
   var where: dict<any>
