@@ -1197,6 +1197,15 @@ def CloseSignature()
   endif
 enddef
 
+# Whether the signature popup is up.  One closed from outside, by
+# popup_clear() among other ways, is let go of here.
+def SignatureUp(): bool
+  if signature_popup > 0 && popup_getpos(signature_popup)->empty()
+    signature_popup = 0
+  endif
+  return signature_popup > 0
+enddef
+
 def DefineSignatureProp()
   if prop_type_get('LspSignatureActive')->empty()
     highlight default link LspSignatureActive PmenuSel
@@ -1369,7 +1378,7 @@ enddef
 # The menu may open after the signature is up.  Moving out of its way needs
 # only the menu's own position, so this is safe from CompleteChanged.
 def MoveSignature()
-  if signature_popup <= 0
+  if !SignatureUp()
     return
   endif
   var pum = pum_getpos()
@@ -1422,10 +1431,7 @@ def ShowSignature(help: any)
     CloseSignature()
     return
   endif
-  if signature_popup > 0 && popup_getpos(signature_popup)->empty()
-    signature_popup = 0
-  endif
-  if signature_popup > 0
+  if SignatureUp()
     popup_settext(signature_popup, [text])
     popup_move(signature_popup, where)
   else
@@ -1477,7 +1483,7 @@ def OnTextChanged()
   if type(provider) != v:t_dict
     return
   endif
-  if signature_popup <= 0
+  if !SignatureUp()
     var typed = strpart(getline('.'), 0, col('.') - 1)->slice(-1)
     if index(provider->get('triggerCharacters', []), typed) < 0
       return
@@ -1494,7 +1500,7 @@ enddef
 # popup is asked not to close on its own so that it lives through an argument
 # being typed.
 def OnCursorMovedI()
-  if signature_popup > 0
+  if SignatureUp()
     OnTextChanged()
   endif
 enddef
