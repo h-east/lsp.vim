@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.013'
+const VERSION = '0.2.014'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -2983,8 +2983,11 @@ def ItemInfo(item: dict<any>): string
 enddef
 
 # The whole item is kept in "user_data" for "completionItem/resolve", which
-# needs back the item it produced.
-def ToCompleteItem(item: dict<any>): dict<any>
+# needs back the item it produced.  Vim makes the info popup only for an item
+# that has info, so one that a server would fill in later gets a blank to
+# begin with.
+def ToCompleteItem(item: dict<any>, resolvable: bool): dict<any>
+  var info = ItemInfo(item)
   return {
     word: ItemWord(item),
     # A server may pad the label; clangd puts a space where a return type
@@ -2992,7 +2995,7 @@ def ToCompleteItem(item: dict<any>): dict<any>
     abbr: item->get('label', '')->trim(),
     kind: ItemKind(item),
     menu: item->get('detail', '')->substitute("\n", ' ', 'g'),
-    info: ItemInfo(item),
+    info: info->empty() && resolvable ? ' ' : info,
     dup: 1,
     user_data: item,
   }
@@ -3077,7 +3080,7 @@ export def OmniFunc(findstart: number, base: string): any
   completion_incomplete = incomplete
   var words = items->filter((_, it) => type(it) == v:t_dict
     && ItemMatches(it, base))
-    ->mapnew((_, it) => ToCompleteItem(it))
+    ->mapnew((_, it) => ToCompleteItem(it, ResolveProvider(cl)))
   # What was cut short is asked for again as the word grows.
   return incomplete ? {words: words, refresh: 'always'} : words
 enddef
@@ -3132,6 +3135,9 @@ def OnCompleteChanged()
     var info = ItemInfo(result)
     if !info->empty()
       ShowInfo(info)
+    elseif popup_findinfo() > 0
+      # Nothing came for the blank that was put there.
+      popup_hide(popup_findinfo())
     endif
   })
 enddef

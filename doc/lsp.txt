@@ -834,9 +834,10 @@ be a popup to fill in: >vim9
 
 	set completeopt+=popup
 <
-Adding "popuphidden" keeps the popup out of sight until it has something to
-show, see |complete-popuphidden|.  Only the item that is selected is resolved,
-and only when its documentation is missing.
+An item that carries nothing yet gets a blank popup until the reply comes;
+"popuphidden" instead of "popup" keeps the popup out of sight until it has
+something to show, see |complete-popuphidden|.  Only the item that is selected
+is resolved, and only when its documentation is missing.
 
 An item may ask for more than the word before the cursor, "obj->fie" becoming
 "obj.field" for instance, which is all omni completion is able to replace by

@@ -1023,6 +1023,33 @@ def g:Test_an_edit_wider_than_the_word()
   assert_equal('    obj->fie', getline(3))
 enddef
 
+# An item without documentation gets a blank info, and is asked about.
+def g:Test_an_item_without_documentation_is_resolved()
+  const ITEM = {label: 'printf', kind: 3, data: {tag: 'printf()'}}
+  assert_true(t.StartServer({
+    capabilities: Offering({completionProvider: {resolveProvider: true}}),
+    replies: {
+      'textDocument/completion': {isIncomplete: false, items: [ITEM]},
+      'completionItem/resolve': extend(ITEM->copy(),
+        {documentation: 'prints things'}),
+    },
+  }, ['int main(void)', '{', '    prin', '}']))
+
+  # A single match opens the menu, and with it the event, only with "menuone".
+  var save_cot = &completeopt
+  set completeopt=menuone,popup
+  try
+    cursor(3, 8)
+    feedkeys("A\<C-X>\<C-O>\<C-Y>\<Esc>", 'tx')
+    assert_equal(' ', v:completed_item.info)
+    assert_true(t.WaitFor(() => !t.Sent('completionItem/resolve')->empty()),
+      'the item should be asked about')
+    assert_equal('printf', t.Sent('completionItem/resolve')[0].params.label)
+  finally
+    &completeopt = save_cot
+  endtry
+enddef
+
 def g:Test_a_save_is_announced()
   assert_true(t.StartServer({
     capabilities: extend(SYNC->copy(),
