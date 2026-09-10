@@ -247,7 +247,7 @@ export def ToLocList(bufnr: number)
     return
   endif
   setloclist(0, [], ' ', {title: 'LSP diagnostics',
-    items: Entries(bufname(bufnr), items)})
+    items: Entries(bufname(bufnr), items), quickfixtextfunc: util.ListText})
   lopen
 enddef
 

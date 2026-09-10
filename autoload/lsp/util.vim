@@ -68,6 +68,29 @@ export def OpenName(path: string): string
   return fnamemodify(path, ':.')
 enddef
 
+const TYPES = {E: ' error', W: ' warning', I: ' info', N: ' note'}
+
+# 'quickfixtextfunc' for the lists the client fills.  Vim's own line names a
+# file outside the current directory in full; this names it the way |:ls|
+# does, and keeps the indent of the text.
+export def ListText(info: dict<any>): list<string>
+  var what = {id: info.id, items: 1}
+  var items = info.quickfix ? getqflist(what).items
+    : getloclist(info.winid, what).items
+  var out: list<string> = []
+  for item in items[info.start_idx - 1 : info.end_idx - 1]
+    var name = item.bufnr > 0 ? fnamemodify(bufname(item.bufnr), ':~:.') : ''
+    var where = ''
+    if item.lnum > 0
+      where = item.lnum .. (item.col > 0 ? ' col ' .. item.col : '')
+        .. TYPES->get(toupper(item.type), '')
+    endif
+    out->add(printf('%s|%s| %s', name, where,
+      item.text->substitute('\n\s*', ' ', 'g')))
+  endfor
+  return out
+enddef
+
 # LSP counts a position the way the server chose at startup, Vim
 # counts bytes.  "utf-8" is the same thing and needs no conversion; the other
 # two count a composing character on its own.  Every direction rounds down to

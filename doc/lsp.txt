@@ -573,6 +573,9 @@ Jumping ~
 		Otherwise like |:LspDefinition|.
 
 Filling a list ~
+These name a file the way |:ls| does: relative to the current directory when
+it is below it, with "~" for the home directory otherwise.
+
 						*:LspReferences*
 :LspReferences	Put every mention of the symbol under the cursor into the
 		|quickfix| list and open it.  The declaration counts as a

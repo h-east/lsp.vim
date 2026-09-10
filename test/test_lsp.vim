@@ -120,6 +120,45 @@ def g:Test_diagnostics_reach_the_location_list()
   lclose
 enddef
 
+# Only a file under the home directory and not under the current one is named
+# with "~".
+def g:Test_a_list_names_the_file_as_ls_does()
+  const REPORT = {
+    range: {start: {line: 2, character: 4}, end: {line: 2, character: 10}},
+    severity: 2,
+    source: 'test',
+    message: 'a warning',
+    relatedInformation: [{
+      location: {uri: 'file://' .. t.SRC,
+        range: {start: {line: 0, character: 4},
+          end: {line: 0, character: 8}}},
+      message: 'declared here',
+    }],
+  }
+  assert_true(t.StartServer({
+    capabilities: SYNC,
+    notify: [{method: 'textDocument/publishDiagnostics',
+      params: {uri: 'file://' .. t.SRC, diagnostics: [REPORT]}}],
+  }, ['int main(void)', '{', '    return 0;', '}']))
+  assert_true(t.WaitFor(() =>
+    !sign_getplaced('%', {group: 'lsp'})[0].signs->empty()),
+  'a sign should be placed')
+
+  var home = $HOME
+  var cwd = getcwd()
+  try
+    $HOME = fnamemodify(t.SRC, ':h')
+    cd $HOME/..
+    LspDiag
+    assert_equal(['~/Xsrc.c|3 col 5 warning| [test] a warning',
+      '~/Xsrc.c|1 col 5|   declared here'], getline(1, '$'))
+    lclose
+  finally
+    $HOME = home
+    execute 'cd' fnameescape(cwd)
+  endtry
+enddef
+
 const TRIGGERS = {resolveProvider: false, triggerCharacters: ['.']}
 
 # What Vim asks on its own, rather than 'omnifunc': "keys" is typed at the end

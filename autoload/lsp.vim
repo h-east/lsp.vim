@@ -2620,7 +2620,8 @@ export def References()
       util.WarningMsg('no references found')
       return
     endif
-    setqflist([], ' ', {title: 'LSP references', items: items})
+    setqflist([], ' ', {title: 'LSP references', items: items,
+      quickfixtextfunc: util.ListText})
     copen
   })
 enddef
@@ -2697,7 +2698,8 @@ export def Outline()
         util.WarningMsg('the server found no symbols here')
         return
       endif
-      setloclist(0, [], ' ', {title: 'LSP symbols in this file', items: items})
+      setloclist(0, [], ' ', {title: 'LSP symbols in this file',
+        items: items, quickfixtextfunc: util.ListText})
       lopen
     })
 enddef
@@ -2757,7 +2759,8 @@ def CallHierarchy(incoming: bool)
             return
           endif
           setqflist([], ' ', {title: 'LSP ' .. what .. ' calls: '
-            .. items[0]->get('name', ''), items: qf})
+            .. items[0]->get('name', ''), items: qf,
+            quickfixtextfunc: util.ListText})
           copen
         })
     })
@@ -2817,7 +2820,8 @@ def TypeHierarchy(up: bool)
             return
           endif
           setqflist([], ' ', {title: 'LSP ' .. what .. ': '
-            .. items[0]->get('name', ''), items: qf})
+            .. items[0]->get('name', ''), items: qf,
+            quickfixtextfunc: util.ListText})
           copen
         })
     })
@@ -2846,7 +2850,8 @@ def ShowSymbols(query: string, syms: list<any>)
     util.WarningMsg('no symbol matches ' .. query)
     return
   endif
-  setqflist([], ' ', {title: 'LSP symbols: ' .. query, items: items})
+  setqflist([], ' ', {title: 'LSP symbols: ' .. query, items: items,
+    quickfixtextfunc: util.ListText})
   copen
 enddef
 
@@ -3834,7 +3839,8 @@ export def WorkspaceDiagnostics()
     echo 'lsp: the server has reported nothing for the workspace'
     return
   endif
-  setqflist([], ' ', {title: 'LSP workspace diagnostics', items: entries})
+  setqflist([], ' ', {title: 'LSP workspace diagnostics', items: entries,
+    quickfixtextfunc: util.ListText})
   copen
 enddef
 
