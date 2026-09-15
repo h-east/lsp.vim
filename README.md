@@ -172,8 +172,12 @@ def LspBuffer()
   setlocal completeopt=menuone,popup
   # So the text stays put as a sign comes and goes.
   setlocal signcolumn=yes
-  # So K asks the server rather than the program it otherwise names.
-  setlocal keywordprg=:LspHover
+  # So K asks the server rather than the program it otherwise names.  The
+  # Vim filetype points it at ":help", which offers more than a popup of
+  # the same text.
+  if &filetype !=# 'vim'
+    setlocal keywordprg=:LspHover
+  endif
 
   nnoremap <buffer> gd <Cmd>LspDefinition<CR>
 enddef
@@ -199,8 +203,12 @@ function! s:LspBuffer()
   setlocal completeopt=menuone,popup
   " So the text stays put as a sign comes and goes.
   setlocal signcolumn=yes
-  " So K asks the server rather than the program it otherwise names.
-  setlocal keywordprg=:LspHover
+  " So K asks the server rather than the program it otherwise names.  The
+  " Vim filetype points it at ":help", which offers more than a popup of
+  " the same text.
+  if &filetype !=# 'vim'
+    setlocal keywordprg=:LspHover
+  endif
 
   nnoremap <buffer> gd <Cmd>LspDefinition<CR>
 endfunction

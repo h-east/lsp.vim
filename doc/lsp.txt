@@ -417,7 +417,11 @@ the buffer is then left as it was: >vim9
 
 	def LspBuffer()
 	  setlocal complete^=o completeopt=menuone,popup signcolumn=yes
-	  setlocal keywordprg=:LspHover
+	  # The Vim filetype points 'keywordprg' at ":help", which offers
+	  # more than a popup of the same text.
+	  if &filetype !=# 'vim'
+	    setlocal keywordprg=:LspHover
+	  endif
 	  nnoremap <buffer> gd <Cmd>LspDefinition<CR>
 	enddef
 
