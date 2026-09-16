@@ -4,9 +4,9 @@
 [![Update doc/tags](https://github.com/h-east/lsp.vim/actions/workflows/update-doc-tags.yml/badge.svg)](https://github.com/h-east/lsp.vim/actions/workflows/update-doc-tags.yml)
 [![Vim 9.2.1004+](https://img.shields.io/badge/Vim-9.2.1004%2B-015b01?logo=vim&logoColor=white)](#requirements)
 
-A Language Server Protocol client for Vim, written in Vim9 script.  Nothing
-else to install: Vim frames the protocol messages and matches replies to
-requests itself, so what is left to the plugin is the conversation and what
+A Language Server Protocol (LSP) client for Vim, written in Vim9 script.
+Nothing else to install: Vim frames the protocol messages and matches replies
+to requests itself, so what is left to the plugin is the conversation and what
 to do with the answers.
 
 75 of the 95 requests and notifications in the LSP 3.18 meta model are
@@ -17,28 +17,23 @@ a jump to a definition and the references list](.github/demo.gif)
 
 ## What it does
 
-**Completion** through `'omnifunc'`, with the documentation popup beside the
-menu and snippets whose stops can be stepped through.
+- **Completion** through `'omnifunc'`, with the documentation popup beside the
+  menu and snippets whose stops can be stepped through.
+- **Diagnostics** as signs, text highlights and a message on the cursor line,
+  whether the server sends them or waits to be asked.
+- **Reading** hover, signature help while a call is being typed, and the
+  symbol under the cursor marked everywhere it is used.
+- **Jumping** to a definition, declaration, type or implementation, with lists
+  of references, of the symbols in a file or a workspace, of who calls a
+  function and what it calls, and of what a type is derived from.
+- **Editing** rename across files, formatting a buffer or a range, and code
+  actions from a menu, including the ones a server carries out itself.
+- **Display** inlay hints, code lenses, document links, semantic tokens and
+  folds worked out by the server, each off until asked for.
 
-**Diagnostics** as signs, text highlights and a message on the cursor line,
-whether the server sends them or waits to be asked.
-
-**Reading** hover, signature help while a call is being typed, and the
-symbol under the cursor marked everywhere it is used.
-
-**Jumping** to a definition, declaration, type or implementation, with lists
-of references, of the symbols in a file or a workspace, of who calls a
-function and what it calls, and of what a type is derived from.
-
-**Editing** rename across files, formatting a buffer or a range, and code
-actions from a menu, including the ones a server carries out itself.
-
-**Display** inlay hints, code lenses, document links, semantic tokens and
-folds worked out by the server, each off until asked for.
-
-The buffer is kept in step with the server as it is typed in, the server
-hears what it asked to hear about, and what it reports about itself is
-under `:LspStatus` and `:LspLog`.  The details are in `:help lsp.txt`.
+The buffer is kept in step with the server as it is typed in, the server hears
+what it asked to hear about, and what it reports about itself is under
+`:LspStatus` and `:LspLog`.  The details are in `:help lsp.txt`.
 
 ## Requirements
 
@@ -63,16 +58,9 @@ With a plugin manager, vim-plug for instance:
 Plug 'h-east/lsp.vim'
 ```
 
-Or as an optional package, put it under `pack/*/opt/lsp.vim` and load it from
-your vimrc:
-
-```vim
-packadd! lsp.vim
-```
-
 ## Configuration
 
-Describe the servers to use in `g:lsp_server_list`:
+Describe the servers to use in `g:lsp_server_list`.  Example:
 
 ```vim
 g:lsp_server_list = [{
@@ -120,7 +108,7 @@ let g:lsp_server_list = [
 Every key an entry takes is under `:help g:lsp_server_list`.
 
 What the client itself does goes in `g:lsp_client_config`, one entry per
-setting:
+setting.  Example:
 
 ```vim
 g:lsp_client_config = {
@@ -142,39 +130,23 @@ let g:lsp_client_config = #{
 </details>
 
 Every key that can go in there, and what it is when it is left out, is
-listed under `:help lsp-configuration`.
-
-The hover, code action and signature popups take the border `'pumopt'` names
-for the completion menu, so setting that is enough for all four to match:
-
-```vim
-set pumopt=border:round
-```
-
-Each popup can be asked for on its own instead, in `'pumopt'` and
-`'winhighlight'` format; see `:help lsp-popup`.
-
-A buffer is connected to the server for its `'filetype'` when it is opened.
-The server is started once per workspace root.
+listed under `:help lsp-configuration`, including how each popup is drawn.
 
 ## Suggested settings
 
 Completion goes through `'omnifunc'`, which Vim uses only where it is told
-to, so a few options decide whether much of this shows up at all:
+to, so a few options decide whether much of this shows up at all.  Example:
 
 ```vim
 def LspBuffer()
   # 'autocomplete' offers what 'complete' names, and "o" names 'omnifunc',
   # which the plugin has set.
   setlocal complete^=o
-  setlocal autocomplete
-  # "menuone" for a single match, "popup" for the resolved documentation.
+  setlocal autocomplete    # See also 'autocompletedelay'
   setlocal completeopt=menuone,popup
-  # So the text stays put as a sign comes and goes.
   setlocal signcolumn=yes
-  # So K asks the server rather than the program it otherwise names.  The
-  # Vim filetype points it at ":help", which offers more than a popup of
-  # the same text.
+  # The Vim filetype points 'keywordprg' at ":help", which offers more
+  # than a popup of the same text.
   if &filetype !=# 'vim'
     setlocal keywordprg=:LspHover
   endif
@@ -182,8 +154,7 @@ def LspBuffer()
   nnoremap <buffer> gd <Cmd>LspDefinition<CR>
 enddef
 
-# Fired for a buffer a server has taken on, so where a server is set up but
-# not installed, the buffer is left as it was.
+# Not FileType: a server that is not installed leaves the buffer as it was.
 augroup lsprc
   autocmd!
   autocmd User LspAttached LspBuffer()
@@ -198,14 +169,11 @@ function! s:LspBuffer()
   " 'autocomplete' offers what 'complete' names, and "o" names 'omnifunc',
   " which the plugin has set.
   setlocal complete^=o
-  setlocal autocomplete
-  " "menuone" for a single match, "popup" for the resolved documentation.
+  setlocal autocomplete    " See also 'autocompletedelay'
   setlocal completeopt=menuone,popup
-  " So the text stays put as a sign comes and goes.
   setlocal signcolumn=yes
-  " So K asks the server rather than the program it otherwise names.  The
-  " Vim filetype points it at ":help", which offers more than a popup of
-  " the same text.
+  " The Vim filetype points 'keywordprg' at ":help", which offers more
+  " than a popup of the same text.
   if &filetype !=# 'vim'
     setlocal keywordprg=:LspHover
   endif
@@ -213,8 +181,7 @@ function! s:LspBuffer()
   nnoremap <buffer> gd <Cmd>LspDefinition<CR>
 endfunction
 
-" Fired for a buffer a server has taken on, so where a server is set up but
-" not installed, the buffer is left as it was.
+" Not FileType: a server that is not installed leaves the buffer as it was.
 augroup lsprc
   autocmd!
   autocmd User LspAttached call s:LspBuffer()
@@ -222,11 +189,6 @@ augroup END
 ```
 
 </details>
-
-`'autocompletedelay'` is global rather than per buffer, so it goes on its
-own: `set autocompletedelay=500` keeps the menu from opening between
-keystrokes.  Asking the server is a wait, and `completion_timeout` is what
-bounds it.
 
 ## Servers it has been used with
 
