@@ -64,21 +64,15 @@ Describe the servers to use in `g:lsp_server_list`.  Example:
 
 ```vim
 g:lsp_server_list = [{
-  name: 'clangd',
-  filetypes: ['c', 'cpp'],
-  cmd: ['clangd', '--background-index', '--clang-tidy',
-	'--header-insertion=never'],
+  filetypes: ['c', 'cpp'], name: 'clangd',
+  cmd: ['clangd', '--background-index', '--clang-tidy', '--header-insertion=never'],
   rootPatterns: ['compile_commands.json', '.git'],
 }, {
-  name: 'pylsp',
-  filetypes: ['python'],
-  cmd: ['pylsp'],
-  rootPatterns: ['pyproject.toml', '.git'],
+  filetypes: ['python'], name: 'pylsp',
+  cmd: ['pylsp'], rootPatterns: ['pyproject.toml', '.git'],
 }, {
-  name: 'gopls',
-  filetypes: ['go'],
-  cmd: ['gopls'],
-  rootPatterns: ['go.work', 'go.mod', '.git'],
+  filetypes: ['go'], name: 'gopls',
+  cmd: ['gopls'], rootPatterns: ['go.work', 'go.mod', '.git'],
 }]
 ```
 
@@ -87,19 +81,13 @@ g:lsp_server_list = [{
 
 ```vim
 let g:lsp_server_list = [
-      \ #{name: 'clangd',
-      \   filetypes: ['c', 'cpp'],
-      \   cmd: ['clangd', '--background-index', '--clang-tidy',
-      \         '--header-insertion=never'],
+      \ #{filetypes: ['c', 'cpp'], name: 'clangd',
+      \   cmd: ['clangd', '--background-index', '--clang-tidy', '--header-insertion=never'],
       \   rootPatterns: ['compile_commands.json', '.git']},
-      \ #{name: 'pylsp',
-      \   filetypes: ['python'],
-      \   cmd: ['pylsp'],
-      \   rootPatterns: ['pyproject.toml', '.git']},
-      \ #{name: 'gopls',
-      \   filetypes: ['go'],
-      \   cmd: ['gopls'],
-      \   rootPatterns: ['go.work', 'go.mod', '.git']},
+      \ #{filetypes: ['python'], name: 'pylsp',
+      \   cmd: ['pylsp'], rootPatterns: ['pyproject.toml', '.git']},
+      \ #{filetypes: ['go'], name: 'gopls',
+      \   cmd: ['gopls'], rootPatterns: ['go.work', 'go.mod', '.git']},
       \ ]
 ```
 
@@ -192,9 +180,10 @@ augroup END
 
 ## Servers it has been used with
 
-- clangd 18.1.3, for C and C++
-- pylsp 1.15.0, for Python
-- gopls 0.18.0, for Go
+- C/C++: clangd 18.1.3
+- Vim script: vim9ls 0.1.002 (not released publicly yet)
+- Python: pylsp 1.15.0, pyright 1.1.411, basedpyright 1.39.10, ty 0.0.78
+- Go: gopls 0.18.0
 
 Only what a server offers is asked for, so what you get depends on the server.
 
