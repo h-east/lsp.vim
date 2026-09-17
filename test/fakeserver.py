@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """A language server that does as it is told.
 
-What it does is read from the JSON file named by $LSP_SCENARIO:
+What it does is read from the JSON file named by the first argument, or by
+$LSP_SCENARIO where there is none; the second argument, or $LSP_TRACE, names
+where what arrives is written.  Naming them as arguments is what lets more
+than one of these run at a time, each with a scenario of its own.
 
     capabilities  what to answer "initialize" with
     notify        messages to send once "initialized" arrives, in order
@@ -27,8 +30,10 @@ import json
 import os
 import sys
 
-SCENARIO = json.load(open(os.environ['LSP_SCENARIO']))
-TRACE = open(os.environ.get('LSP_TRACE', os.devnull), 'w')
+SCENARIO = json.load(open(sys.argv[1] if len(sys.argv) > 1
+                          else os.environ['LSP_SCENARIO']))
+TRACE = open(sys.argv[2] if len(sys.argv) > 2
+             else os.environ.get('LSP_TRACE', os.devnull), 'w')
 
 
 _counter = [0]

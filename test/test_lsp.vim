@@ -1030,7 +1030,7 @@ def g:Test_format_asks_about_the_range_it_was_given()
   # This server formats a range and nothing else, so the whole buffer is not
   # on offer.
   LspFormat
-  assert_match('does not offer formatting', LastMessage())
+  assert_match('no server here offers formatting', LastMessage())
   assert_true(t.Sent('textDocument/formatting')->empty())
 enddef
 
@@ -2973,7 +2973,99 @@ def g:Test_hover_needs_the_server_to_offer_it()
   sleep 100m
   assert_true(t.Sent('textDocument/hover')->empty(),
     'nothing should be asked of a server that cannot answer')
-  assert_match('does not offer hover', execute('messages'))
+  assert_match('no server here offers hover', execute('messages'))
+enddef
+
+# Two servers named for the same 'filetype' both hold the buffer: a server
+# answers from the copy it was given, so each of them is told about the text.
+def g:Test_every_server_named_for_a_filetype_holds_the_buffer()
+  assert_true(t.StartServers([
+    {scenario: {capabilities: SYNC}},
+    {scenario: {capabilities: SYNC}},
+  ], ['int one;']))
+
+  # Being ready is the answer to "initialize"; the buffer goes out right
+  # after it, so this waits rather than reads the trace as it stands.
+  for i in [0, 1]
+    assert_true(t.WaitFor(() =>
+      len(t.SentTo(i, 'textDocument/didOpen')) == 1),
+      printf('server %d should have been told the buffer is open', i))
+  endfor
+
+  setline(1, 'int two;')
+  listener_flush()
+  for i in [0, 1]
+    assert_true(t.WaitFor(() =>
+      !t.SentTo(i, 'textDocument/didChange')->empty()),
+      printf('server %d should have been told about the change', i))
+  endfor
+enddef
+
+# What each of them is asked: the first one that offers it, so a server that
+# does a few things is named before the general purpose one.
+def g:Test_the_first_server_offering_something_answers_for_it()
+  assert_true(t.StartServers([
+    {scenario: {
+      capabilities: Offering({documentFormattingProvider: true}),
+      replies: {'textDocument/formatting': []},
+    }},
+    {scenario: {
+      capabilities: Offering({documentFormattingProvider: true,
+        hoverProvider: true}),
+      replies: {'textDocument/hover': {contents: 'from the second'}},
+    }},
+  ], ['int one;']))
+
+  # Both offer formatting, so the one named first has it.
+  LspFormat
+  assert_true(t.WaitFor(() =>
+    !t.SentTo(0, 'textDocument/formatting')->empty()),
+    'the first server should be the one formatting')
+  assert_equal([], t.SentTo(1, 'textDocument/formatting'))
+
+  # Only the second offers hover, so it is asked although it is not first.
+  LspHover
+  assert_true(t.WaitFor(() => !t.SentTo(1, 'textDocument/hover')->empty()),
+    'the second server should be the one answering a hover')
+  assert_equal([], t.SentTo(0, 'textDocument/hover'))
+  popup_clear()
+enddef
+
+# Reports are the exception: what one server found does not replace what the
+# other found, both are shown.
+def g:Test_what_every_server_reports_is_shown_together()
+  var FIRST = {
+    range: {start: {line: 0, character: 4}, end: {line: 0, character: 7}},
+    severity: 1,
+    message: 'the first server found this',
+  }
+  var SECOND = {
+    range: {start: {line: 1, character: 4}, end: {line: 1, character: 7}},
+    severity: 2,
+    message: 'the second server found this',
+  }
+  assert_true(t.StartServers([
+    {scenario: {capabilities: SYNC, notify: [{
+      method: 'textDocument/publishDiagnostics',
+      params: {uri: 'file://' .. t.SRC, diagnostics: [FIRST]}}]}},
+    {scenario: {capabilities: SYNC, notify: [{
+      method: 'textDocument/publishDiagnostics',
+      params: {uri: 'file://' .. t.SRC, diagnostics: [SECOND]}}]}},
+  ], ['int one;', 'int two;']))
+
+  assert_true(t.WaitFor(() =>
+    len(prop_list(1)) == 1 && len(prop_list(2)) == 1),
+    'both reports should be drawn')
+  assert_equal('LspDiagErrorText', prop_list(1)[0].type)
+  assert_equal('LspDiagWarningText', prop_list(2)[0].type)
+
+  # And both are in the list, whoever reported them.
+  LspDiag
+  var items = getloclist(0)
+  assert_equal(2, len(items))
+  assert_equal(['the first server found this', 'the second server found this'],
+    items->mapnew((_, item) => item.text->substitute('^\[.\{-}\] ', '', '')))
+  lclose
 enddef
 
 # vim: ts=2 sw=0 et

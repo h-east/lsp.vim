@@ -58,6 +58,7 @@ lsp-highlight	lsp.txt	/*lsp-highlight*
 lsp-inlay-hint	lsp.txt	/*lsp-inlay-hint*
 lsp-introduction	lsp.txt	/*lsp-introduction*
 lsp-limitations	lsp.txt	/*lsp-limitations*
+lsp-more-than-one-server	lsp.txt	/*lsp-more-than-one-server*
 lsp-on-type-formatting	lsp.txt	/*lsp-on-type-formatting*
 lsp-on-type-formatting-clangd	lsp.txt	/*lsp-on-type-formatting-clangd*
 lsp-popup	lsp.txt	/*lsp-popup*

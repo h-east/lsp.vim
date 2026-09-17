@@ -134,9 +134,10 @@ g:lsp_server_list
 		for again after that; what you ask for by command is tried
 		every time.
 
-		The first entry whose "filetypes" holds the 'filetype' of a
-		buffer is the one used for it, so put a more specific entry
-		before a more general one.  A buffer whose 'filetype' is in
+		Every entry whose "filetypes" holds the 'filetype' of a buffer
+		is started for it, so a buffer can have more than one server;
+		what each of them answers is under
+		|lsp-more-than-one-server|.  A buffer whose 'filetype' is in
 		none of them is left alone, and nothing of this plugin is even
 		loaded for it.
 
@@ -427,14 +428,42 @@ the buffer is then left as it was: >vim9
 
 	autocmd User LspAttached LspBuffer()
 <
+More than one server for a buffer ~
+						*lsp-more-than-one-server*
+More than one entry of |g:lsp_server_list| can hold the same 'filetype'.  All
+of them are started and each is given the buffer: a server answers from the
+copy it was handed, so one that is not told about the text has nothing to say
+about it.
+
+What is asked for goes to one server, the first entry that offers it.  So name
+the server that does a few things well before the general purpose one, and it
+takes what it offers while the rest falls to the other: >vim9
+
+	g:lsp_server_list = [{
+	  filetypes: ['python'], name: 'ruff', cmd: ['ruff', 'server'],
+	}, {
+	  filetypes: ['python'], name: 'pyrefly', cmd: ['pyrefly', 'lsp'],
+	}]
+<
+Reports are the exception: what every server found is drawn, and |:LspDiag|
+lists all of it.  A server is only asked to act on what it reported itself.
+
+|:LspStatus| names each server that is running, and |:LspLog| shows what each
+of them logged, under a heading of its own.
+
+Completion is answered by one server.  What two of them offer for the same
+text cannot be put in one menu in a sensible order: the protocol has
+"sortText" for the items of one reply and nothing to compare replies with.
+
 ==============================================================================
 4. Commands					*lsp-commands*
 
 The server ~
 						*:LspStart*
-:LspStart	Connect the current buffer to the server for its 'filetype'.
+:LspStart	Connect the current buffer to the servers for its 'filetype'.
 		This happens on its own when a buffer is opened, the command
-		is for a buffer whose 'filetype' was decided later.
+		is for a buffer whose 'filetype' was decided later.  See
+		|lsp-more-than-one-server| where there is more than one.
 
 						*:LspStop*
 :LspStop	Shut down every running server.  The buffers they had go back
@@ -502,11 +531,12 @@ The server ~
 		symbols of the files that are not open, that goes.
 
 						*:LspLog*
-:LspLog		Open a scratch buffer holding what the server for the current
-		buffer has logged, which is where one explains why it is
+:LspLog		Open a scratch buffer holding what the servers for the current
+		buffer have logged, which is where one explains why it is
 		unhappy.  A server logs in two places and both are shown,
 		under a heading each: what it sent as "window/logMessage" and
-		what it wrote to its standard error.
+		what it wrote to its standard error.  Where more than one
+		server holds the buffer, each is under a heading of its name.
 
 		What a server sends as "window/showMessage" is not kept here;
 		that one is meant to be read at once and goes to the message

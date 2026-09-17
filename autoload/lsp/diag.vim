@@ -25,14 +25,36 @@ const SIGN_GROUP = 'lsp'
 const PROP_TYPES = ['LspDiagErrorText', 'LspDiagWarningText',
   'LspDiagInfoText', 'LspDiagHintText']
 
-var diagnostics: dict<list<dict<any>>> = {}
+# What each server reported for a buffer: "<bufnr>" holds one list per
+# server, since a buffer may be held by more than one and each of them
+# reports the whole of what it found every time.
+var diagnostics: dict<dict<list<dict<any>>>> = {}
 
-# How the server that reported them counts a position.  The marks are drawn
-# again long after the answer arrived, so it is kept alongside.
-var encodings: dict<string> = {}
+# How each of those servers counts a position.  The marks are drawn again long
+# after the answer arrived, so it is kept alongside.
+var encodings: dict<dict<string>> = {}
 
-def EncodingFor(bufnr: number): string
-  return encodings->get(string(bufnr), 'utf-16')
+def Reported(bufnr: number): dict<list<dict<any>>>
+  return diagnostics->get(string(bufnr), {})
+enddef
+
+# The servers that have reported on a buffer, in a settled order.
+def Servers(bufnr: number): list<string>
+  return Reported(bufnr)->keys()->sort()
+enddef
+
+def EncodingFor(bufnr: number, server: string): string
+  return encodings->get(string(bufnr), {})->get(server, 'utf-16')
+enddef
+
+# Everything reported for a buffer, whoever reported it.
+def AllFor(bufnr: number): list<dict<any>>
+  var out: list<dict<any>> = []
+  var reported = Reported(bufnr)
+  for server in Servers(bufnr)
+    out += reported[server]
+  endfor
+  return out
 enddef
 
 var defined = false
@@ -70,9 +92,9 @@ def Kind(item: dict<any>): dict<any>
   return SEVERITY[severity > 0 && severity < len(SEVERITY) ? severity : 0]
 enddef
 
-def StartLine(bufnr: number, item: dict<any>): number
+def StartLine(bufnr: number, server: string, item: dict<any>): number
   return util.PosFromLsp(bufnr, item->get('range', {})->get('start', {}),
-    EncodingFor(bufnr))[0]
+    EncodingFor(bufnr, server))[0]
 enddef
 
 # Nothing has been drawn before the types are there, and asking to remove a
@@ -88,41 +110,50 @@ enddef
 # The buffer has to be loaded: an unloaded one has no lines to draw on.
 def Draw(bufnr: number)
   Erase(bufnr)
-  var items = diagnostics->get(string(bufnr), [])
-  if items->empty()
-    return
-  endif
-
-  var encoding = EncodingFor(bufnr)
+  var reported = Reported(bufnr)
   var signs: list<dict<any>> = []
-  for item in items
-    var kind = Kind(item)
-    var range = item->get('range', {})
-    var [lnum, col] = util.PosFromLsp(bufnr, range->get('start', {}), encoding)
-    var [end_lnum, end_col] = util.PosFromLsp(bufnr, range->get('end', {}),
-      encoding)
-    signs->add({buffer: bufnr, group: SIGN_GROUP, lnum: lnum,
-      name: kind.sign, priority: kind.priority})
+  for server in Servers(bufnr)
+    var encoding = EncodingFor(bufnr, server)
+    for item in reported[server]
+      var kind = Kind(item)
+      var range = item->get('range', {})
+      var [lnum, col] = util.PosFromLsp(bufnr, range->get('start', {}),
+        encoding)
+      var [end_lnum, end_col] = util.PosFromLsp(bufnr, range->get('end', {}),
+        encoding)
+      signs->add({buffer: bufnr, group: SIGN_GROUP, lnum: lnum,
+        name: kind.sign, priority: kind.priority})
 
-    # A zero-width range would not be visible, widen it to one character.
-    if end_lnum == lnum && end_col <= col
-      end_col = col + 1
-    endif
-    try
-      prop_add(lnum, col, {end_lnum: end_lnum, end_col: end_col,
-        bufnr: bufnr, type: kind.prop})
-    catch /^Vim\%((\a\+)\)\=:E96[456]:/
-      # The buffer moved on since the server looked at it; the next round
-      # will line up again.
-    endtry
+      # A zero-width range would not be visible, widen it to one character.
+      if end_lnum == lnum && end_col <= col
+        end_col = col + 1
+      endif
+      try
+        prop_add(lnum, col, {end_lnum: end_lnum, end_col: end_col,
+          bufnr: bufnr, type: kind.prop})
+      catch /^Vim\%((\a\+)\)\=:E96[456]:/
+        # The buffer moved on since the server looked at it; the next round
+        # will line up again.
+      endtry
+    endfor
   endfor
-  sign_placelist(signs)
+  if !signs->empty()
+    sign_placelist(signs)
+  endif
 enddef
 
-export def Update(bufnr: number, items: list<dict<any>>, encoding: string)
+# What a server reports replaces what it reported before, and leaves what the
+# other servers reported where it is.
+export def Update(bufnr: number, server: string, items: list<dict<any>>,
+    encoding: string)
   Define()
-  diagnostics[string(bufnr)] = items
-  encodings[string(bufnr)] = encoding
+  var key = string(bufnr)
+  if !diagnostics->has_key(key)
+    diagnostics[key] = {}
+    encodings[key] = {}
+  endif
+  diagnostics[key][server] = items
+  encodings[key][server] = encoding
   if bufloaded(bufnr)
     Draw(bufnr)
   endif
@@ -151,15 +182,22 @@ export def Clear(bufnr: number)
 enddef
 
 export def ForLine(bufnr: number, lnum: number): list<dict<any>>
-  return diagnostics->get(string(bufnr), [])
-    ->copy()
-    ->filter((_, item) => StartLine(bufnr, item) == lnum)
+  var out: list<dict<any>> = []
+  var reported = Reported(bufnr)
+  for server in Servers(bufnr)
+    out += reported[server]->copy()
+      ->filter((_, item) => StartLine(bufnr, server, item) == lnum)
+  endfor
+  return out
 enddef
 
 # A code action request carries these, so the server knows which reports it is
 # being asked to act on.
-export def ForRange(bufnr: number, first: number, last: number): list<dict<any>>
-  return diagnostics->get(string(bufnr), [])
+# Only what the server being asked reported: another one's reports mean
+# nothing to it.
+export def ForRange(bufnr: number, server: string, first: number,
+    last: number): list<dict<any>>
+  return Reported(bufnr)->get(server, [])
     ->copy()
     ->filter((_, item) => {
       var range = item->get('range', {})
@@ -257,19 +295,28 @@ export def Entries(path: string, items: list<any>,
 enddef
 
 export def ToLocList(bufnr: number)
-  var items = diagnostics->get(string(bufnr), [])
-  if items->empty()
+  var reported = Reported(bufnr)
+  var entries: list<dict<any>> = []
+  for server in Servers(bufnr)
+    entries += Entries(bufname(bufnr), reported[server],
+      EncodingFor(bufnr, server))
+  endfor
+  if entries->empty()
     echo 'lsp: the server reported nothing for this buffer'
     return
   endif
-  setloclist(0, [], ' ', {title: 'LSP diagnostics',
-    items: Entries(bufname(bufnr), items, EncodingFor(bufnr)),
+  setloclist(0, [], ' ', {title: 'LSP diagnostics', items: entries,
     quickfixtextfunc: util.ListText})
   lopen
 enddef
 
 export def Count(bufnr: number): number
-  return len(diagnostics->get(string(bufnr), []))
+  return len(AllFor(bufnr))
+enddef
+
+# What one server reported, which is what |:LspStatus| shows against it.
+export def CountFor(bufnr: number, server: string): number
+  return len(Reported(bufnr)->get(server, []))
 enddef
 
 # test/run sets this to have every :def compiled as the script is read.

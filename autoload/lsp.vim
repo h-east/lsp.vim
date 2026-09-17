@@ -248,18 +248,40 @@ def RelativeTo(cl: dict<any>, path: string): list<string>
   return out
 enddef
 
-def ServerFor(ft: string): dict<any>
+# Every server named for this 'filetype', in the order they are named.
+def ServersFor(ft: string): list<dict<any>>
+  var out: list<dict<any>> = []
   for config in get(g:, 'lsp_server_list', [])
     if index(config->get('filetypes', []), ft) >= 0
-      return config
+      out->add(config)
+    endif
+  endfor
+  return out
+enddef
+
+# The servers holding this buffer, in the order they were named.  One that has
+# been stopped since is left out.
+def BufClients(bufnr: number): list<dict<any>>
+  var out: list<dict<any>> = []
+  var keys: list<string> = getbufvar(bufnr, 'lsp_client_keys', [])
+  for key in keys
+    if clients->has_key(key)
+      out->add(clients[key])
+    endif
+  endfor
+  return out
+enddef
+
+# The one of them that answers for "provider": the first that offers it.  What
+# a server registered for later counts as well, hence Capability(), which
+# gives a number for what is offered nowhere.
+def ClientOffering(bufnr: number, provider: string): dict<any>
+  for cl in BufClients(bufnr)
+    if cl.initialized && type(Capability(cl, provider)) != v:t_number
+      return cl
     endif
   endfor
   return {}
-enddef
-
-def BufClient(bufnr: number): dict<any>
-  var key = getbufvar(bufnr, 'lsp_client_key', '')
-  return clients->get(key, {})
 enddef
 
 def BufText(bufnr: number): string
@@ -272,6 +294,7 @@ enddef
 def SetBufferOptions(cl: dict<any>, bufnr: number)
   if !cl.capabilities->has_key('completionProvider')
       || !Setting('omnifunc')
+      || type(getbufvar(bufnr, 'lsp_omnifunc_save', v:null)) == v:t_string
     return
   endif
   setbufvar(bufnr, 'lsp_omnifunc_save', getbufvar(bufnr, '&omnifunc'))
@@ -307,7 +330,8 @@ def DidOpen(cl: dict<any>, bufnr: number)
     },
   })
   # The first moment there is a server to ask; without this nothing appears
-  # until the cursor moves.
+  # until the cursor moves.  Asked again as each further server comes up,
+  # which is what fetches whatever only that one offers.
   if bufnr == bufnr('%')
     InlayHints()
     CodeLenses()
@@ -362,27 +386,28 @@ def WillSave(bufnr: number)
   if !Setting('will_save')
     return
   endif
-  var cl = BufClient(bufnr)
-  if cl->empty() || !cl.initialized
-    return
-  endif
   var params = {textDocument: {uri: util.PathToUri(bufname(bufnr))},
     reason: SAVE_MANUAL}
-  if !Sync(cl, 'willSave') && !Sync(cl, 'willSaveWaitUntil')
-    return
-  endif
-  listener_flush(bufnr)
-  if Sync(cl, 'willSave')
-    lspclient.Notify(cl, 'textDocument/willSave', params)
-  endif
-  if !Sync(cl, 'willSaveWaitUntil')
-    return
-  endif
-  var edits = lspclient.RequestSync(cl, 'textDocument/willSaveWaitUntil',
-    params, WILL_SAVE_TIMEOUT)
-  if type(edits) == v:t_list && !edits->empty()
-    ApplyTextEdits(bufnr, edits, cl.encoding)
-  endif
+  for cl in BufClients(bufnr)
+    if !cl.initialized
+        || (!Sync(cl, 'willSave') && !Sync(cl, 'willSaveWaitUntil'))
+      continue
+    endif
+    # Again for each of them, so that one asked after another sees what the
+    # one before it put in the file.
+    listener_flush(bufnr)
+    if Sync(cl, 'willSave')
+      lspclient.Notify(cl, 'textDocument/willSave', params)
+    endif
+    if !Sync(cl, 'willSaveWaitUntil')
+      continue
+    endif
+    var edits = lspclient.RequestSync(cl, 'textDocument/willSaveWaitUntil',
+      params, WILL_SAVE_TIMEOUT)
+    if type(edits) == v:t_list && !edits->empty()
+      ApplyTextEdits(bufnr, edits, cl.encoding)
+    endif
+  endfor
 enddef
 
 # A listener change means: replace the lines "lnum" up to but not including
@@ -403,54 +428,58 @@ enddef
 # each item of the change list already holds, so they are taken and dropped.
 def OnChange(bufnr: number, _: number, _: number, _: number,
     changes: list<dict<any>>)
-  var cl = BufClient(bufnr)
-  if cl->empty() || !cl.initialized
+  var here = BufClients(bufnr)->filter((_, cl) => cl.initialized)
+  if here->empty()
     return
   endif
-  var kind = SyncKind(cl)
-  if kind == SYNC_NONE
-    return
-  endif
-  if kind == SYNC_FULL
-    SendChange(cl, bufnr, [{text: BufText(bufnr)}])
-    return
-  endif
-  SendChange(cl, bufnr, changes->mapnew((_, c) => ChangeToLsp(c)))
+  var ranges = changes->mapnew((_, c) => ChangeToLsp(c))
+  # The whole text is worked out only where a server asks for it.
+  var whole: list<dict<any>> = []
+  for cl in here
+    var kind = SyncKind(cl)
+    if kind == SYNC_NONE
+      continue
+    endif
+    if kind == SYNC_FULL
+      if whole->empty()
+        whole = [{text: BufText(bufnr)}]
+      endif
+      SendChange(cl, bufnr, whole)
+    else
+      SendChange(cl, bufnr, ranges)
+    endif
+  endfor
 enddef
 
 # What a server asks under "save" decides whether the text goes along: asking
 # for it means it would rather not read the file itself.
 def DidSave(bufnr: number)
-  var cl = BufClient(bufnr)
-  if cl->empty() || !cl.initialized
-    return
-  endif
   var uri = util.PathToUri(bufname(bufnr))
-  if !cl.documents->has_key(uri)
-    return
-  endif
-  var params: dict<any> = {textDocument: {uri: uri}}
-  var sync = cl.capabilities->get('textDocumentSync', {})
-  if type(sync) == v:t_dict
-    var save = sync->get('save', false)
-    if type(save) == v:t_dict && save->get('includeText', false)
-      params.text = BufText(bufnr)
+  for cl in BufClients(bufnr)
+    if !cl.initialized || !cl.documents->has_key(uri)
+      continue
     endif
-  endif
-  lspclient.Notify(cl, 'textDocument/didSave', params)
+    var params: dict<any> = {textDocument: {uri: uri}}
+    var sync = cl.capabilities->get('textDocumentSync', {})
+    if type(sync) == v:t_dict
+      var save = sync->get('save', false)
+      if type(save) == v:t_dict && save->get('includeText', false)
+        params.text = BufText(bufnr)
+      endif
+    endif
+    lspclient.Notify(cl, 'textDocument/didSave', params)
+  endfor
 enddef
 
 def DidClose(bufnr: number)
-  var cl = BufClient(bufnr)
-  if cl->empty()
-    return
-  endif
   var uri = util.PathToUri(bufname(bufnr))
-  if !cl.documents->has_key(uri)
-    return
-  endif
-  remove(cl.documents, uri)
-  lspclient.Notify(cl, 'textDocument/didClose', {textDocument: {uri: uri}})
+  for cl in BufClients(bufnr)
+    if !cl.documents->has_key(uri)
+      continue
+    endif
+    remove(cl.documents, uri)
+    lspclient.Notify(cl, 'textDocument/didClose', {textDocument: {uri: uri}})
+  endfor
 enddef
 
 def OnReady(cl: dict<any>)
@@ -554,7 +583,8 @@ def OnNotify(cl: dict<any>, method: string, params: any)
     # A server may report on a file that is not open here.
     var bufnr = bufnr(util.UriToPath(uri))
     if bufnr > 0
-      diag.Update(bufnr, cl.diagnostics[uri], cl.encoding)
+      diag.Update(bufnr, ClientKey(cl.name, cl.root), cl.diagnostics[uri],
+        cl.encoding)
     endif
   elseif method ==# 'window/showMessage'
     ShowMessage(params->get('type', 0), params->get('message', ''))
@@ -629,7 +659,7 @@ export def Attach(loud: bool = false)
     PopupStyle(popup)
   endfor
   var bufnr = bufnr('%')
-  if !getbufvar(bufnr, 'lsp_client_key', '')->empty()
+  if !getbufvar(bufnr, 'lsp_client_keys', [])->empty()
     if loud
       echomsg 'lsp: this buffer already has a server'
     endif
@@ -642,44 +672,58 @@ export def Attach(loud: bool = false)
     endif
     return
   endif
-  var config = ServerFor(&filetype)
-  if config->empty()
+  var configs = ServersFor(&filetype)
+  if configs->empty()
     if loud
       util.WarningMsg(printf('no server is set up for "%s"', &filetype))
     endif
     return
   endif
 
-  var root = util.FindRoot(name, config->get('rootPatterns', ['.git']))
-  var key = ClientFor(config.name, root)
-  if key->empty()
-    key = ClientKey(config.name, root)
-    var fresh = lspclient.Start(config, root, OnReady,
-      Setting('snippet'), HoverFormat())
-    if fresh->empty()
-      return
+  # Every one of them is given the buffer: a server answers from the copy it
+  # was handed, so one that is not told about the text has nothing to say.
+  var keys: list<string> = []
+  for config in configs
+    var root = util.FindRoot(name, config->get('rootPatterns', ['.git']))
+    var key = ClientFor(config.name, root)
+    if key->empty()
+      key = ClientKey(config.name, root)
+      var fresh = lspclient.Start(config, root, OnReady,
+        Setting('snippet'), HoverFormat())
+      if fresh->empty()
+        continue
+      endif
+      clients[key] = fresh
     endif
-    clients[key] = fresh
+    if index(keys, key) < 0
+      keys->add(key)
+    endif
+  endfor
+  if keys->empty()
+    return
   endif
-  var cl = clients[key]
-  b:lsp_client_key = key
+  b:lsp_client_keys = keys
   HookBuffer()
 
-  if cl.initialized
-    DidOpen(cl, bufnr)
-  else
-    pending_open[key] = pending_open->get(key, []) + [bufnr]
-  endif
+  for key in keys
+    if clients[key].initialized
+      DidOpen(clients[key], bufnr)
+    else
+      pending_open[key] = pending_open->get(key, []) + [bufnr]
+    endif
+  endfor
   if loud
-    echomsg printf('lsp: %s has this buffer, rooted at %s',
-      config.name, cl.root)
+    for key in keys
+      echomsg printf('lsp: %s has this buffer, rooted at %s',
+        clients[key].name, clients[key].root)
+    endfor
   endif
 enddef
 
 export def Detach(bufnr: number = bufnr('%'))
   # A buffer may be let go of more than once, since the autocommand that
   # leads here stays with it; only the time it had a server is an event.
-  var was_served = !getbufvar(bufnr, 'lsp_client_key', '')->empty()
+  var was_served = !getbufvar(bufnr, 'lsp_client_keys', [])->empty()
   var listener = getbufvar(bufnr, 'lsp_listener', 0)
   if listener > 0
     listener_remove(listener)
@@ -705,7 +749,7 @@ export def Detach(bufnr: number = bufnr('%'))
       setbufvar(bufnr, 'lsp_omnifunc_save', v:null)
     endif
     setbufvar(bufnr, 'lsp_listener', 0)
-    setbufvar(bufnr, 'lsp_client_key', '')
+    setbufvar(bufnr, 'lsp_client_keys', [])
     if was_served
       BufEvent('LspDetached', bufnr)
     endif
@@ -889,7 +933,7 @@ export def Status()
   for [key, cl] in clients->items()
     echo printf('%s  %s  %d buffer(s)  %d diagnostic(s) here', key,
       cl.initialized ? 'ready' : 'starting', len(cl.documents),
-      diag.Count(bufnr('%')))
+      diag.CountFor(bufnr('%'), key))
     # The root is in the key already, so one folder is worth no list.
     if len(cl.folders) > 1
       for i in range(len(cl.folders))
@@ -902,7 +946,7 @@ enddef
 
 # What ":LspWorkspaceFolderRemove" can be given: not the root it started on.
 export def RemovableFolders(): list<string>
-  var cl = BufClient(bufnr('%'))
+  var cl = FolderClient()
   if cl->empty()
     return []
   endif
@@ -912,16 +956,18 @@ enddef
 # A folder joins the project of the current buffer, so that is the server it
 # is added to or taken from.
 def FolderClient(): dict<any>
-  var cl = BufClient(bufnr('%'))
-  if cl->empty() || !cl.initialized
+  var here = BufClients(bufnr('%'))->filter((_, cl) => cl.initialized)
+  if here->empty()
     util.WarningMsg('this buffer has no server')
     return {}
   endif
-  if !TakesFolders(cl)
-    util.WarningMsg(printf('%s does not take workspace folders', cl.name))
-    return {}
-  endif
-  return cl
+  for cl in here
+    if TakesFolders(cl)
+      return cl
+    endif
+  endfor
+  util.WarningMsg(printf('%s does not take workspace folders', here[0].name))
+  return {}
 enddef
 
 # A path as the folders are held: absolute, and without the trailing slash
@@ -1125,10 +1171,15 @@ def HoverText(contents: any): list<string>
   return []
 enddef
 
-def ReadyClient(): dict<any>
-  var cl = BufClient(bufnr('%'))
-  if cl->empty() || !cl.initialized
+def ReadyClient(provider: string, what: string): dict<any>
+  var here = BufClients(bufnr('%'))->filter((_, cl) => cl.initialized)
+  if here->empty()
     util.WarningMsg('no server for this buffer')
+    return {}
+  endif
+  var cl = ClientOffering(bufnr('%'), provider)
+  if cl->empty()
+    util.WarningMsg('no server here offers ' .. what)
     return {}
   endif
   # Pending changes are normally sent just before the screen is updated, which
@@ -1145,12 +1196,8 @@ def CursorParams(encoding: string): dict<any>
 enddef
 
 export def Hover()
-  var cl = ReadyClient()
+  var cl = ReadyClient('hoverProvider', 'hover')
   if cl->empty()
-    return
-  endif
-  if !cl.capabilities->has_key('hoverProvider')
-    util.WarningMsg('the server does not offer hover')
     return
   endif
   lspclient.Request(cl, 'textDocument/hover', CursorParams(cl.encoding),
@@ -1446,12 +1493,8 @@ def ShowSignature(help: any)
 enddef
 
 export def Signature()
-  var cl = ReadyClient()
+  var cl = ReadyClient('signatureHelpProvider', 'signature help')
   if cl->empty()
-    return
-  endif
-  if !cl.capabilities->has_key('signatureHelpProvider')
-    util.WarningMsg('the server does not offer signature help')
     return
   endif
   signature_seq += 1
@@ -1472,8 +1515,8 @@ def OnTextChanged()
   if !Setting('signature_help')
     return
   endif
-  var cl = BufClient(bufnr('%'))
-  if cl->empty() || !cl.initialized
+  var cl = ClientOffering(bufnr('%'), 'signatureHelpProvider')
+  if cl->empty()
     return
   endif
   var provider = cl.capabilities->get('signatureHelpProvider', {})
@@ -1558,12 +1601,8 @@ const SPLIT_MODS = '\<\(aboveleft\|belowright\|botright\|horizontal'
 
 # Four requests have this shape: what comes back is a place to go to.
 def JumpTo(method: string, provider: string, what: string, mods: string)
-  var cl = ReadyClient()
+  var cl = ReadyClient(provider, what)
   if cl->empty()
-    return
-  endif
-  if !cl.capabilities->has_key(provider)
-    util.WarningMsg('the server does not offer ' .. what)
     return
   endif
   lspclient.Request(cl, method, CursorParams(cl.encoding), (result: any) => {
@@ -1712,8 +1751,8 @@ def OnTypeFormat()
   if !Setting('on_type_formatting')
     return
   endif
-  var cl = BufClient(bufnr)
-  if cl->empty() || !cl.initialized
+  var cl = ClientOffering(bufnr, 'documentOnTypeFormattingProvider')
+  if cl->empty()
     return
   endif
   var provider = cl.capabilities->get('documentOnTypeFormattingProvider', {})
@@ -1760,20 +1799,14 @@ def OnTypeFormat()
 enddef
 
 export def Format(first: number, last: number)
-  var cl = ReadyClient()
-  if cl->empty()
-    return
-  endif
   var bufnr = bufnr('%')
   # Asking about every line is what the whole buffer request is for; a server
   # may offer only one of the two.
   var whole = first <= 1 && last >= BufLineCount(bufnr)
-  var provider = whole ? 'documentFormattingProvider'
-    : 'documentRangeFormattingProvider'
-  if !cl.capabilities->has_key(provider)
-    var msg = whole ? 'the server does not offer formatting'
-      : 'the server does not offer formatting a range'
-    util.WarningMsg(msg)
+  var cl = ReadyClient(whole ? 'documentFormattingProvider'
+    : 'documentRangeFormattingProvider',
+    whole ? 'formatting' : 'formatting a range')
+  if cl->empty()
     return
   endif
   # The reply describes the buffer as it was asked about.
@@ -1908,12 +1941,8 @@ enddef
 # nothing where there is no name to rename, and otherwise names the text to
 # start from, which beats |<cword>| where 'iskeyword' and the language part.
 export def Rename(newname: string)
-  var cl = ReadyClient()
+  var cl = ReadyClient('renameProvider', 'rename')
   if cl->empty()
-    return
-  endif
-  if !cl.capabilities->has_key('renameProvider')
-    util.WarningMsg('the server does not offer rename')
     return
   endif
   # Where the cursor is now is what the rename is about, whatever it does
@@ -2005,12 +2034,8 @@ def RunAction(cl: dict<any>, action: dict<any>)
 enddef
 
 export def CodeAction(first: number, last: number)
-  var cl = ReadyClient()
+  var cl = ReadyClient('codeActionProvider', 'code actions')
   if cl->empty()
-    return
-  endif
-  if !cl.capabilities->has_key('codeActionProvider')
-    util.WarningMsg('the server does not offer code actions')
     return
   endif
   var bufnr = bufnr('%')
@@ -2021,7 +2046,8 @@ export def CodeAction(first: number, last: number)
       end: util.PosToLsp(bufnr, last, getline(last)->strlen() + 1,
         cl.encoding),
     },
-    context: {diagnostics: diag.ForRange(bufnr, first, last)},
+    context: {diagnostics: diag.ForRange(bufnr,
+      ClientKey(cl.name, cl.root), first, last)},
   }
   lspclient.Request(cl, 'textDocument/codeAction', params, (result: any) => {
     var actions = type(result) == v:t_list
@@ -2048,10 +2074,8 @@ def InlayHints()
   if !Setting('inlay_hint')
     return
   endif
-  var cl = BufClient(bufnr('%'))
-  if cl->empty() || !cl.initialized
-      || !cl.capabilities->has_key('inlayHintProvider')
-      || lspclient.Declined(cl, 'textDocument/inlayHint')
+  var cl = ClientOffering(bufnr('%'), 'inlayHintProvider')
+  if cl->empty() || lspclient.Declined(cl, 'textDocument/inlayHint')
     return
   endif
   var bufnr = bufnr('%')
@@ -2116,8 +2140,8 @@ def SemanticTokens()
   if !Setting('semantic_tokens')
     return
   endif
-  var cl = BufClient(bufnr('%'))
-  if cl->empty() || !cl.initialized
+  var cl = ClientOffering(bufnr('%'), 'semanticTokensProvider')
+  if cl->empty()
     return
   endif
   var provider = cl.capabilities->get('semanticTokensProvider', {})
@@ -2235,10 +2259,8 @@ def FoldingRanges()
   if !Setting('folding')
     return
   endif
-  var cl = BufClient(bufnr('%'))
-  if cl->empty() || !cl.initialized
-      || !cl.capabilities->has_key('foldingRangeProvider')
-      || lspclient.Declined(cl, 'textDocument/foldingRange')
+  var cl = ClientOffering(bufnr('%'), 'foldingRangeProvider')
+  if cl->empty() || lspclient.Declined(cl, 'textDocument/foldingRange')
     return
   endif
   var bufnr = bufnr('%')
@@ -2276,7 +2298,7 @@ enddef
 # that puts the hint into the file.  A server may leave those
 # out until the hint is acted on, which is what "inlayHint/resolve" is for.
 def WithHint(want: string, Use: func(dict<any>, string))
-  var cl = ReadyClient()
+  var cl = ReadyClient('inlayHintProvider', 'inlay hints')
   if cl->empty()
     return
   endif
@@ -2341,10 +2363,8 @@ def CodeLenses()
   if !Setting('code_lens')
     return
   endif
-  var cl = BufClient(bufnr('%'))
-  if cl->empty() || !cl.initialized
-      || !cl.capabilities->has_key('codeLensProvider')
-      || lspclient.Declined(cl, 'textDocument/codeLens')
+  var cl = ClientOffering(bufnr('%'), 'codeLensProvider')
+  if cl->empty() || lspclient.Declined(cl, 'textDocument/codeLens')
     return
   endif
   var bufnr = bufnr('%')
@@ -2405,10 +2425,8 @@ def DocumentLinks()
   if !Setting('document_link')
     return
   endif
-  var cl = BufClient(bufnr('%'))
-  if cl->empty() || !cl.initialized
-      || !cl.capabilities->has_key('documentLinkProvider')
-      || lspclient.Declined(cl, 'textDocument/documentLink')
+  var cl = ClientOffering(bufnr('%'), 'documentLinkProvider')
+  if cl->empty() || lspclient.Declined(cl, 'textDocument/documentLink')
     return
   endif
   var bufnr = bufnr('%')
@@ -2436,7 +2454,7 @@ enddef
 
 # The link under the cursor, with what the server left out asked for first.
 def WithLink(want: string, Use: func(dict<any>))
-  var cl = ReadyClient()
+  var cl = ReadyClient('documentLinkProvider', 'document links')
   if cl->empty()
     return
   endif
@@ -2502,12 +2520,8 @@ def SelectionStep(by: number)
     util.WarningMsg('there is nothing narrower')
     return
   endif
-  var cl = ReadyClient()
-  if cl->empty()
-    return
-  endif
-  if !cl.capabilities->get('selectionRangeProvider', false)
-    util.WarningMsg('the server does not offer selection ranges')
+  var cl = ReadyClient('selectionRangeProvider', 'selection ranges')
+  if cl->empty() || !cl.capabilities->get('selectionRangeProvider', false)
     return
   endif
   var bufnr = bufnr('%')
@@ -2538,7 +2552,7 @@ enddef
 
 # A lens carries the command it stands for, so running it is running that.
 export def RunCodeLens()
-  var cl = ReadyClient()
+  var cl = ReadyClient('codeLensProvider', 'code lenses')
   if cl->empty()
     return
   endif
@@ -2587,10 +2601,8 @@ def HighlightSymbol()
   if !Setting('document_highlight')
     return
   endif
-  var cl = BufClient(bufnr('%'))
-  if cl->empty() || !cl.initialized
-      || !cl.capabilities->has_key('documentHighlightProvider')
-      || lspclient.Declined(cl, 'textDocument/documentHighlight')
+  var cl = ClientOffering(bufnr('%'), 'documentHighlightProvider')
+  if cl->empty() || lspclient.Declined(cl, 'textDocument/documentHighlight')
     return
   endif
   var at = [bufnr('%'), line('.'), col('.')]
@@ -2605,12 +2617,8 @@ def HighlightSymbol()
 enddef
 
 export def References()
-  var cl = ReadyClient()
+  var cl = ReadyClient('referencesProvider', 'references')
   if cl->empty()
-    return
-  endif
-  if !cl.capabilities->has_key('referencesProvider')
-    util.WarningMsg('the server does not offer references')
     return
   endif
   var params = CursorParams(cl.encoding)
@@ -2682,12 +2690,8 @@ def FlattenSymbols(syms: any, depth: number, uri: string,
 enddef
 
 export def Outline()
-  var cl = ReadyClient()
+  var cl = ReadyClient('documentSymbolProvider', 'symbols for a file')
   if cl->empty()
-    return
-  endif
-  if !cl.capabilities->has_key('documentSymbolProvider')
-    util.WarningMsg('the server does not offer symbols for a file')
     return
   endif
   var uri = util.PathToUri(bufname('%'))
@@ -2733,12 +2737,8 @@ def CallLocations(calls: any, incoming: bool, here: string): list<dict<any>>
 enddef
 
 def CallHierarchy(incoming: bool)
-  var cl = ReadyClient()
+  var cl = ReadyClient('callHierarchyProvider', 'a call hierarchy')
   if cl->empty()
-    return
-  endif
-  if !cl.capabilities->has_key('callHierarchyProvider')
-    util.WarningMsg('the server does not offer a call hierarchy')
     return
   endif
   var here = util.PathToUri(bufname('%'))
@@ -2797,12 +2797,8 @@ enddef
 # One step at a time: what comes back are the types directly above or below
 # the one asked about, so a further step means asking again from there.
 def TypeHierarchy(up: bool)
-  var cl = ReadyClient()
+  var cl = ReadyClient('typeHierarchyProvider', 'a type hierarchy')
   if cl->empty()
-    return
-  endif
-  if !cl.capabilities->has_key('typeHierarchyProvider')
-    util.WarningMsg('the server does not offer a type hierarchy')
     return
   endif
   lspclient.Request(cl, 'textDocument/prepareTypeHierarchy',
@@ -2859,12 +2855,8 @@ def ShowSymbols(query: string, syms: list<any>, encoding: string)
 enddef
 
 export def Symbol(query: string)
-  var cl = ReadyClient()
+  var cl = ReadyClient('workspaceSymbolProvider', 'workspace symbols')
   if cl->empty()
-    return
-  endif
-  if !cl.capabilities->has_key('workspaceSymbolProvider')
-    util.WarningMsg('the server does not offer workspace symbols')
     return
   endif
   # An empty query means "everything" to the protocol.
@@ -3046,8 +3038,8 @@ def CompletionContext(cl: dict<any>, before: string): dict<any>
 enddef
 
 export def OmniFunc(findstart: number, base: string): any
-  var cl = BufClient(bufnr('%'))
-  if cl->empty() || !cl.initialized
+  var cl = ClientOffering(bufnr('%'), 'completionProvider')
+  if cl->empty()
     return findstart ? -3 : []
   endif
 
@@ -3131,9 +3123,8 @@ def OnCompleteChanged()
     ShowInfo(known)
   endif
 
-  var cl = BufClient(bufnr('%'))
-  if cl->empty() || !cl.initialized || !ResolveProvider(cl)
-      || item->has_key('documentation')
+  var cl = ClientOffering(bufnr('%'), 'completionProvider')
+  if cl->empty() || !ResolveProvider(cl) || item->has_key('documentation')
     return
   endif
   var seq = resolve_seq
@@ -3602,14 +3593,16 @@ export def RenameFile(newname: string)
     return
   endif
 
-  var cl = BufClient(bufnr)
+  var here = BufClients(bufnr)->filter((_, cl) => cl.initialized)
   var files = [{oldUri: util.PathToUri(old), newUri: util.PathToUri(new)}]
-  var told = !cl->empty() && cl.initialized
-  if told && WantsFileOp(cl, 'willRename', old)
-    # What refers to the file is put right while it is still where the
-    # server last saw it.
-    FileOpEdits(cl, 'workspace/willRenameFiles', files)
-  endif
+  var told = !here->empty()
+  for cl in here
+    if WantsFileOp(cl, 'willRename', old)
+      # What refers to the file is put right while it is still where the
+      # server last saw it.
+      FileOpEdits(cl, 'workspace/willRenameFiles', files)
+    endif
+  endfor
   if told
     Detach(bufnr)
   endif
@@ -3630,10 +3623,12 @@ export def RenameFile(newname: string)
   var heard = false
   if told
     Attach()
-    if WantsFileOp(cl, 'didRename', new)
-      lspclient.Notify(cl, 'workspace/didRenameFiles', {files: files})
-      heard = true
-    endif
+    for cl in BufClients(bufnr('%'))
+      if WantsFileOp(cl, 'didRename', new)
+        lspclient.Notify(cl, 'workspace/didRenameFiles', {files: files})
+        heard = true
+      endif
+    endfor
   endif
   echomsg printf('lsp: %s is now %s%s', fnamemodify(old, ':t'),
     fnamemodify(new, ':t'),
@@ -3656,8 +3651,8 @@ def ForgetDiagnosticId(bufnr: number)
 enddef
 
 def PullDiagnostics()
-  var cl = BufClient(bufnr('%'))
-  if cl->empty() || !cl.initialized
+  var cl = ClientOffering(bufnr('%'), 'diagnosticProvider')
+  if cl->empty()
     return
   endif
   var provider = Capability(cl, 'diagnosticProvider')
@@ -3693,7 +3688,8 @@ def PullDiagnostics()
     if result->get('kind', 'full') ==# 'full'
       cl.diagnostics[uri] = result->get('items', [])
       if bufexists(bufnr)
-        diag.Update(bufnr, cl.diagnostics[uri], cl.encoding)
+        diag.Update(bufnr, ClientKey(cl.name, cl.root), cl.diagnostics[uri],
+          cl.encoding)
       endif
     endif
   })
@@ -3746,7 +3742,8 @@ def TakeWorkspaceReport(cl: dict<any>, report: any)
   endif
   cl.diagnostics[uri] = report->get('items', [])
   if bufnr > 0
-    diag.Update(bufnr, cl.diagnostics[uri], cl.encoding)
+    diag.Update(bufnr, ClientKey(cl.name, cl.root), cl.diagnostics[uri],
+      cl.encoding)
   endif
 enddef
 
@@ -3815,8 +3812,7 @@ enddef
 
 export def Diagnostics()
   # "No server" and "nothing to report" look the same in an empty list.
-  var cl = BufClient(bufnr('%'))
-  if cl->empty() || !cl.initialized
+  if BufClients(bufnr('%'))->filter((_, cl) => cl.initialized)->empty()
     util.WarningMsg('no server for this buffer')
     return
   endif
@@ -3826,8 +3822,8 @@ enddef
 # The workspace pull runs on its own; this is what shows what it has
 # reported, an open buffer included.
 export def WorkspaceDiagnostics()
-  var cl = BufClient(bufnr('%'))
-  if cl->empty() || !cl.initialized
+  var here = BufClients(bufnr('%'))->filter((_, cl) => cl.initialized)
+  if here->empty()
     util.WarningMsg('no server for this buffer')
     return
   endif
@@ -3835,13 +3831,15 @@ export def WorkspaceDiagnostics()
     util.WarningMsg('"workspace_diagnostics" is off')
     return
   endif
-  # The pull starts as the server comes up, so a setting turned on after
-  # that has left nothing running.
-  PullWorkspace(cl)
   var entries: list<dict<any>> = []
-  for uri in cl.diagnostics->keys()->sort()
-    entries += diag.Entries(util.UriToPath(uri), cl.diagnostics[uri],
-      cl.encoding)
+  for cl in here
+    # The pull starts as the server comes up, so a setting turned on after
+    # that has left nothing running.
+    PullWorkspace(cl)
+    for uri in cl.diagnostics->keys()->sort()
+      entries += diag.Entries(util.UriToPath(uri), cl.diagnostics[uri],
+        cl.encoding)
+    endfor
   endfor
   if entries->empty()
     echo 'lsp: the server has reported nothing for the workspace'
@@ -3853,20 +3851,28 @@ export def WorkspaceDiagnostics()
 enddef
 
 export def Log()
-  var cl = BufClient(bufnr('%'))
-  if cl->empty()
+  var here = BufClients(bufnr('%'))
+  if here->empty()
     util.WarningMsg('no server for this buffer')
     return
   endif
   # A server logs in two places; both belong here, told apart by a heading
   # rather than mixed into one stream.
   var lines: list<string> = []
-  if !cl.log->empty()
-    lines += ['--- window/logMessage ---'] + cl.log
-  endif
-  if !cl.stderr->empty()
-    lines += (lines->empty() ? [] : ['']) + ['--- stderr ---'] + cl.stderr
-  endif
+  for cl in here
+    var one: list<string> = []
+    if !cl.log->empty()
+      one += ['--- window/logMessage ---'] + cl.log
+    endif
+    if !cl.stderr->empty()
+      one += (one->empty() ? [] : ['']) + ['--- stderr ---'] + cl.stderr
+    endif
+    if one->empty()
+      continue
+    endif
+    lines += (lines->empty() ? [] : ['']) + (len(here) > 1
+      ? ['=== ' .. cl.name .. ' ==='] : []) + one
+  endfor
   if lines->empty()
     echo 'lsp: the server has logged nothing'
     return

@@ -95,6 +95,11 @@ let g:lsp_server_list = [
 
 Every key an entry takes is under `:help g:lsp_server_list`.
 
+More than one entry may name the same filetype.  All of them are started and
+each is told about the buffer; what is asked for goes to the first entry that
+offers it, while what every server reports is shown together.  See
+`:help lsp-more-than-one-server`.
+
 What the client itself does goes in `g:lsp_client_config`, one entry per
 setting.  Example:
 
@@ -191,14 +196,14 @@ Only what a server offers is asked for, so what you get depends on the server.
 
 | Category | Command | Description |
 | --- | --- | --- |
-| Server | `:LspStart` | Connect this buffer to the server for its filetype |
+| Server | `:LspStart` | Connect this buffer to the servers for its filetype |
 |  | `:LspStop` | Shut down every running server |
 |  | `:LspStatus` | List the running servers |
 |  | `:LspConfigCheck` | Report what in `g:lsp_client_config` or `g:lsp_server_list` cannot be read |
 |  | `:LspConfigReload` | Tell every running server that its settings changed |
 |  | `:LspWorkspaceFolderAdd [{dir}]` | Hand a directory to this server as another workspace folder |
 |  | `:LspWorkspaceFolderRemove {dir}` | Take a workspace folder back from this server |
-|  | `:LspLog` | Open what the server has logged |
+|  | `:LspLog` | Open what the servers for this buffer have logged |
 | Asking | `:LspHover` | What the server knows about the symbol |
 |  | `:LspSignature` | What the call the cursor is in takes |
 | Jumping | `:LspDefinition` | Jump to the definition of the symbol |
