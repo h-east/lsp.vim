@@ -37,18 +37,18 @@ what it asked to hear about, and what it reports about itself is under
 
 ## Requirements
 
-- Vim 9.2.1004 or later, with the `+job` and `+channel` features
+- Vim [9.2.1004](https://github.com/vim/vim/commit/1f56c351dedad288f79c89b6b6f64be762ec3b9b) or later, with the `+job` and `+channel` features
   (9.2.1xxx or later when the server is vim9ls)
 - A language server for the language you work in, installed separately
 
 <details>
 <summary>What those patches are for</summary>
 
-- 9.2.1004: `complete_info()` reports in `"auto"` whether `'autocomplete'` or
+- [9.2.1004](https://github.com/vim/vim/commit/1f56c351dedad288f79c89b6b6f64be762ec3b9b): `complete_info()` reports in `"auto"` whether `'autocomplete'` or
   a typed key called the `'omnifunc'` function
-- 9.2.0997: `ch_sendexpr()` takes a String `"id"`, which answers a request the
+- [9.2.0997](https://github.com/vim/vim/commit/6308df41bfb29c22586b202b72c7e2b2052a09d0): `ch_sendexpr()` takes a String `"id"`, which answers a request the
   server named with a string
-- 9.2.0970: `listener_add()` takes a `"text"` option, which gives the callback
+- [9.2.0970](https://github.com/vim/vim/commit/6362cc82bbf01b498da37036ec76ffa987b85e4e): `listener_add()` takes a `"text"` option, which gives the callback
   the text of each change
 
 </details>
