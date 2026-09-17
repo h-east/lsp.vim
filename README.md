@@ -38,15 +38,18 @@ what it asked to hear about, and what it reports about itself is under
 ## Requirements
 
 - Vim 9.2.1004 or later, with the `+job` and `+channel` features
+  (9.2.1xxx or later when the server is vim9ls)
 - A language server for the language you work in, installed separately
 
 <details>
 <summary>What those patches are for</summary>
 
-9.2.1004 is what lets a completion function tell whether Vim asked on its
-own, 9.2.0997 before it is what lets `ch_sendexpr()` answer a request the
-server named with a string, and 9.2.0970 what lets `listener_add()` ask for
-the text of a change, which is how a buffer is kept in step with the server.
+- 9.2.1004: `complete_info()` reports in `"auto"` whether `'autocomplete'` or
+  a typed key called the `'omnifunc'` function
+- 9.2.0997: `ch_sendexpr()` takes a String `"id"`, which answers a request the
+  server named with a string
+- 9.2.0970: `listener_add()` takes a `"text"` option, which gives the callback
+  the text of each change
 
 </details>
 
