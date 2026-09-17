@@ -1040,14 +1040,14 @@ export def Status(answering: bool = false)
     return
   endif
   for [key, cl] in clients->items()
-    echo printf('%s  %s  %d buffer(s)  %d diagnostic(s) here', key,
-      cl.initialized ? 'ready' : 'starting', len(cl.documents),
-      diag.CountFor(bufnr('%'), key))
-    # The root is in the key already, so one folder is worth no list.
+    echo printf('%s@%s  %s  %d buffer(s)  %d diagnostic(s) here', cl.name,
+      util.ShortPath(cl.root), cl.initialized ? 'ready' : 'starting',
+      len(cl.documents), diag.CountFor(bufnr('%'), key))
+    # The root is named above already, so one folder is worth no list.
     if len(cl.folders) > 1
       for i in range(len(cl.folders))
         echo printf('%s%s', i == 0 ? '  folders: ' : '           ',
-          cl.folders[i])
+          util.ShortPath(cl.folders[i]))
       endfor
     endif
   endfor

@@ -68,6 +68,12 @@ export def OpenName(path: string): string
   return fnamemodify(path, ':.')
 enddef
 
+# A path the way |:ls| names a file: the short name under the current
+# directory, "~" for the home directory, in full otherwise.
+export def ShortPath(path: string): string
+  return fnamemodify(path, ':~:.')
+enddef
+
 const TYPES = {E: ' error', W: ' warning', I: ' info', N: ' note'}
 
 # 'quickfixtextfunc' for the lists the client fills.  Vim's own line names a
@@ -79,7 +85,7 @@ export def ListText(info: dict<any>): list<string>
     : getloclist(info.winid, what).items
   var out: list<string> = []
   for item in items[info.start_idx - 1 : info.end_idx - 1]
-    var name = item.bufnr > 0 ? fnamemodify(bufname(item.bufnr), ':~:.') : ''
+    var name = item.bufnr > 0 ? ShortPath(bufname(item.bufnr)) : ''
     var where = ''
     if item.lnum > 0
       where = item.lnum .. (item.col > 0 ? ' col ' .. item.col : '')

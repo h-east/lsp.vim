@@ -3149,4 +3149,14 @@ def g:Test_the_status_names_what_answers_for_the_buffer()
   assert_match('hover\s\+fake1', text)
 enddef
 
+# The root of a server is named the way :ls names a file, not in full.
+def g:Test_the_status_shortens_the_root()
+  assert_true(t.StartServer({capabilities: SYNC}, ['int one;']))
+
+  var line = execute('LspStatus')->split("\n")
+    ->filter((_, l) => l =~# '^fake@')->get(0, '')
+  var root = fnamemodify(t.SRC, ':h:h')
+  assert_equal('fake@' .. fnamemodify(root, ':~:.'), line->matchstr('^\S\+'))
+enddef
+
 # vim: ts=2 sw=0 et
