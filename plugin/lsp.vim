@@ -41,7 +41,7 @@ enddef
 
 command! -bar LspStart      lsp.Attach(true)
 command! -bar LspStop       lsp.Stop(true)
-command! -bar LspStatus     lsp.Status()
+command! -bar -bang LspStatus lsp.Status(<bang>0 ? true : false)
 command! -bar LspConfigCheck lsp.ConfigCheck()
 command! -bar LspConfigReload lsp.ConfigReload()
 command! -bar -nargs=? -complete=dir LspWorkspaceFolderAdd {

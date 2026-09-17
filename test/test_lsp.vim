@@ -3068,4 +3068,85 @@ def g:Test_what_every_server_reports_is_shown_together()
   lclose
 enddef
 
+# "use" names what a server is used for, so a feature it offers can be left to
+# the one named after it.
+def g:Test_use_hands_a_feature_to_the_next_server()
+  assert_true(t.StartServers([
+    {scenario: {
+      capabilities: Offering({documentFormattingProvider: true,
+        hoverProvider: true}),
+      replies: {'textDocument/formatting': []},
+    },
+    server: {use: {hover: false}}},
+    {scenario: {
+      capabilities: Offering({hoverProvider: true}),
+      replies: {'textDocument/hover': {contents: 'from the second'}},
+    }},
+  ], ['int one;']))
+
+  # The first offers hover but is not used for it, so the second answers.
+  LspHover
+  assert_true(t.WaitFor(() => !t.SentTo(1, 'textDocument/hover')->empty()),
+    'the server that is used for hover should be asked')
+  assert_equal([], t.SentTo(0, 'textDocument/hover'))
+  popup_clear()
+
+  # What it is still used for is asked of it.
+  LspFormat
+  assert_true(t.WaitFor(() =>
+    !t.SentTo(0, 'textDocument/formatting')->empty()),
+    'the first server should still be the one formatting')
+enddef
+
+# A server told not to report is left out of what is shown, and goes on
+# answering for the rest.
+def g:Test_use_leaves_out_what_a_server_reports()
+  var REPORT = {
+    range: {start: {line: 0, character: 4}, end: {line: 0, character: 7}},
+    severity: 1,
+    message: 'not to be shown',
+  }
+  assert_true(t.StartServers([
+    {scenario: {capabilities: SYNC, notify: [{
+      method: 'textDocument/publishDiagnostics',
+      params: {uri: 'file://' .. t.SRC, diagnostics: [REPORT]}}]},
+    server: {use: {diagnostics: false}}},
+    {scenario: {capabilities: Offering({hoverProvider: true}),
+      replies: {'textDocument/hover': {contents: 'x'}}}},
+  ], ['int one;']))
+
+  # The hover is the wait: it is answered after the report was turned away.
+  LspHover
+  assert_true(t.WaitFor(() => !popup_list()->empty()),
+    'the second server should answer the hover')
+  assert_equal([], prop_list(1))
+  popup_clear()
+enddef
+
+# What "use" holds is read as the rest of an entry is.
+def g:Test_use_is_reported_where_it_cannot_be_read()
+  var saved = g:lsp_server_list
+  defer execute('g:lsp_server_list = ' .. string(saved))
+  g:lsp_server_list = [{name: 'fake', filetypes: ['c'], cmd: ['x'],
+    use: {nosuchthing: true, hover: 'yes'}}]
+  var text = execute('LspConfigCheck')
+  assert_match('"use" names no such feature as "nosuchthing"', text)
+  assert_match('"use.hover" takes true or false', text)
+enddef
+
+# Which server answers what is asked for with a "!", and left out without it.
+def g:Test_the_status_names_what_answers_for_the_buffer()
+  assert_true(t.StartServers([
+    {scenario: {capabilities: Offering({documentFormattingProvider: true})}},
+    {scenario: {capabilities: Offering({hoverProvider: true})}},
+  ], ['int one;']))
+
+  assert_notmatch('this buffer:', execute('LspStatus'))
+
+  var text = execute('LspStatus!')
+  assert_match('this buffer:', text)
+  assert_match('formatting\s\+fake0', text)
+  assert_match('hover\s\+fake1', text)
+enddef
+
 # vim: ts=2 sw=0 et

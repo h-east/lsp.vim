@@ -121,6 +121,13 @@ g:lsp_server_list
 				"python".  A section this holds nothing for is
 				answered with a null, which leaves that
 				setting alone.
+		use		Optional Dictionary naming what this server is
+				used for where more than one of them holds the
+				buffer.  Each key is a feature and each value
+				is |true| or |false|; a feature it does not
+				name is one the server is used for.  The names
+				are under |lsp-features| and the rest of it
+				under |lsp-more-than-one-server|.
 
 		A server may keep something turned off until it is asked for
 		one of these two ways.  "gopls" offers the semantic tokens and
@@ -432,8 +439,8 @@ More than one server for a buffer ~
 						*lsp-more-than-one-server*
 More than one entry of |g:lsp_server_list| can hold the same 'filetype'.  All
 of them are started and each is given the buffer: a server answers from the
-copy it was handed, so one that is not told about the text has nothing to say
-about it.
+copy it was handed, so one that is not told about the text cannot answer for
+it.
 
 What is asked for goes to one server, the first entry that offers it.  So name
 the server that does a few things well before the general purpose one, and it
@@ -448,12 +455,68 @@ takes what it offers while the rest falls to the other: >vim9
 Reports are the exception: what every server found is drawn, and |:LspDiag|
 lists all of it.  A server is only asked to act on what it reported itself.
 
-|:LspStatus| names each server that is running, and |:LspLog| shows what each
-of them logged, under a heading of its own.
+What a server is used for can also be set outright, with the "use" key of
+its entry.  It holds a feature name from the table below and |true| or
+|false|: >vim9
+
+	use: {hover: false}	this server is not used for it, the next
+				one offering it is
+	use: {diagnostics: false}
+				what this server reports is not shown
+<
+A feature no "use" names follows the order above.  Naming one the server does
+not offer changes nothing.  |g:lsp_client_config| comes first: a feature
+turned off there is asked of no server, and "use" cannot bring it back.
+
+|:LspStatus| names each server that is running and, with a "!", which of them
+answers for each feature of the current buffer; |:LspLog| shows what each of
+them logged, under a heading of its own.
 
 Completion is answered by one server.  What two of them offer for the same
 text cannot be put in one menu in a sensible order: the protocol has
 "sortText" for the items of one reply and nothing to compare replies with.
+
+Feature names ~
+						*lsp-features*
+These are the names "use" takes.  Each is the capability the server reports,
+without the "Provider" at the end, so that it can be read beside the
+capabilities a server reports.
+
+	callHierarchy		|:LspIncomingCalls|, |:LspOutgoingCalls|
+	codeAction		|:LspCodeAction|
+	codeLens		|:LspCodeLens|
+	completion		'omnifunc'
+	declaration		|:LspDeclaration|
+	definition		|:LspDefinition|
+	diagnostics		|:LspDiag|, the marks in the text
+	documentHighlight	the symbol under the cursor
+	documentLink		|:LspDocumentLink|
+	documentSymbol		|:LspOutline|
+	foldingRange		|:LspFolding|
+	formatting		|:LspFormat|, whole or range
+	hover			|:LspHover|
+	implementation		|:LspImplementation|
+	inlayHint		|:LspInlayHint|
+	onTypeFormatting	formatting as you type
+	references		|:LspReferences|
+	rename			|:LspRename|
+	selectionRange		growing and shrinking the selection
+	semanticTokens		|:LspSemanticTokens|
+	signatureHelp		|:LspSignature|
+	typeDefinition		|:LspTypeDefinition|
+	typeHierarchy		|:LspSuperTypes|, |:LspSubTypes|
+	workspaceSymbol		searching the workspace for a symbol
+
+Nine of them are also turned off for every server at once, with the key of
+|g:lsp_client_config| named here: "code_lens" for codeLens, "omnifunc" for
+completion, "document_highlight" for documentHighlight, "document_link" for
+documentLink, "folding" for foldingRange, "inlay_hint" for inlayHint,
+"on_type_formatting" for onTypeFormatting, "semantic_tokens" for
+semanticTokens and "signature_help" for signatureHelp.
+
+The two are spelled differently because they name different things: the keys
+of an entry in |g:lsp_server_list| are in camelCase, those of
+|g:lsp_client_config| are in snake_case.
 
 ==============================================================================
 4. Commands					*lsp-commands*
@@ -474,11 +537,15 @@ The server ~
 						*:LspStatus*
 :LspStatus	Name the version of the plugin and of Vim, then list the
 		running servers, whether each one finished starting up, how
-		many buffers it has, and how many diagnostics are known for
-		the current buffer.  A server that was given more than one
-		workspace folder lists them under its own line.  Anything in
-		|g:lsp_client_config| that could not be read is listed first;
-		|:LspConfigCheck| goes over it all.
+		many buffers it has, and how many reports of its own are
+		known for the current buffer.  A server that was given more
+		than one workspace folder lists them under its own line.
+		Anything in |g:lsp_client_config| that could not be read is
+		listed first; |:LspConfigCheck| goes over it all.
+
+		With a "!", which server answers each feature of the current
+		buffer follows, which is what to read where more than one of
+		them holds it; see |lsp-more-than-one-server|.
 
 						*:LspConfigCheck*
 :LspConfigCheck	Read |g:lsp_client_config| and |g:lsp_server_list| and

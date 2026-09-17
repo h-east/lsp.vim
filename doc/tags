@@ -53,6 +53,7 @@ lsp-contents	lsp.txt	/*lsp-contents*
 lsp-diagnostics	lsp.txt	/*lsp-diagnostics*
 lsp-document-link	lsp.txt	/*lsp-document-link*
 lsp-events	lsp.txt	/*lsp-events*
+lsp-features	lsp.txt	/*lsp-features*
 lsp-folding	lsp.txt	/*lsp-folding*
 lsp-highlight	lsp.txt	/*lsp-highlight*
 lsp-inlay-hint	lsp.txt	/*lsp-inlay-hint*

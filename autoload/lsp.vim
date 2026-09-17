@@ -81,8 +81,54 @@ const SERVER_KEYS = {
   rootPatterns: v:t_list,
   initializationOptions: v:t_dict,
   settings: v:t_dict,
+  use: v:t_dict,
 }
 const SERVER_NEEDED = ['name', 'cmd', 'filetypes']
+
+# What each capability is called in "use".  "formatting" covers both of the
+# requests the protocol has for it, and "diagnostics" stands for both of the
+# ways a server reports.
+const FEATURE_OF = {
+  callHierarchyProvider: 'callHierarchy',
+  codeActionProvider: 'codeAction',
+  codeLensProvider: 'codeLens',
+  completionProvider: 'completion',
+  declarationProvider: 'declaration',
+  definitionProvider: 'definition',
+  diagnosticProvider: 'diagnostics',
+  documentFormattingProvider: 'formatting',
+  documentHighlightProvider: 'documentHighlight',
+  documentLinkProvider: 'documentLink',
+  documentOnTypeFormattingProvider: 'onTypeFormatting',
+  documentRangeFormattingProvider: 'formatting',
+  documentSymbolProvider: 'documentSymbol',
+  foldingRangeProvider: 'foldingRange',
+  hoverProvider: 'hover',
+  implementationProvider: 'implementation',
+  inlayHintProvider: 'inlayHint',
+  referencesProvider: 'references',
+  renameProvider: 'rename',
+  selectionRangeProvider: 'selectionRange',
+  semanticTokensProvider: 'semanticTokens',
+  signatureHelpProvider: 'signatureHelp',
+  typeDefinitionProvider: 'typeDefinition',
+  typeHierarchyProvider: 'typeHierarchy',
+  workspaceSymbolProvider: 'workspaceSymbol',
+}
+
+# The key of |g:lsp_client_config| that turns a feature off for every server.
+# It comes first: what is off there is asked of no server at all.
+const SETTING_OF = {
+  codeLens: 'code_lens',
+  completion: 'omnifunc',
+  documentHighlight: 'document_highlight',
+  documentLink: 'document_link',
+  foldingRange: 'folding',
+  inlayHint: 'inlay_hint',
+  onTypeFormatting: 'on_type_formatting',
+  semanticTokens: 'semantic_tokens',
+  signatureHelp: 'signature_help',
+}
 
 # What "hover_format" takes.
 const HOVER_FORMATS = ['plaintext', 'markdown']
@@ -272,12 +318,20 @@ def BufClients(bufnr: number): list<dict<any>>
   return out
 enddef
 
-# The one of them that answers for "provider": the first that offers it.  What
-# a server registered for later counts as well, hence Capability(), which
-# gives a number for what is offered nowhere.
+# Whether a server is used for a feature: every one it offers, unless "use"
+# in the entry that named it turns that one off.
+def Uses(cl: dict<any>, feature: string): bool
+  return !cl.config->get('use', {})->get(feature, true)->empty()
+enddef
+
+# The one of them that answers for "provider": the first that offers it and is
+# used for it.  What a server registered for later counts as well, hence
+# Capability(), which gives a number for what is offered nowhere.
 def ClientOffering(bufnr: number, provider: string): dict<any>
+  var feature = FEATURE_OF->get(provider, '')
   for cl in BufClients(bufnr)
-    if cl.initialized && type(Capability(cl, provider)) != v:t_number
+    if cl.initialized && Uses(cl, feature)
+        && type(Capability(cl, provider)) != v:t_number
       return cl
     endif
   endfor
@@ -582,7 +636,7 @@ def OnNotify(cl: dict<any>, method: string, params: any)
     cl.diagnostics[uri] = params->get('diagnostics', [])
     # A server may report on a file that is not open here.
     var bufnr = bufnr(util.UriToPath(uri))
-    if bufnr > 0
+    if bufnr > 0 && Uses(cl, 'diagnostics')
       diag.Update(bufnr, ClientKey(cl.name, cl.root), cl.diagnostics[uri],
         cl.encoding)
     endif
@@ -681,7 +735,7 @@ export def Attach(loud: bool = false)
   endif
 
   # Every one of them is given the buffer: a server answers from the copy it
-  # was handed, so one that is not told about the text has nothing to say.
+  # was handed, so one that is not told about the text cannot answer for it.
   var keys: list<string> = []
   for config in configs
     var root = util.FindRoot(name, config->get('rootPatterns', ['.git']))
@@ -802,6 +856,18 @@ def CheckList(where: string, key: string, value: list<any>, needed: bool)
   endfor
 enddef
 
+# What "use" holds: a feature this plugin knows, answered with true or false.
+def CheckUse(where: string, use: dict<any>)
+  var features = FEATURE_OF->values()
+  for [feature, value] in use->items()
+    if index(features, feature) < 0
+      Complain(where, printf('"use" names no such feature as "%s"', feature))
+    elseif type(value) != v:t_bool
+      Complain(where, printf('"use.%s" takes true or false', feature))
+    endif
+  endfor
+enddef
+
 def CheckClientConfig()
   const WHERE = 'g:lsp_client_config'
   var conf = get(g:, 'lsp_client_config', {})
@@ -870,6 +936,8 @@ def CheckServerList()
           key ==# 'cmd' ? 'a List or a Funcref' : TypeName(SERVER_KEYS[key])))
       elseif SERVER_KEYS[key] == v:t_list
         CheckList(where, key, value, key !=# 'rootPatterns')
+      elseif key ==# 'use'
+        CheckUse(where, value)
       endif
     endfor
   endfor
@@ -917,7 +985,48 @@ export def ConfigReload()
       told == 1 ? '' : 's')
 enddef
 
-export def Status()
+# Which server answers each feature of the current buffer: the order they were
+# named in, what each of them offers and "use" come out together here.  Long
+# enough that it is asked for rather than always shown.
+def ShowAnswering()
+  var bufnr = bufnr('%')
+  var providers: dict<list<string>> = {}
+  for [provider, feature] in FEATURE_OF->items()
+    providers[feature] = providers->get(feature, []) + [provider]
+  endfor
+  var lines: list<string> = []
+  for feature in providers->keys()->sort()
+    var names: list<string> = []
+    if feature ==# 'diagnostics'
+      # Every server reports for itself; the reports are shown together.
+      names = BufClients(bufnr)
+        ->filter((_, cl) => cl.initialized && Uses(cl, feature))
+        ->mapnew((_, cl) => cl.name)
+    else
+      for provider in providers[feature]
+        var cl = ClientOffering(bufnr, provider)
+        if !cl->empty() && index(names, cl.name) < 0
+          names->add(cl.name)
+        endif
+      endfor
+    endif
+    if names->empty()
+      continue
+    endif
+    var off = SETTING_OF->has_key(feature) && !Setting(SETTING_OF[feature])
+    lines->add(printf('    %-18s %s%s', feature, names->join(', '),
+      off ? '  (off)' : ''))
+  endfor
+  if lines->empty()
+    return
+  endif
+  echo '  this buffer:'
+  for line in lines
+    echo line
+  endfor
+enddef
+
+export def Status(answering: bool = false)
   var long = v:versionlong
   echo printf('lsp.vim %s  (Vim %d.%d.%04d)', VERSION,
     long / 1000000, long / 10000 % 100, long % 10000)
@@ -942,6 +1051,9 @@ export def Status()
       endfor
     endif
   endfor
+  if answering
+    ShowAnswering()
+  endif
 enddef
 
 # What ":LspWorkspaceFolderRemove" can be given: not the root it started on.
@@ -3741,7 +3853,7 @@ def TakeWorkspaceReport(cl: dict<any>, report: any)
     return
   endif
   cl.diagnostics[uri] = report->get('items', [])
-  if bufnr > 0
+  if bufnr > 0 && Uses(cl, 'diagnostics')
     diag.Update(bufnr, ClientKey(cl.name, cl.root), cl.diagnostics[uri],
       cl.encoding)
   endif
