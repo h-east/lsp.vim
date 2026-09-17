@@ -34,7 +34,7 @@ export def Clear(bufnr: number)
   prop_remove({bufnr: bufnr, type: TYPE, all: true})
 enddef
 
-export def Update(bufnr: number, items: list<any>)
+export def Update(bufnr: number, items: list<any>, encoding: string)
   Clear(bufnr)
   if items->empty()
     return
@@ -45,9 +45,10 @@ export def Update(bufnr: number, items: list<any>)
     if type(item) != v:t_dict || type(item->get('range', 0)) != v:t_dict
       continue
     endif
-    var [lnum, col] = util.PosFromLsp(bufnr, item.range->get('start', {}))
+    var [lnum, col] = util.PosFromLsp(bufnr, item.range->get('start', {}),
+      encoding)
     var [end_lnum, end_col] = util.PosFromLsp(bufnr,
-      item.range->get('end', {}))
+      item.range->get('end', {}), encoding)
     if end_lnum == lnum && end_col <= col
       continue          # nothing to point at
     endif

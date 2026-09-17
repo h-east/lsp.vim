@@ -95,30 +95,11 @@ enddef
 # counts bytes.  "utf-8" is the same thing and needs no conversion; the other
 # two count a composing character on its own.  Every direction rounds down to
 # the start of a character.
-var encodings: dict<string> = {}
-
-export def SetEncoding(bufnr: number, encoding: string)
-  encodings[string(bufnr)] = encoding
-enddef
-
-export def ForgetEncoding(bufnr: number)
-  var key = string(bufnr)
-  if encodings->has_key(key)
-    remove(encodings, key)
-  endif
-enddef
-
-export def ClearEncodings()
-  encodings = {}
-enddef
-
-# UTF-16 is what a server that names none means.
-export def Encoding(bufnr: number): string
-  return encodings->get(string(bufnr), 'utf-16')
-enddef
-
-export def PosToLsp(bufnr: number, lnum: number, col: number): dict<number>
-  var encoding = Encoding(bufnr)
+#
+# Two servers holding the same buffer may have chosen differently, so what to
+# count in is handed in rather than looked up.
+export def PosToLsp(bufnr: number, lnum: number, col: number,
+    encoding: string): dict<number>
   if encoding ==# 'utf-8'
     return {line: lnum - 1, character: col - 1}
   endif
@@ -131,7 +112,7 @@ enddef
 # Takes the line itself rather than a buffer, so it also works for a file that
 # is not open; the encoding has to come along for the same reason.
 export def ColFromLsp(line: string, character: number,
-    encoding: string = 'utf-16'): number
+    encoding: string): number
   if encoding ==# 'utf-8'
     var last = line->strlen()
     return (character > last ? last : character) + 1
@@ -141,14 +122,15 @@ export def ColFromLsp(line: string, character: number,
   return (idx < 0 ? line->strlen() : idx) + 1
 enddef
 
-export def PosFromLsp(bufnr: number, pos: dict<number>): list<number>
+export def PosFromLsp(bufnr: number, pos: dict<number>,
+    encoding: string): list<number>
   var lnum = pos->get('line', 0) + 1
   var line = getbufline(bufnr, lnum)->get(0, '')
-  return [lnum, ColFromLsp(line, pos->get('character', 0), Encoding(bufnr))]
+  return [lnum, ColFromLsp(line, pos->get('character', 0), encoding)]
 enddef
 
-export def CursorPosToLsp(): dict<number>
-  return PosToLsp(bufnr('%'), line('.'), col('.'))
+export def CursorPosToLsp(encoding: string): dict<number>
+  return PosToLsp(bufnr('%'), line('.'), col('.'), encoding)
 enddef
 
 # A loaded buffer wins over what is on disk so that unsaved changes count;

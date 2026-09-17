@@ -49,7 +49,7 @@ def Indent(bufnr: number, lnum: number): string
   return line->matchstr('^\s*')
 enddef
 
-export def Update(bufnr: number, items: list<any>)
+export def Update(bufnr: number, items: list<any>, encoding: string)
   Clear(bufnr)
   if items->empty()
     return
@@ -64,7 +64,7 @@ export def Update(bufnr: number, items: list<any>)
       continue
     endif
     var lnum = util.PosFromLsp(bufnr,
-      lens->get('range', {})->get('start', {}))[0]
+      lens->get('range', {})->get('start', {}), encoding)[0]
     if !here->has_key(string(lnum))
       here[string(lnum)] = []
       order->add(lnum)

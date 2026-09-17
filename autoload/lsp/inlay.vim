@@ -81,7 +81,7 @@ export def At(bufnr: number, lnum: number, col: number): dict<any>
   return best
 enddef
 
-export def Update(bufnr: number, hints: list<any>)
+export def Update(bufnr: number, hints: list<any>, encoding: string)
   Clear(bufnr)
   Forget(bufnr)
   if hints->empty()
@@ -103,7 +103,8 @@ export def Update(bufnr: number, hints: list<any>)
     if hint->get('paddingRight', false)
       text ..= ' '
     endif
-    var [lnum, col] = util.PosFromLsp(bufnr, hint->get('position', {}))
+    var [lnum, col] = util.PosFromLsp(bufnr, hint->get('position', {}),
+      encoding)
     try
       prop_add(lnum, col, {
         bufnr: bufnr,

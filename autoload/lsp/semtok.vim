@@ -147,10 +147,10 @@ enddef
 # Five numbers stand for one token, each counted from the one before it: the
 # line from the previous line, the start from the previous start when they
 # share a line, then the length, the type and the modifiers.
-def Paint(bufnr: number, legend: dict<any>, data: list<number>)
+def Paint(bufnr: number, legend: dict<any>, data: list<number>,
+    encoding: string)
   Clear(bufnr)
   Define()
-  var encoding = util.Encoding(bufnr)
   var token_types = legend->get('tokenTypes', [])
   var mod_names = legend->get('tokenModifiers', [])
   # The type and the modifiers together decide the group, and a file holds
@@ -211,7 +211,8 @@ enddef
 # A full answer carries "data", a delta answer the "edits" that turn what was
 # there into it.  Returns whether the buffer was painted; what is left of an
 # answer that could not be used is nothing to ask a delta against.
-export def Update(bufnr: number, legend: dict<any>, result: any): bool
+export def Update(bufnr: number, legend: dict<any>, result: any,
+    encoding: string): bool
   if type(result) != v:t_dict
     Clear(bufnr)
     Forget(bufnr)
@@ -245,7 +246,7 @@ export def Update(bufnr: number, legend: dict<any>, result: any): bool
     data = result->get('data', [])
   endif
   state[key] = {id: result->get('resultId', ''), data: data}
-  Paint(bufnr, legend, data)
+  Paint(bufnr, legend, data, encoding)
   return true
 enddef
 

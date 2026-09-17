@@ -57,7 +57,7 @@ def Before(lnum: number, col: number): list<number>
 enddef
 
 # The chain as it arrived, kept as the positions Vim selects between.
-export def Remember(bufnr: number, chain: any)
+export def Remember(bufnr: number, chain: any, encoding: string)
   var was_visual = mode() =~# "^[vV\<C-v>]"
   var was = was_visual ? Now() : [line('.'), col('.'), line('.'), col('.')]
   Forget()
@@ -65,9 +65,10 @@ export def Remember(bufnr: number, chain: any)
   began_visual = was_visual
   var node = chain
   while type(node) == v:t_dict && type(node->get('range', 0)) == v:t_dict
-    var [lnum, col] = util.PosFromLsp(bufnr, node.range->get('start', {}))
+    var [lnum, col] = util.PosFromLsp(bufnr, node.range->get('start', {}),
+      encoding)
     var [end_lnum, end_col] = util.PosFromLsp(bufnr,
-      node.range->get('end', {}))
+      node.range->get('end', {}), encoding)
     # A range with nothing in it holds nothing to select.
     if end_lnum > lnum || end_col > col
       var step = [lnum, col] + Before(end_lnum, end_col)

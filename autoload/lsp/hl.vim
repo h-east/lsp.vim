@@ -42,7 +42,7 @@ export def Clear(bufnr: number)
 enddef
 
 # What was marked before is dropped, which is how the marks follow the cursor.
-export def Update(bufnr: number, items: list<any>)
+export def Update(bufnr: number, items: list<any>, encoding: string)
   Clear(bufnr)
   if items->empty()
     return
@@ -53,8 +53,9 @@ export def Update(bufnr: number, items: list<any>)
       continue
     endif
     var range = item->get('range', {})
-    var [lnum, col] = util.PosFromLsp(bufnr, range->get('start', {}))
-    var [end_lnum, end_col] = util.PosFromLsp(bufnr, range->get('end', {}))
+    var [lnum, col] = util.PosFromLsp(bufnr, range->get('start', {}), encoding)
+    var [end_lnum, end_col] = util.PosFromLsp(bufnr, range->get('end', {}),
+      encoding)
     var kind = item->get('kind', KIND_TEXT)
     try
       prop_add(lnum, col, {

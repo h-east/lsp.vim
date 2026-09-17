@@ -27,6 +27,14 @@ const PROP_TYPES = ['LspDiagErrorText', 'LspDiagWarningText',
 
 var diagnostics: dict<list<dict<any>>> = {}
 
+# How the server that reported them counts a position.  The marks are drawn
+# again long after the answer arrived, so it is kept alongside.
+var encodings: dict<string> = {}
+
+def EncodingFor(bufnr: number): string
+  return encodings->get(string(bufnr), 'utf-16')
+enddef
+
 var defined = false
 
 def Define()
@@ -63,7 +71,8 @@ def Kind(item: dict<any>): dict<any>
 enddef
 
 def StartLine(bufnr: number, item: dict<any>): number
-  return util.PosFromLsp(bufnr, item->get('range', {})->get('start', {}))[0]
+  return util.PosFromLsp(bufnr, item->get('range', {})->get('start', {}),
+    EncodingFor(bufnr))[0]
 enddef
 
 # Nothing has been drawn before the types are there, and asking to remove a
@@ -84,12 +93,14 @@ def Draw(bufnr: number)
     return
   endif
 
+  var encoding = EncodingFor(bufnr)
   var signs: list<dict<any>> = []
   for item in items
     var kind = Kind(item)
     var range = item->get('range', {})
-    var [lnum, col] = util.PosFromLsp(bufnr, range->get('start', {}))
-    var [end_lnum, end_col] = util.PosFromLsp(bufnr, range->get('end', {}))
+    var [lnum, col] = util.PosFromLsp(bufnr, range->get('start', {}), encoding)
+    var [end_lnum, end_col] = util.PosFromLsp(bufnr, range->get('end', {}),
+      encoding)
     signs->add({buffer: bufnr, group: SIGN_GROUP, lnum: lnum,
       name: kind.sign, priority: kind.priority})
 
@@ -108,9 +119,10 @@ def Draw(bufnr: number)
   sign_placelist(signs)
 enddef
 
-export def Update(bufnr: number, items: list<dict<any>>)
+export def Update(bufnr: number, items: list<dict<any>>, encoding: string)
   Define()
   diagnostics[string(bufnr)] = items
+  encodings[string(bufnr)] = encoding
   if bufloaded(bufnr)
     Draw(bufnr)
   endif
@@ -129,6 +141,9 @@ export def Clear(bufnr: number)
   var key = string(bufnr)
   if diagnostics->has_key(key)
     remove(diagnostics, key)
+  endif
+  if encodings->has_key(key)
+    remove(encodings, key)
   endif
   if bufloaded(bufnr)
     Erase(bufnr)
@@ -183,7 +198,8 @@ enddef
 
 # A report may point at other places that explain it, such as where a name was
 # declared before.  Those follow it in the list, indented.
-def RelatedEntries(bufnr: number, item: dict<any>): list<dict<any>>
+def RelatedEntries(bufnr: number, item: dict<any>,
+    encoding: string): list<dict<any>>
   var out: list<dict<any>> = []
   for related in item->get('relatedInformation', [])
     if type(related) != v:t_dict
@@ -200,8 +216,7 @@ def RelatedEntries(bufnr: number, item: dict<any>): list<dict<any>>
     out->add({
       filename: path,
       lnum: lnum,
-      col: util.ColFromLsp(line, start->get('character', 0),
-        util.Encoding(bufnr)),
+      col: util.ColFromLsp(line, start->get('character', 0), encoding),
       text: '  ' .. related->get('message', '')->substitute('\n', ' ', 'g'),
     })
   endfor
@@ -211,7 +226,8 @@ enddef
 # What |setqflist()| and |setloclist()| take for a file, whether or not there
 # is a buffer for it: one without has no lines to count a character offset
 # in, so the column is the one the protocol gives.
-export def Entries(path: string, items: list<any>): list<dict<any>>
+export def Entries(path: string, items: list<any>,
+    encoding: string): list<dict<any>>
   var bufnr = bufnr(util.OpenName(path))
   var entries: list<dict<any>> = []
   for item in items
@@ -222,7 +238,7 @@ export def Entries(path: string, items: list<any>): list<dict<any>>
     var lnum = start->get('line', 0) + 1
     var col = start->get('character', 0) + 1
     if bufnr > 0 && bufloaded(bufnr)
-      [lnum, col] = util.PosFromLsp(bufnr, start)
+      [lnum, col] = util.PosFromLsp(bufnr, start, encoding)
     endif
     var source = item->get('source', '')
     entries->add({
@@ -234,7 +250,7 @@ export def Entries(path: string, items: list<any>): list<dict<any>>
         .. item->get('message', '')->substitute('\n', ' ', 'g'),
     })
     if bufnr > 0
-      entries += RelatedEntries(bufnr, item)
+      entries += RelatedEntries(bufnr, item, encoding)
     endif
   endfor
   return entries
@@ -247,7 +263,8 @@ export def ToLocList(bufnr: number)
     return
   endif
   setloclist(0, [], ' ', {title: 'LSP diagnostics',
-    items: Entries(bufname(bufnr), items), quickfixtextfunc: util.ListText})
+    items: Entries(bufname(bufnr), items, EncodingFor(bufnr)),
+    quickfixtextfunc: util.ListText})
   lopen
 enddef
 
