@@ -1454,6 +1454,37 @@ def g:Test_the_symbol_under_the_cursor_is_marked()
   assert_equal([], prop_list(3))
 enddef
 
+def g:Test_the_marks_go_away_when_the_text_is_edited()
+  const MARKS = [
+    {range: {start: {line: 0, character: 4}, end: {line: 0, character: 7}},
+      kind: 2},
+    {range: {start: {line: 2, character: 0}, end: {line: 2, character: 3}},
+      kind: 3},
+  ]
+  assert_true(t.StartServer({
+    capabilities: Offering({documentHighlightProvider: true}),
+    replies: {'textDocument/documentHighlight': MARKS},
+  }, ['int one;', 'int two;', 'one = 1;']))
+
+  def Marked(): bool
+    cursor(1, 5)
+    doautocmd CursorMoved
+    return t.WaitFor(() => len(prop_list(1)) == 1 && len(prop_list(3)) == 1)
+  enddef
+
+  assert_true(Marked(), 'both mentions should be marked')
+  doautocmd InsertEnter
+  assert_equal([], prop_list(1), 'the marks should go on entering Insert mode')
+  assert_equal([], prop_list(3))
+
+  # An edit that leaves the cursor where it is has no CursorMoved to clear
+  # them, hence TextChanged.
+  assert_true(Marked(), 'both mentions should be marked again')
+  doautocmd TextChanged
+  assert_equal([], prop_list(1), 'the marks should go on an edit')
+  assert_equal([], prop_list(3))
+enddef
+
 def g:Test_a_trigger_character_has_the_server_look_at_the_text()
   g:lsp_client_config.on_type_formatting = true
   defer execute('unlet g:lsp_client_config.on_type_formatting')

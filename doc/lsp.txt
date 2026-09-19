@@ -1107,9 +1107,10 @@ it expands to, so a call of a macro wrapping a function shows the function.
 
 Once the cursor has stood still on a symbol for as long as "highlight_delay"
 holds, the server is asked where else that symbol is used in the buffer, and
-those places are marked.  Moving the cursor takes the marks away again.  Set
-"document_highlight" in |g:lsp_client_config| to |false| to leave the buffer
-alone.
+those places are marked.  Moving the cursor takes the marks away again, and so
+does an edit or entering Insert mode: they are about the symbol as it was.
+Set "document_highlight" in |g:lsp_client_config| to |false| to leave the
+buffer alone.
 
 Somewhere the symbol is written to is marked differently from somewhere it is
 only read, when the server reports which is which.  These are the groups, each

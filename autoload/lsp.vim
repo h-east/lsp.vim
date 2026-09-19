@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.016'
+const VERSION = '0.2.017'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -674,6 +674,9 @@ def HookBuffer()
     autocmd CursorMoved <buffer> HighlightLater()
     autocmd InsertEnter <buffer> StopHighlight()
     autocmd InsertEnter <buffer> RememberLineCount()
+    # The marks are about the symbol as it was: an edit leaves them behind,
+    # and a text property grows with what is typed inside it.
+    autocmd InsertEnter,TextChanged <buffer> hl.Clear(bufnr('%'))
     autocmd TextChangedI <buffer> OnTypeFormat()
     autocmd TextChanged,BufEnter <buffer> InlayHints()
     autocmd TextChanged,BufEnter <buffer> CodeLenses()
