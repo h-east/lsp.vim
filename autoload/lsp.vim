@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.015'
+const VERSION = '0.2.016'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -51,6 +51,7 @@ const BORDER_STYLES = {
 const DEFAULTS = {
   omnifunc: true,
   completion_timeout: 2000,
+  tagjump_timeout: 2000,
   document_highlight: true,
   highlight_delay: 300,
   signature_help: true,
@@ -1759,6 +1760,38 @@ enddef
 export def Implementation(mods: string = '')
   JumpTo('textDocument/implementation', 'implementationProvider',
     'the implementation', mods)
+enddef
+
+# With no tags file to look in, v:null would only make Vim report that there
+# is none; an empty list has it say the tag was not found instead.
+def NoTags(): any
+  return tagfiles()->empty() ? [] : v:null
+enddef
+
+# For 'tagfunc', which wants the list on the spot, hence RequestSync().  Only
+# a jump from the cursor is answered; see |lsp-tagfunc|.
+export def TagFunc(pattern: string, flags: string, info: dict<any>): any
+  # Completion comes with "c" as well, and "i" on top of it.
+  if flags !~# 'c' || flags =~# 'i'
+    return NoTags()
+  endif
+  var cl = ClientOffering(bufnr('%'), 'definitionProvider')
+  if cl->empty()
+    return NoTags()
+  endif
+  listener_flush(bufnr('%'))
+  var result = lspclient.RequestSync(cl, 'textDocument/definition',
+    CursorParams(cl.encoding), Setting('tagjump_timeout'))
+  var items = LocationItems(result, cl.encoding)
+  if items->empty()
+    return NoTags()
+  endif
+  # A line number on its own would stop in the first column.
+  return items->mapnew((_, it) => ({
+    name: pattern,
+    filename: util.OpenName(it.filename),
+    cmd: printf('call cursor(%d, %d)', it.lnum, it.col),
+  }))
 enddef
 
 def BufLineCount(bufnr: number): number

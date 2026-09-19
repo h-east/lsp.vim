@@ -43,6 +43,7 @@ g:loaded_lsp_vim	lsp.txt	/*g:loaded_lsp_vim*
 g:lsp_client_config	lsp.txt	/*g:lsp_client_config*
 g:lsp_server_list	lsp.txt	/*g:lsp_server_list*
 lsp#OmniFunc()	lsp.txt	/*lsp#OmniFunc()*
+lsp#TagFunc()	lsp.txt	/*lsp#TagFunc()*
 lsp-ai	lsp.txt	/*lsp-ai*
 lsp-code-lens	lsp.txt	/*lsp-code-lens*
 lsp-commands	lsp.txt	/*lsp-commands*
@@ -69,6 +70,7 @@ lsp-selection	lsp.txt	/*lsp-selection*
 lsp-semantic-tokens	lsp.txt	/*lsp-semantic-tokens*
 lsp-signature	lsp.txt	/*lsp-signature*
 lsp-snippet	lsp.txt	/*lsp-snippet*
+lsp-tagfunc	lsp.txt	/*lsp-tagfunc*
 lsp-watched-files	lsp.txt	/*lsp-watched-files*
 lsp-workspace-diagnostics	lsp.txt	/*lsp-workspace-diagnostics*
 lsp.txt	lsp.txt	/*lsp.txt*

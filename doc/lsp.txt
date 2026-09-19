@@ -194,6 +194,11 @@ g:lsp_client_config
 				warmed up server answers in.
 				Default: 2000
 
+		tagjump_timeout	How long to wait for a reply to the request
+				|lsp#TagFunc()| makes, in milliseconds.  See
+				|lsp-tagfunc| for why there is a wait.
+				Default: 2000
+
 		document_highlight
 				When true, the other places the symbol under
 				the cursor is used are marked once the cursor
@@ -431,6 +436,9 @@ the buffer is then left as it was: >vim9
 
 	def LspBuffer()
 	  setlocal complete^=o completeopt=menuone,popup signcolumn=yes
+	  # CTRL-] and the other tag commands reach the server, see
+	  # |lsp-tagfunc|.
+	  setlocal tagfunc=lsp#TagFunc
 	  # The Vim filetype points 'keywordprg' at ":help", which offers
 	  # more than a popup of the same text.
 	  if &filetype !=# 'vim'
@@ -860,6 +868,31 @@ What is shown ~
 		when it is on, and report which it now is.  Turning it off
 		takes the colors away in every buffer.  See
 		|lsp-semantic-tokens|.
+
+Tag function ~
+						*lsp-tagfunc* *lsp#TagFunc()*
+Set 'tagfunc' to "lsp#TagFunc" for the |tag-commands| to reach the
+server: >vim9
+
+	setlocal tagfunc=lsp#TagFunc
+<
+It is not set for you, since a buffer may have tags files worth keeping.
+
+|CTRL-]|, |CTRL-W_]| and |g]| ask the server where the identifier under the
+cursor is defined, the same request |:LspDefinition| makes, and Vim jumps to
+the line and the column that comes back.  More than one answer is a list to
+pick from with |:tselect|.
+
+Everything else is left to the tags files: ":tag name" means the whole name
+and ":tag /pat" a pattern, while what a server answers about a name is
+deliberately loose, so it can say neither.  The same goes for
+|i_CTRL-X_CTRL-]|.  In all of those, and where the server has nothing to say,
+|v:null| goes back where 'tags' has a file to look in, and Vim looks there as
+it would without this.  Where it has none, an empty list goes back instead:
+Vim then says the tag was not found, rather than that there is no tags file.
+
+Vim wants the list on the spot, so this one waits for the server, like the
+completion does.  "tagjump_timeout" in |g:lsp_client_config| bounds the wait.
 
 ==============================================================================
 5. Completion					*lsp-completion*

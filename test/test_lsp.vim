@@ -605,6 +605,59 @@ def g:Test_the_server_asks_for_a_file_to_be_looked_at()
   assert_equal([2, 5], [line('.'), col('.')], 'at the place it named')
 enddef
 
+def g:Test_the_tag_function_jumps_where_the_server_points()
+  const OTHER = t.SRC->substitute('\.c$', '_def.c', '')
+  writefile(['int here;', 'int there;', 'int demo;'], OTHER)
+  defer delete(OTHER)
+  assert_true(t.StartServer({
+    capabilities: Offering({definitionProvider: true}),
+    replies: {'textDocument/definition': {uri: 'file://' .. OTHER,
+      range: {start: {line: 2, character: 4},
+        end: {line: 2, character: 8}}}},
+  }, ['int demo;', 'demo = 1;']))
+
+  setlocal tagfunc=lsp#TagFunc
+  cursor(2, 1)
+  feedkeys("\<C-]>", 'tx')
+  assert_match('_def\.c$', bufname('%'), 'the file the server named')
+  assert_equal([3, 5], [line('.'), col('.')], 'at the column too')
+enddef
+
+def g:Test_the_tag_function_leaves_the_tags_files_a_name_and_a_pattern()
+  assert_true(t.StartServer({
+    capabilities: Offering({definitionProvider: true}),
+    replies: {'textDocument/definition': {uri: 'file://' .. t.SRC,
+      range: {start: {line: 0, character: 4},
+        end: {line: 0, character: 8}}}},
+  }, ['int demo;', 'demo = 1;']))
+
+  setlocal tagfunc=lsp#TagFunc
+  cursor(2, 1)
+  # ":tag demo", ":tag /demo" and completion are not the server's to answer.
+  # With a tags file to look in, v:null sends Vim there.
+  const TAGS = t.SRC->substitute('\.c$', '_tags', '')
+  writefile(["demo\t" .. t.SRC .. "\t1"], TAGS)
+  defer delete(TAGS)
+  var saved = &l:tags
+  execute 'setlocal tags=' .. fnameescape(TAGS)
+  assert_equal(v:null, lsp#TagFunc('demo', '', {}))
+  assert_equal(v:null, lsp#TagFunc('demo', 'r', {}))
+  assert_equal(v:null, lsp#TagFunc('demo', 'cir', {}))
+  # Without one, v:null would only make Vim say there is no tags file.
+  setlocal tags=
+  assert_equal([], lsp#TagFunc('demo', '', {}))
+  assert_equal([], lsp#TagFunc('demo', 'cir', {}))
+  &l:tags = saved
+  assert_true(t.Sent('textDocument/definition')->empty(),
+    'the server should not have been asked')
+
+  # A jump from the cursor is.
+  var tags = lsp#TagFunc('demo', 'c', {})
+  assert_equal(1, len(tags))
+  assert_equal('demo', tags[0].name)
+  assert_equal('call cursor(1, 5)', tags[0].cmd)
+enddef
+
 def g:Test_the_server_puts_the_file_right_on_the_way_to_disk()
   assert_true(t.StartServer({
     capabilities: {textDocumentSync: {change: 2, willSave: true,

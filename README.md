@@ -25,7 +25,8 @@ a jump to a definition and the references list](.github/demo.gif)
   symbol under the cursor marked everywhere it is used.
 - **Jumping** to a definition, declaration, type or implementation, with lists
   of references, of the symbols in a file or a workspace, of who calls a
-  function and what it calls, and of what a type is derived from.
+  function and what it calls, and of what a type is derived from.  `CTRL-]`
+  and the other tag commands can reach the server through `'tagfunc'`.
 - **Editing** rename across files, formatting a buffer or a range, and code
   actions from a menu, including the ones a server carries out itself.
 - **Display** inlay hints, code lenses, document links, semantic tokens and
@@ -142,6 +143,8 @@ def LspBuffer()
   setlocal autocomplete    # See also 'autocompletedelay'
   setlocal completeopt=menuone,popup
   setlocal signcolumn=yes
+  # CTRL-] and the other tag commands ask the server.
+  setlocal tagfunc=lsp#TagFunc
   # The Vim filetype points 'keywordprg' at ":help", which offers more
   # than a popup of the same text.
   if &filetype !=# 'vim'
