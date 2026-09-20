@@ -751,6 +751,43 @@ def g:Test_a_command_from_a_plugin_that_is_not_there()
   assert_match('server "ghost": .*E117.*nosuchplugin#Command', LastMessage())
 enddef
 
+# A buffer named like a URL has no local file behind it: no server is started
+# on it, and nothing is said until it is asked for.
+def g:Test_a_buffer_named_like_a_url_gets_no_server()
+  var saved = get(g:, 'lsp_server_list', [])
+  defer execute('g:lsp_server_list = ' .. string(saved))
+  g:lsp_server_list = [{name: 'fake', filetypes: ['c'], cmd: t.CMD,
+    rootPatterns: ['.git']}]
+
+  execute 'edit! ' .. fnameescape('fugitive://' .. t.SRC .. '//0/Xsrc.c')
+  defer execute('bwipe!')
+  messages clear
+  setfiletype c
+  assert_equal([], get(b:, 'lsp_client_keys', []))
+  assert_true(LastMessage() !~# 'lsp:', 'it should say nothing on its own')
+
+  LspStart
+  assert_match('this buffer is not a local file', LastMessage())
+enddef
+
+# A root that is not a directory is reported as such, rather than as the
+# error job_start() answers with.
+def g:Test_a_root_that_is_not_a_directory_is_reported()
+  var saved = get(g:, 'lsp_server_list', [])
+  defer execute('g:lsp_server_list = ' .. string(saved))
+  g:lsp_server_list = [{name: 'fake', filetypes: ['c'], cmd: t.CMD,
+    rootPatterns: ['.git']}]
+
+  # Nothing above it holds a root marker, so its own directory is the root.
+  execute 'edit! ' .. fnameescape('/Xnosuchdir/Xsrc.c')
+  defer execute('bwipe!')
+  messages clear
+  setfiletype c
+  assert_match('server "fake": .*Xnosuchdir.* is not a directory',
+    LastMessage())
+  assert_equal([], get(b:, 'lsp_client_keys', []))
+enddef
+
 def g:Test_a_file_that_is_there_is_not_written_over()
   const OTHER = t.SRC->substitute('\.c$', '_taken.c', '')
   writefile(['do not lose me'], OTHER)
@@ -1358,6 +1395,27 @@ def g:Test_a_jump_can_be_stepped_back_from()
   # So does CTRL-T.
   feedkeys("\<C-T>", 'tx')
   assert_equal([1, 5], [line('.'), col('.')])
+enddef
+
+# A server may write the path in another case than Vim did, which on Windows
+# is the same file: the jump stays in the buffer rather than opening it again,
+# which a buffer with unsaved changes would not take.
+def g:Test_a_jump_to_the_same_file_in_another_case_stays_in_it()
+  if !has('win32')
+    return
+  endif
+  assert_true(t.StartServer({
+    capabilities: Offering({definitionProvider: true}),
+    replies: {'textDocument/definition': {uri: 'file://' .. toupper(t.SRC),
+      range: {start: {line: 2, character: 4},
+        end: {line: 2, character: 9}}}},
+  }, ['int one;', 'int two;', 'int three;']))
+
+  cursor(1, 5)
+  setline(1, 'int one; ')
+  LspDefinition
+  assert_true(t.WaitFor(() => line('.') == 3), 'the cursor should move')
+  assert_equal(5, col('.'))
 enddef
 
 def g:Test_a_file_is_opened_by_the_short_name()

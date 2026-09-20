@@ -542,6 +542,12 @@ The server ~
 		is for a buffer whose 'filetype' was decided later.  See
 		|lsp-more-than-one-server| where there is more than one.
 
+		A buffer holding something other than a local file is passed
+		over: one with a 'buftype', and one named like a URL
+		("fugitive://..."), which has no workspace behind it to root
+		a server at.  Nor is a server started where "rootPatterns"
+		leads to something that is not a directory.
+
 						*:LspStop*
 :LspStop	Shut down every running server.  The buffers they had go back
 		to what they were before, signs, hints and 'omnifunc' among

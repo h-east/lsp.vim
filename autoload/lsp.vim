@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.018'
+const VERSION = '0.2.019'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -141,7 +141,7 @@ enddef
 # The characters a 'pumopt' border style names.  Empty for a style there is
 # no such thing as.
 def BorderChars(style: string): list<string>
-  if style =~ '^custom:'
+  if style =~# '^custom:'
     var chars = split(style[7 : ], ';', true)
     return len(chars) == 8 ? chars : []
   endif
@@ -190,7 +190,7 @@ def PopupStyle(name: string): dict<any>
       endif
     elseif token =~# '^opacity:'
       var percent = str2nr(token[8 : ])
-      if token[8 : ] !~ '^\d\+$' || percent > 100
+      if token[8 : ] !~# '^\d\+$' || percent > 100
         Complain(where, printf('cannot read "%s"', token))
       else
         opts.opacity = percent
@@ -708,6 +708,9 @@ def HookBuffer()
   endif
 enddef
 
+# A name Vim itself takes for a URL: letters and dashes, then "://" or ":\\".
+const URL_NAME = '^\a[[:alpha:]-]*:\%(//\|\\\\\)'
+
 # Connect the current buffer to the server for its 'filetype', starting the
 # server when this is the first buffer for that workspace.
 export def Attach(loud: bool = false)
@@ -724,9 +727,15 @@ export def Attach(loud: bool = false)
     return
   endif
   var name = bufname(bufnr)
-  if name->empty() || &buftype != ''
+  if name->empty() || &buftype !=# ''
     if loud
       util.WarningMsg('this buffer is not a file')
+    endif
+    return
+  endif
+  if name =~# URL_NAME
+    if loud
+      util.WarningMsg('this buffer is not a local file')
     endif
     return
   endif
@@ -1213,7 +1222,7 @@ enddef
 # at the foot of the popup.
 def Trimmed(lines: list<string>): list<string>
   var out = copy(lines)
-  while !out->empty() && out[-1] =~ '^\s*$'
+  while !out->empty() && out[-1] =~# '^\s*$'
     remove(out, -1)
   endwhile
   return out
@@ -1735,7 +1744,7 @@ def JumpTo(method: string, provider: string, what: string, mods: string)
     var path = util.UriToPath(loc.uri)->util.OpenName()
     if mods =~# SPLIT_MODS
       execute mods 'split' fnameescape(path)
-    elseif fnamemodify(path, ':p') != fnamemodify(bufname('%'), ':p')
+    elseif !util.SamePath(path, bufname('%'))
       execute mods 'edit' fnameescape(path)
     endif
     var [lnum, col] = util.PosFromLsp(bufnr('%'),
@@ -3721,7 +3730,7 @@ enddef
 export def RenameFile(newname: string)
   var bufnr = bufnr('%')
   var old = expand('%:p')
-  if old->empty() || &buftype != ''
+  if old->empty() || &buftype !=# ''
     util.WarningMsg('this buffer is not a file')
     return
   endif
@@ -4173,7 +4182,7 @@ lspclient.SetNotifyHandler(OnNotify)
 lspclient.SetRequestHandler(OnRequest)
 
 # test/run sets this to have every :def compiled as the script is read.
-if $LSP_COMPILE_CHECK != ''
+if $LSP_COMPILE_CHECK !=# ''
   defcompile
 endif
 

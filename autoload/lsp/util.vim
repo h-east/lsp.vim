@@ -23,7 +23,7 @@ def PercentDecode(s: string): string
   var len = strlen(s)
   while i < len
     var c = strpart(s, i, 1)
-    if c == '%' && i + 2 < len
+    if c ==# '%' && i + 2 < len
       bytes->add(str2nr(strpart(s, i + 1, 2), 16))
       i += 3
     else
@@ -41,7 +41,7 @@ export def PathToUri(path: string): string
   if has('win32')
     full = substitute(full, '\\', '/', 'g')
     # A drive letter needs a leading slash: "C:/x" becomes "/C:/x".
-    if full =~ '^\a:'
+    if full =~# '^\a:'
       full = '/' .. full
     endif
   endif
@@ -56,7 +56,7 @@ export def UriToPath(uri: string): string
     return uri
   endif
   var path = PercentDecode(uri[7 : ])
-  if has('win32') && path =~ '^/\a:'
+  if has('win32') && path =~# '^/\a:'
     path = path[1 : ]
   endif
   return simplify(path)
@@ -72,6 +72,14 @@ enddef
 # directory, "~" for the home directory, in full otherwise.
 export def ShortPath(path: string): string
   return fnamemodify(path, ':~:.')
+enddef
+
+# Whether two paths name the same file.  Windows names it whichever case it is
+# written in, which a server may not write the way Vim did.
+export def SamePath(a: string, b: string): bool
+  var one = fnamemodify(a, ':p')
+  var two = fnamemodify(b, ':p')
+  return has('win32') ? one ==? two : one ==# two
 enddef
 
 const TYPES = {E: ' error', W: ' warning', I: ' info', N: ' note'}
@@ -181,7 +189,7 @@ export def WarningMsg(msg: string)
 enddef
 
 # test/run sets this to have every :def compiled as the script is read.
-if $LSP_COMPILE_CHECK != ''
+if $LSP_COMPILE_CHECK !=# ''
   defcompile
 endif
 

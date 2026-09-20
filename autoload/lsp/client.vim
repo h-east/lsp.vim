@@ -454,6 +454,12 @@ export def Start(config: dict<any>, root: string,
     util.ErrorMsg('cannot execute "' .. cmd[0] .. '"')
     return {}
   endif
+  # What |job_start()| takes as "cwd", where it fails with an error of its own.
+  if !isdirectory(root)
+    util.ErrorMsg('server "' .. config.name .. '": "' .. root
+      .. '" is not a directory')
+    return {}
+  endif
 
   var client: dict<any> = {
     name: config.name,
@@ -523,7 +529,7 @@ export def Stop(client: dict<any>)
 enddef
 
 # test/run sets this to have every :def compiled as the script is read.
-if $LSP_COMPILE_CHECK != ''
+if $LSP_COMPILE_CHECK !=# ''
   defcompile
 endif
 
