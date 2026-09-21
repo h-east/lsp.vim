@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.020'
+const VERSION = '0.2.021'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -2410,6 +2410,14 @@ def UnsetFolding(bufnr: number)
   setbufvar(bufnr, '&foldexpr', saved.foldexpr)
   setbufvar(bufnr, '&foldmethod', saved.foldmethod)
   setbufvar(bufnr, 'lsp_fold_save', {})
+  # Going over to "manual" keeps the folds that are there, so the server's
+  # would stay; a fold lives in a window, hence the walk.  Nothing of the
+  # user's is lost: folds made by hand went when the method became "expr".
+  if saved.foldmethod == 'manual'
+    for winid in win_findbuf(bufnr)
+      win_execute(winid, 'normal! zE')
+    endfor
+  endif
 enddef
 
 def FoldingRanges()

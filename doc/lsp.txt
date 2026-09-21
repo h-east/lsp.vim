@@ -1170,6 +1170,10 @@ or the buffer is detached.  The ranges are asked for afresh whenever the
 buffer changes, and whenever the server reports the ranges it gave are out of
 date.
 
+Folds made by hand are gone once the folds of the server are turned on: Vim
+drops them as the method changes.  Turning the folds off again leaves none of
+the server's behind.
+
 Only whole lines are folded.  A server able to fold part of a line is told not
 to bother.
 

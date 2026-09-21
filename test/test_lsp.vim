@@ -2586,12 +2586,41 @@ def g:Test_folds_come_from_the_server()
     'folding should be handed over')
   assert_equal('lsp#FoldExpr(v:lnum)', &foldexpr)
   # The inner range sits inside the outer one, so those lines are deeper.
-  assert_equal(['1', '2', '2', '1', '1'],
+  # A line a range starts on carries ">".
+  assert_equal(['>1', '>2', '2', '1', '1'],
     range(1, 5)->mapnew((_, l) => lsp#FoldExpr(l)))
+
+  # The folds close, so that what turning them off leaves behind shows.
+  normal! zM
+  assert_equal(1, foldclosed(2))
 
   LspFolding
   assert_equal('manual', &foldmethod, 'what was there should come back')
   assert_false(g:lsp_client_config.folding)
+  # Vim keeps the folds when the method goes over to "manual"; the ones the
+  # server gave must not be among them.
+  assert_equal(0, foldlevel(2))
+  assert_equal(-1, foldclosed(2))
+enddef
+
+# Two ranges that meet are two folds: an "if" block right after another one
+# would otherwise be folded away with it.
+def g:Test_folds_that_meet_stay_apart()
+  defer execute('unlet! g:lsp_client_config.folding')
+  assert_true(t.StartServer({
+    capabilities: Offering({foldingRangeProvider: true}),
+    replies: {'textDocument/foldingRange': [
+      {startLine: 0, endLine: 2},
+      {startLine: 3, endLine: 5},
+    ]},
+  }, ['if a', '  x', 'endif', 'if b', '  y', 'endif']))
+
+  LspFolding
+  assert_true(t.WaitFor(() => lsp#FoldExpr(4) == '>1'),
+    'the ranges should be in')
+  normal! zM
+  assert_equal([1, 3], [foldclosed(1), foldclosedend(1)])
+  assert_equal([4, 6], [foldclosed(4), foldclosedend(4)])
 enddef
 
 def g:Test_who_calls_this()
