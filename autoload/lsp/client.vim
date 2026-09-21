@@ -284,7 +284,7 @@ def OnMessage(client: dict<any>, ch: channel, msg: dict<any>)
     return
   endif
   if msg->has_key('id')
-    if method ==# 'workspace/configuration'
+    if method == 'workspace/configuration'
       var settings = client.config->get('settings', {})
       var items = msg->get('params', {})->get('items', [])
       var answer = items->mapnew(
@@ -504,7 +504,7 @@ export def Start(config: dict<any>, root: string,
     err_cb: (ch, msg) => OnStderr(client, ch, msg),
     exit_cb: (j, status) => OnExit(client, j, status),
   })
-  if job_status(job) !=# 'run'
+  if job_status(job) != 'run'
     util.ErrorMsg('failed to start "' .. config.name .. '"')
     return {}
   endif
@@ -529,7 +529,7 @@ export def Stop(client: dict<any>)
 enddef
 
 # test/run sets this to have every :def compiled as the script is read.
-if $LSP_COMPILE_CHECK !=# ''
+if $LSP_COMPILE_CHECK != ''
   defcompile
 endif
 

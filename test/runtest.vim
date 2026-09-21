@@ -52,7 +52,7 @@ def RunOne(name: string)
   endtry
   # An error Vim reported without stopping the test, a compile check among
   # them, would otherwise be lost.
-  if v:errmsg !=# ''
+  if v:errmsg != ''
     add(v:errors, 'an error went unreported: ' .. v:errmsg)
   endif
   helper.StopServer()
@@ -80,7 +80,7 @@ def Main()
       ->sort()
     # $TEST_FILTER narrows a run down to what is being looked at.
     for name in names
-      if $TEST_FILTER ==# '' || name =~# $TEST_FILTER
+      if $TEST_FILTER == '' || name =~ $TEST_FILTER
         RunOne(name)
       endif
     endfor

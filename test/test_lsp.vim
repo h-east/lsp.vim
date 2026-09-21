@@ -382,7 +382,7 @@ enddef
 
 # The edits land from a timer, which the wait gives room to run.
 def g:StopWhenEdited(): string
-  t.WaitFor(() => getline(1) ==# '#include <stdio.h>')
+  t.WaitFor(() => getline(1) == '#include <stdio.h>')
   stopped_at = [line('.'), col('.')]
   return ''
 enddef
@@ -507,7 +507,7 @@ def g:Test_the_next_snippet_starts_at_its_own_first_stop()
 enddef
 
 def Answered(id: string): list<dict<any>>
-  return t.Trace()->filter((_, m) => string(m->get('id', '')) ==# "'" .. id
+  return t.Trace()->filter((_, m) => string(m->get('id', '')) == "'" .. id
     .. "'")
 enddef
 
@@ -764,7 +764,7 @@ def g:Test_a_buffer_named_like_a_url_gets_no_server()
   messages clear
   setfiletype c
   assert_equal([], get(b:, 'lsp_client_keys', []))
-  assert_true(LastMessage() !~# 'lsp:', 'it should say nothing on its own')
+  assert_true(LastMessage() !~ 'lsp:', 'it should say nothing on its own')
 
   LspStart
   assert_match('this buffer is not a local file', LastMessage())
@@ -880,7 +880,7 @@ def g:Test_a_second_root_is_added_to_the_server_that_is_running()
 
   # One server, not two; the folders it holds go under its own line.
   assert_equal(1, execute('LspStatus')->split("\n")
-    ->filter((_, l) => l =~# 'fake@')->len())
+    ->filter((_, l) => l =~ 'fake@')->len())
 enddef
 
 def g:Test_a_folder_is_added_and_taken_back_by_hand()
@@ -983,7 +983,7 @@ def g:Test_a_log_message_is_kept_for_LspLog()
   for _ in range(40)
     execute 'buffer ' .. SRC_BUF
     silent! LspLog
-    if getline(1) ==# '--- window/logMessage ---'
+    if getline(1) == '--- window/logMessage ---'
       found = true
       break
     endif
@@ -1030,7 +1030,7 @@ def g:Test_rename_changes_what_the_server_says()
 
   cursor(1, 5)
   LspRename ONE
-  assert_true(t.WaitFor(() => getline(1) ==# 'int ONE;'),
+  assert_true(t.WaitFor(() => getline(1) == 'int ONE;'),
     'the name should be replaced')
   assert_equal('int two;', getline(2))
 enddef
@@ -1047,7 +1047,7 @@ def g:Test_a_rename_is_turned_down_before_it_is_sent()
   assert_true(t.WaitFor(() =>
     !t.Sent('textDocument/prepareRename')->empty()),
   'the server should be asked first')
-  assert_true(t.WaitFor(() => LastMessage() =~# 'no name to rename'),
+  assert_true(t.WaitFor(() => LastMessage() =~ 'no name to rename'),
     'the answer should be passed on')
   assert_equal([], t.Sent('textDocument/rename'),
     'a rename the server turned down should not be sent')
@@ -1072,7 +1072,7 @@ def g:Test_the_rename_goes_ahead_once_the_server_allows_it()
 
   cursor(1, 5)
   LspRename ONE
-  assert_true(t.WaitFor(() => getline(1) ==# 'int ONE;'),
+  assert_true(t.WaitFor(() => getline(1) == 'int ONE;'),
     'the name should be replaced')
 enddef
 
@@ -1087,7 +1087,7 @@ def g:Test_format_replaces_the_buffer_in_one_undo()
   }, ['int  main(void)', '{', '  return 0;', '}']))
 
   LspFormat
-  assert_true(t.WaitFor(() => getline(1) ==# 'int main(void)'),
+  assert_true(t.WaitFor(() => getline(1) == 'int main(void)'),
     'the buffer should be formatted')
   assert_equal('    return 0;', getline(3))
 
@@ -1107,7 +1107,7 @@ def g:Test_format_asks_about_the_range_it_was_given()
   }, ['int  main(void)', '{', '  return 0;', '}']))
 
   :2,3LspFormat
-  assert_true(t.WaitFor(() => getline(3) ==# '    return 0;'),
+  assert_true(t.WaitFor(() => getline(3) == '    return 0;'),
     'the range should be formatted')
   # The first line is outside the range, so it is left as it is.
   assert_equal('int  main(void)', getline(1))
@@ -1234,7 +1234,7 @@ def g:Test_the_server_hands_over_an_edit()
   assert_equal([1], sent.arguments)
 
   # Running it, the server hands back the change through applyEdit.
-  assert_true(t.WaitFor(() => getline(1) ==# 'int ONE;'),
+  assert_true(t.WaitFor(() => getline(1) == 'int ONE;'),
     'what the server sent should be applied')
   assert_equal('int two;', getline(2))
 enddef
@@ -1259,7 +1259,7 @@ def g:Test_the_rest_of_a_code_action_is_asked_for()
   assert_true(t.WaitFor(() => !popup_list()->empty()), 'a menu should be up')
   feedkeys("\<CR>", 'tx')
 
-  assert_true(t.WaitFor(() => getline(1) ==# 'int ONE;'),
+  assert_true(t.WaitFor(() => getline(1) == 'int ONE;'),
     'the edit that was asked for should be applied')
   assert_equal('the rest', t.Sent('codeAction/resolve')[0].params.data,
     'the action goes back as it came')
@@ -1289,11 +1289,11 @@ def g:Test_a_request_named_with_a_string()
   assert_true(t.WaitFor(() => !popup_list()->empty()), 'a menu should be up')
   feedkeys("\<CR>", 'tx')
 
-  assert_true(t.WaitFor(() => getline(1) ==# 'int ONE;'),
+  assert_true(t.WaitFor(() => getline(1) == 'int ONE;'),
     'what the server sent should be applied')
   # The answer carries the id back as it came, rather than failing to go out.
   var Answers = (): list<dict<any>> => t.Trace()->filter((_, m) =>
-    type(m->get('id', 0)) == v:t_string && m.id ==# ASKED)
+    type(m->get('id', 0)) == v:t_string && m.id == ASKED)
   assert_true(t.WaitFor(() => !Answers()->empty()),
     'the request should be answered')
   assert_equal({applied: true}, Answers()[0].result)
@@ -1430,7 +1430,7 @@ def g:Test_a_file_is_opened_by_the_short_name()
   }, ['int here;']))
 
   LspDefinition
-  assert_true(t.WaitFor(() => bufname('%') =~# '_more\.c$'),
+  assert_true(t.WaitFor(() => bufname('%') =~ '_more\.c$'),
     'the other file should open')
   # Not the full path the server named.
   assert_equal(fnamemodify(OTHER, ':.'), bufname('%'))
@@ -1462,7 +1462,7 @@ enddef
 
 def g:Test_the_status_names_the_version()
   const LINES = execute('LspStatus')->split("\n")
-    ->filter((_, l) => l =~# '^lsp\.vim ')
+    ->filter((_, l) => l =~ '^lsp\.vim ')
   assert_equal(1, len(LINES))
   assert_match('^lsp\.vim \d\+\.\d\+\.\d\+  (Vim \d\+\.\d\+\.\d\+)$',
     LINES[0])
@@ -1571,7 +1571,7 @@ def g:Test_a_trigger_character_has_the_server_look_at_the_text()
   assert_equal("\n", sent.ch)
   assert_equal({line: 1, character: 0}, sent.position)
 
-  assert_true(t.WaitFor(() => getline(2) ==# "\t"),
+  assert_true(t.WaitFor(() => getline(2) == "\t"),
     'the indent the server sent should be applied')
   assert_equal('if (one) {', getline(1))
   assert_equal('}', getline(3))
@@ -1601,7 +1601,7 @@ def g:Test_a_trigger_puts_in_what_the_server_makes_of_it()
   # The position is where the cursor stands, past the character just typed.
   assert_equal({line: 0, character: 9}, sent.position)
 
-  assert_true(t.WaitFor(() => getline(1) ==# 'x = f"abc{"'),
+  assert_true(t.WaitFor(() => getline(1) == 'x = f"abc{"'),
     'what the server sent should be put in')
 enddef
 
@@ -1741,7 +1741,7 @@ def g:Test_a_document_link_the_server_finishes_later()
   cursor(1, 12)
   LspDocumentLinkOpen
   assert_true(t.WaitFor(() =>
-    expand('%:t') ==# fnamemodify(HEADER, ':t')),
+    expand('%:t') == fnamemodify(HEADER, ':t')),
   'the link should lead to the header')
   execute 'edit ' .. fnameescape(t.SRC)
 enddef
@@ -1765,7 +1765,7 @@ def g:Test_the_selection_grows_the_way_the_file_is_built()
   # On "two", which is what the innermost holds.
   cursor(3, 11)
   call feedkeys("\<Plug>(lsp-selection-expand)", 'x')
-  assert_true(t.WaitFor(() => mode() =~# '^v'),
+  assert_true(t.WaitFor(() => mode() =~ '^v'),
     'the innermost should be selected')
   assert_equal([3, 9, 3, 11], [line('v'), col('v'), line('.'), col('.')])
 
@@ -1805,7 +1805,7 @@ def g:Test_a_range_with_nothing_in_it_selects_nothing()
   cursor(1, 4)
   call feedkeys("\<Plug>(lsp-selection-expand)", 'x')
   assert_true(t.WaitFor(() =>
-    execute('messages') =~# 'nothing to select'),
+    execute('messages') =~ 'nothing to select'),
   'the server should be reported to have found nothing')
   assert_equal('n', mode())
   assert_equal([1, 4], [line('.'), col('.')])
@@ -2065,7 +2065,7 @@ def g:Test_the_rest_of_an_inlay_hint_is_asked_for()
 
   popup_clear()
   LspInlayHintApply
-  assert_true(t.WaitFor(() => getline(2) ==# '    var x: int = 1;'),
+  assert_true(t.WaitFor(() => getline(2) == '    var x: int = 1;'),
     'the change that goes with the hint should be made')
 enddef
 
@@ -2155,7 +2155,7 @@ def g:Test_a_delta_is_folded_into_what_was_there()
   var asked = t.Sent('textDocument/semanticTokens/full/delta')[0]
   assert_equal('1', asked.params.previousResultId)
 
-  assert_true(t.WaitFor(() => PaintedOn(1)[0][2] ==# 'LspSemFunction'),
+  assert_true(t.WaitFor(() => PaintedOn(1)[0][2] == 'LspSemFunction'),
     'the delta should reach the buffer')
   assert_equal([[1, 3, 'LspSemFunction'], [5, 1, 'LspSemVariable']],
     PaintedOn(1))
@@ -2190,7 +2190,7 @@ def g:Test_a_modifier_takes_over_from_the_token_type()
   doautocmd TextChanged
   assert_true(t.WaitFor(() => PaintedOn(1)
     ->copy()
-    ->filter((_, p) => p[2] ==# 'LspSemVariableReadonly')
+    ->filter((_, p) => p[2] == 'LspSemVariableReadonly')
     ->len() == 1),
     'the group for the pair should win')
 enddef
@@ -2248,7 +2248,7 @@ def g:Test_a_request_that_was_turned_down_is_not_asked_again()
   # The reply is what the message comes from, so the request being on its way
   # is not far enough.
   assert_true(t.WaitFor(() =>
-    execute('messages') =~# 'semantictokens are disabled'),
+    execute('messages') =~ 'semantictokens are disabled'),
   'the turn-down should be reported')
 
   # Every change after that leaves the server alone.
@@ -2364,7 +2364,7 @@ def g:Test_a_method_registered_again_is_taken_as_the_later_word()
   LspHover
   assert_true(t.WaitFor(() =>
     t.Trace()->copy()
-    ->filter((_, m) => string(m->get('id', '')) ==# "'r1'")
+    ->filter((_, m) => string(m->get('id', '')) == "'r1'")
     ->len() == 1),
   'the first registration should be answered')
   setline(1, 'int two;')
@@ -2378,7 +2378,7 @@ def g:Test_a_method_registered_again_is_taken_as_the_later_word()
   LspDefinition
   assert_true(t.WaitFor(() =>
     t.Trace()->copy()
-    ->filter((_, m) => string(m->get('id', '')) ==# "'r2'")
+    ->filter((_, m) => string(m->get('id', '')) == "'r2'")
     ->len() == 1),
   'the second registration should be answered')
   var asked = len(t.Sent('textDocument/diagnostic'))
@@ -2419,7 +2419,7 @@ def g:Test_a_report_is_left_alone_once_the_server_gives_it_up()
   LspDefinition
   assert_true(t.WaitFor(() =>
     t.Trace()->copy()
-    ->filter((_, m) => string(m->get('id', '')) ==# "'unreg'")
+    ->filter((_, m) => string(m->get('id', '')) == "'unreg'")
     ->len() == 1),
   'the server should have given it up')
   var asked = len(t.Sent('textDocument/diagnostic'))
@@ -2476,7 +2476,7 @@ def g:Test_the_workspace_is_pulled_for_as_long_as_the_server_answers()
 
   LspWorkspaceDiag
   var items = getqflist()->copy()
-    ->filter((_, e) => e.text =~# 'a fault there')
+    ->filter((_, e) => e.text =~ 'a fault there')
   assert_equal(1, len(items))
   assert_equal('W', items[0].type)
   assert_equal(HEADER, fnamemodify(bufname(items[0].bufnr), ':p'))
@@ -2539,7 +2539,7 @@ def g:Test_a_watched_file_being_written_is_reported()
   LspHover
   assert_true(t.WaitFor(() =>
     t.Trace()->copy()
-    ->filter((_, m) => string(m->get('id', '')) ==# "'reg'")
+    ->filter((_, m) => string(m->get('id', '')) == "'reg'")
     ->len() == 1),
   'the registration should be answered')
 
@@ -2582,7 +2582,7 @@ def g:Test_folds_come_from_the_server()
   assert_equal('manual', &foldmethod)
 
   LspFolding
-  assert_true(t.WaitFor(() => &foldmethod ==# 'expr'),
+  assert_true(t.WaitFor(() => &foldmethod == 'expr'),
     'folding should be handed over')
   assert_equal('lsp#FoldExpr(v:lnum)', &foldexpr)
   # The inner range sits inside the outer one, so those lines are deeper.
@@ -2712,7 +2712,7 @@ def g:Test_a_part_the_server_turns_down()
   cursor(1, 1)
   LspOutgoingCalls
   assert_true(t.WaitFor(() =>
-    execute('messages') =~# 'does not answer'),
+    execute('messages') =~ 'does not answer'),
   'the turn-down should be reported')
   assert_match('the server does not answer callHierarchy/outgoingCalls',
     execute('messages'))
@@ -2753,12 +2753,12 @@ def g:Test_a_hover_is_drawn_in_the_filetype_the_server_named()
   enddef
 
   LspHover
-  assert_true(t.WaitFor(() => Filetype() ==# 'markdown'),
+  assert_true(t.WaitFor(() => Filetype() == 'markdown'),
     'a MarkupContent that names markdown')
   popup_clear()
 
   LspHover
-  assert_true(t.WaitFor(() => Filetype() ==# 'c'),
+  assert_true(t.WaitFor(() => Filetype() == 'c'),
     'the language of a MarkedString')
   popup_clear()
 
@@ -2826,22 +2826,22 @@ def g:Test_the_character_references_in_a_hover()
   # What is left out of the table, and a number that is none, stay as they are.
   LspHover
   assert_true(t.WaitFor(() =>
-    Text() ==# 'a b <T> "q" &amp; '' A &unknown; &42;'),
+    Text() == 'a b <T> "q" &amp; '' A &unknown; &42;'),
   'the references markdown is written with')
   popup_clear()
 
   # Plaintext and code are the characters they hold.
   LspHover
-  assert_true(t.WaitFor(() => Text() ==# 'a&nbsp;b'), 'plaintext is left alone')
+  assert_true(t.WaitFor(() => Text() == 'a&nbsp;b'), 'plaintext is left alone')
   popup_clear()
 
   LspHover
-  assert_true(t.WaitFor(() => Text() ==# 'a&nbsp;b'), 'code is left alone')
+  assert_true(t.WaitFor(() => Text() == 'a&nbsp;b'), 'code is left alone')
   popup_clear()
 
   # A MarkedString that is a plain string is markdown.
   LspHover
-  assert_true(t.WaitFor(() => Text() ==# 'a b'), 'a string of its own')
+  assert_true(t.WaitFor(() => Text() == 'a b'), 'a string of its own')
 enddef
 
 # More in the popup than fits, so that there is something to scroll to.
@@ -3296,7 +3296,7 @@ def g:Test_the_status_shortens_the_root()
   assert_true(t.StartServer({capabilities: SYNC}, ['int one;']))
 
   var line = execute('LspStatus')->split("\n")
-    ->filter((_, l) => l =~# '^fake@')->get(0, '')
+    ->filter((_, l) => l =~ '^fake@')->get(0, '')
   var root = fnamemodify(t.SRC, ':h:h')
   assert_equal('fake@' .. fnamemodify(root, ':~:.'), line->matchstr('^\S\+'))
 enddef

@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.019'
+const VERSION = '0.2.020'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -141,7 +141,7 @@ enddef
 # The characters a 'pumopt' border style names.  Empty for a style there is
 # no such thing as.
 def BorderChars(style: string): list<string>
-  if style =~# '^custom:'
+  if style =~ '^custom:'
     var chars = split(style[7 : ], ';', true)
     return len(chars) == 8 ? chars : []
   endif
@@ -150,7 +150,7 @@ def BorderChars(style: string): list<string>
   endif
   # Box-drawing asks the same of 'encoding' and 'ambiwidth' that 'pumopt'
   # asks; without it there is still "ascii" to draw with.
-  if style !=# 'ascii' && !(&encoding ==# 'utf-8' && &ambiwidth ==# 'single')
+  if style != 'ascii' && !(&encoding == 'utf-8' && &ambiwidth == 'single')
     return BORDER_STYLES.ascii
   endif
   return BORDER_STYLES[style]
@@ -180,7 +180,7 @@ def PopupStyle(name: string): dict<any>
   var named = conf->has_key('opt')
   var opts: dict<any> = {}
   for token in split(named ? conf.opt : &pumopt, ',')
-    if token =~# '^border:'
+    if token =~ '^border:'
       var chars = BorderChars(token[7 : ])
       if chars->empty()
         Complain(where, printf('cannot read "%s"', token))
@@ -188,9 +188,9 @@ def PopupStyle(name: string): dict<any>
         opts.border = []
         opts.borderchars = chars
       endif
-    elseif token =~# '^opacity:'
+    elseif token =~ '^opacity:'
       var percent = str2nr(token[8 : ])
-      if token[8 : ] !~# '^\d\+$' || percent > 100
+      if token[8 : ] !~ '^\d\+$' || percent > 100
         Complain(where, printf('cannot read "%s"', token))
       else
         opts.opacity = percent
@@ -215,7 +215,7 @@ def PopupStyle(name: string): dict<any>
     # 'winhighlight' does not reach, so what is named for it is handed to
     # popup_create() as the border highlight instead.
     var border = highlights->split(',')
-      ->filter((_, s) => s =~# '^PopupBorder:')
+      ->filter((_, s) => s =~ '^PopupBorder:')
     if !border->empty()
       opts.borderhighlight = [border[-1]->matchstr(':\zs.*')]
     endif
@@ -271,7 +271,7 @@ def ClientFor(name: string, root: string): string
     return key
   endif
   for [at, cl] in clients->items()
-    if cl.name ==# name && cl.running && cl.initialized && TakesFolders(cl)
+    if cl.name == name && cl.running && cl.initialized && TakesFolders(cl)
       cl.folders->add(root)
       adopted[root] = at
       lspclient.Notify(cl, 'workspace/didChangeWorkspaceFolders',
@@ -288,7 +288,7 @@ def RelativeTo(cl: dict<any>, path: string): list<string>
   var out = [path]
   for folder in cl.folders
     var base = folder .. '/'
-    if strpart(path, 0, strlen(base)) ==# base
+    if strpart(path, 0, strlen(base)) == base
       out->add(strpart(path, strlen(base)))
     endif
   endfor
@@ -609,14 +609,14 @@ def ShowProgress(params: any)
     return
   endif
   var kind = value->get('kind', '')
-  if kind ==# 'end'
+  if kind == 'end'
     if progress_title->has_key(token)
       remove(progress_title, token)
     endif
     echo ''
     return
   endif
-  if kind ==# 'begin'
+  if kind == 'begin'
     progress_title[token] = value->get('title', '')
   endif
   var parts = [progress_title->get(token, '')]
@@ -632,7 +632,7 @@ def ShowProgress(params: any)
 enddef
 
 def OnNotify(cl: dict<any>, method: string, params: any)
-  if method ==# 'textDocument/publishDiagnostics'
+  if method == 'textDocument/publishDiagnostics'
     var uri = params->get('uri', '')
     cl.diagnostics[uri] = params->get('diagnostics', [])
     # A server may report on a file that is not open here.
@@ -641,15 +641,15 @@ def OnNotify(cl: dict<any>, method: string, params: any)
       diag.Update(bufnr, ClientKey(cl.name, cl.root), cl.diagnostics[uri],
         cl.encoding)
     endif
-  elseif method ==# 'window/showMessage'
+  elseif method == 'window/showMessage'
     ShowMessage(params->get('type', 0), params->get('message', ''))
-  elseif method ==# 'window/logMessage'
+  elseif method == 'window/logMessage'
     # For the record, and there can be a lot of it.
     cl.log->add(params->get('message', ''))
     if len(cl.log) > 200
       remove(cl.log, 0, len(cl.log) - 201)
     endif
-  elseif method ==# '$/progress'
+  elseif method == '$/progress'
     if !TookPartial(params)
       ShowProgress(params)
     endif
@@ -727,13 +727,13 @@ export def Attach(loud: bool = false)
     return
   endif
   var name = bufname(bufnr)
-  if name->empty() || &buftype !=# ''
+  if name->empty() || &buftype != ''
     if loud
       util.WarningMsg('this buffer is not a file')
     endif
     return
   endif
-  if name =~# URL_NAME
+  if name =~ URL_NAME
     if loud
       util.WarningMsg('this buffer is not a local file')
     endif
@@ -894,7 +894,7 @@ def CheckClientConfig()
     elseif !IsType(value, type(DEFAULTS[key]))
       Complain(WHERE, printf('"%s" takes %s', key,
         TypeName(type(DEFAULTS[key]))))
-    elseif key ==# 'hover_format' && index(HOVER_FORMATS, value) < 0
+    elseif key == 'hover_format' && index(HOVER_FORMATS, value) < 0
       Complain(WHERE, printf('"hover_format" takes "%s"',
         HOVER_FORMATS->join('" or "')))
     endif
@@ -941,15 +941,15 @@ def CheckServerList()
     for [key, value] in config->items()
       if !SERVER_KEYS->has_key(key)
         Complain(where, printf('has no such key as "%s"', key))
-      elseif key ==# 'cmd' && type(value) == v:t_func
+      elseif key == 'cmd' && type(value) == v:t_func
         # Called when the server starts.
         continue
       elseif type(value) != SERVER_KEYS[key]
         Complain(where, printf('"%s" takes %s', key,
-          key ==# 'cmd' ? 'a List or a Funcref' : TypeName(SERVER_KEYS[key])))
+          key == 'cmd' ? 'a List or a Funcref' : TypeName(SERVER_KEYS[key])))
       elseif SERVER_KEYS[key] == v:t_list
-        CheckList(where, key, value, key !=# 'rootPatterns')
-      elseif key ==# 'use'
+        CheckList(where, key, value, key != 'rootPatterns')
+      elseif key == 'use'
         CheckUse(where, value)
       endif
     endfor
@@ -972,7 +972,7 @@ enddef
 # now.  Empty where it has been taken out since.
 def ServerNamed(name: string): dict<any>
   for config in get(g:, 'lsp_server_list', [])
-    if config->get('name', '') ==# name
+    if config->get('name', '') == name
       return config
     endif
   endfor
@@ -1010,7 +1010,7 @@ def ShowAnswering()
   var lines: list<string> = []
   for feature in providers->keys()->sort()
     var names: list<string> = []
-    if feature ==# 'diagnostics'
+    if feature == 'diagnostics'
       # Every server reports for itself; the reports are shown together.
       names = BufClients(bufnr)
         ->filter((_, cl) => cl.initialized && Uses(cl, feature))
@@ -1075,7 +1075,7 @@ export def RemovableFolders(): list<string>
   if cl->empty()
     return []
   endif
-  return copy(cl.folders)->filter((_, folder) => folder !=# cl.root)
+  return copy(cl.folders)->filter((_, folder) => folder != cl.root)
 enddef
 
 # A folder joins the project of the current buffer, so that is the server it
@@ -1134,7 +1134,7 @@ export def WorkspaceFolderRemove(path: string)
   var dir = AsFolder(path)
   # The root is in the client's key and in the "rootUri" the server was
   # given, so it stays for as long as the server does.
-  if dir ==# cl.root
+  if dir == cl.root
     util.WarningMsg(dir .. ' is what the server started on')
     return
   endif
@@ -1144,7 +1144,7 @@ export def WorkspaceFolderRemove(path: string)
     return
   endif
   remove(cl.folders, at)
-  if adopted->get(dir, '') ==# ClientKey(cl.name, cl.root)
+  if adopted->get(dir, '') == ClientKey(cl.name, cl.root)
     remove(adopted, dir)
   endif
   lspclient.Notify(cl, 'workspace/didChangeWorkspaceFolders',
@@ -1159,7 +1159,7 @@ def HoverFormat(): list<string>
   if index(HOVER_FORMATS, first) < 0
     first = HOVER_FORMATS[0]
   endif
-  return [first] + HOVER_FORMATS->copy()->filter((_, f) => f !=# first)
+  return [first] + HOVER_FORMATS->copy()->filter((_, f) => f != first)
 enddef
 
 # The filetype to draw a hover in: "markdown" for a MarkupContent that names
@@ -1169,34 +1169,34 @@ def HoverFiletype(contents: any): string
   if type(contents) != v:t_dict
     return ''
   endif
-  var ft = contents->get('kind', '') ==# 'markdown'
+  var ft = contents->get('kind', '') == 'markdown'
     ? 'markdown'
     : contents->get('language', '')
-  return type(ft) == v:t_string && ft =~# '^\a[[:alnum:]._-]*$' ? ft : ''
+  return type(ft) == v:t_string && ft =~ '^\a[[:alnum:]._-]*$' ? ft : ''
 enddef
 
 # Take the popup away with <Esc>, or scroll it with the keys the completion
 # info popup takes; every other key is left to Vim.
 def HoverFilter(id: number, key: string): bool
   var name = keytrans(key)
-  if name ==# '<Esc>'
+  if name == '<Esc>'
     CloseHoverPopup()
     return true
   endif
   var keys = ''
-  if name ==# '<C-S-Down>' || name ==# '<C-S-N>'
+  if name == '<C-S-Down>' || name == '<C-S-N>'
     keys = "\<C-E>"
-  elseif name ==# '<C-S-Up>' || name ==# '<C-S-P>'
+  elseif name == '<C-S-Up>' || name == '<C-S-P>'
     keys = "\<C-Y>"
-  elseif name ==# '<C-S-PageDown>'
+  elseif name == '<C-S-PageDown>'
     keys = "\<C-F>"
-  elseif name ==# '<C-S-PageUp>'
+  elseif name == '<C-S-PageUp>'
     keys = "\<C-B>"
   else
     return false
   endif
   # A window scrolls past its last line to write there; a popup is only read.
-  if keys ==# "\<C-E>" || keys ==# "\<C-F>"
+  if keys == "\<C-E>" || keys == "\<C-F>"
     var pos = popup_getpos(id)
     if pos->get('lastline', 0) >= getbufinfo(winbufnr(id))[0].linecount
       return true
@@ -1222,7 +1222,7 @@ enddef
 # at the foot of the popup.
 def Trimmed(lines: list<string>): list<string>
   var out = copy(lines)
-  while !out->empty() && out[-1] =~# '^\s*$'
+  while !out->empty() && out[-1] =~ '^\s*$'
     remove(out, -1)
   endwhile
   return out
@@ -1262,7 +1262,7 @@ const ENTITIES = {
 }
 
 def EntityChar(whole: string, name: string): string
-  if name[0] ==# '#'
+  if name[0] == '#'
     var nr = name[1] ==? 'x' ? str2nr(name[2 : ], 16) : str2nr(name[1 : ])
     return nr > 0 ? nr2char(nr) : whole
   endif
@@ -1290,7 +1290,7 @@ def HoverText(contents: any): list<string>
   endif
   if type(contents) == v:t_dict
     var text = contents->get('value', '')
-    return (contents->get('kind', '') ==# 'markdown' ? Decoded(text) : text)
+    return (contents->get('kind', '') == 'markdown' ? Decoded(text) : text)
       ->split("\n")
   endif
   return []
@@ -1742,7 +1742,7 @@ def JumpTo(method: string, provider: string, what: string, mods: string)
       from: [bufnr('%'), line('.'), col('.'), 0]}]}, 't')
     normal! m'
     var path = util.UriToPath(loc.uri)->util.OpenName()
-    if mods =~# SPLIT_MODS
+    if mods =~ SPLIT_MODS
       execute mods 'split' fnameescape(path)
     elseif !util.SamePath(path, bufname('%'))
       execute mods 'edit' fnameescape(path)
@@ -1784,7 +1784,7 @@ enddef
 # a jump from the cursor is answered; see |lsp-tagfunc|.
 export def TagFunc(pattern: string, flags: string, info: dict<any>): any
   # Completion comes with "c" as well, and "i" on top of it.
-  if flags !~# 'c' || flags =~# 'i'
+  if flags !~ 'c' || flags =~ 'i'
     return NoTags()
   endif
   var cl = ClientOffering(bufnr('%'), 'definitionProvider')
@@ -1919,7 +1919,7 @@ def OnTypeFormat()
   # Text before the cursor was typed after the newline, so it is that which
   # was typed last; naming the newline here would send a position past it.
   var before = strpart(getline('.'), 0, col('.') - 1)
-  var ch = grew && before =~# '^\s*$' ? "\n" : before->slice(-1)
+  var ch = grew && before =~ '^\s*$' ? "\n" : before->slice(-1)
   if ch->empty()
     return
   endif
@@ -1949,7 +1949,7 @@ def OnTypeFormat()
     ApplyTextEdits(bufnr, result, cl.encoding)
     var now = getline('.')
     var keep = strlen(now) - strlen(tail)
-    if keep >= 0 && strpart(now, keep) ==# tail
+    if keep >= 0 && strpart(now, keep) == tail
       cursor(line('.'), keep + 1)
     endif
   })
@@ -3100,14 +3100,14 @@ def ExpandSnippet(snippet: string): list<any>
     endif
     out ..= strpart(snippet, at, from - at)
     at = to
-    if found[0] ==# '\'
+    if found[0] == '\'
       out ..= found[1]
       continue
     endif
     var start = strlen(out)
-    if found =~# '^\${\d\+:'
+    if found =~ '^\${\d\+:'
       out ..= matchstr(found, '^\${\d\+:\zs.*\ze}$')
-    elseif found =~# '^\${\d\+|'
+    elseif found =~ '^\${\d\+|'
       # One of several, with no way to pick: the first is as good as any.
       out ..= matchstr(found, '^\${\d\+|\zs[^,|]*')
     endif
@@ -3450,7 +3450,7 @@ def FinishSnippet(item: dict<any>, word: string)
   var from = to - strlen(word)
   # Only what the menu is known to have put in is replaced.
   if word->empty() || from < 0
-      || strpart(getline(lnum), from, strlen(word)) !=# word
+      || strpart(getline(lnum), from, strlen(word)) != word
     return
   endif
   var [text, stops] = ExpandSnippet(ItemText(item))
@@ -3514,7 +3514,7 @@ const FILE_CHANGED = 2
 def Watchers(cl: dict<any>): list<dict<any>>
   var out: list<dict<any>> = []
   for item in cl.registrations->values()
-    if item->get('method', '') !=# 'workspace/didChangeWatchedFiles'
+    if item->get('method', '') != 'workspace/didChangeWatchedFiles'
       continue
     endif
     for watcher in item->get('registerOptions', {})->get('watchers', [])
@@ -3550,7 +3550,7 @@ const REGISTERED_AS = {
 # once it has read the settings.
 export def Capability(cl: dict<any>, name: string): any
   for item in cl.registrations->values()
-    if REGISTERED_AS->get(item->get('method', ''), '') ==# name
+    if REGISTERED_AS->get(item->get('method', ''), '') == name
       return item->get('registerOptions', {})
     endif
   endfor
@@ -3570,7 +3570,7 @@ def Register(cl: dict<any>, params: any)
     var method = item->get('method', '')
     if REGISTERED_AS->has_key(method)
       for [id, was] in cl.registrations->items()
-        if was->get('method', '') ==# method
+        if was->get('method', '') == method
           remove(cl.registrations, id)
         endif
       endfor
@@ -3607,16 +3607,16 @@ def Watched(cl: dict<any>, path: string, kind: number): bool
     if and(watcher.kind, kind) == 0
       continue
     endif
-    if path =~# watcher.pat
+    if path =~ watcher.pat
       return true
     endif
     var base = watcher.base .. '/'
-    if strpart(path, 0, strlen(base)) ==# base
-        && strpart(path, strlen(base)) =~# watcher.pat
+    if strpart(path, 0, strlen(base)) == base
+        && strpart(path, strlen(base)) =~ watcher.pat
       return true
     endif
     for name in RelativeTo(cl, path)
-      if name =~# watcher.pat
+      if name =~ watcher.pat
         return true
       endif
     endfor
@@ -3667,7 +3667,7 @@ def WantsFileOp(cl: dict<any>, op: string, path: string): bool
     endif
     var pattern = filter->get('pattern', {})
     if type(pattern) != v:t_dict
-        || pattern->get('matches', 'file') !=# 'file'
+        || pattern->get('matches', 'file') != 'file'
       continue
     endif
     var glob = pattern->get('glob', '')
@@ -3678,7 +3678,7 @@ def WantsFileOp(cl: dict<any>, op: string, path: string): bool
     # both ways, the same as a watcher's pattern is.
     var pat = glob2regpat(glob)
     for name in RelativeTo(cl, path)
-      if name =~# pat
+      if name =~ pat
         return true
       endif
     endfor
@@ -3730,7 +3730,7 @@ enddef
 export def RenameFile(newname: string)
   var bufnr = bufnr('%')
   var old = expand('%:p')
-  if old->empty() || &buftype !=# ''
+  if old->empty() || &buftype != ''
     util.WarningMsg('this buffer is not a file')
     return
   endif
@@ -3742,7 +3742,7 @@ export def RenameFile(newname: string)
     endif
   endif
   var new = fnamemodify(name, ':p')
-  if new ==# old
+  if new == old
     return
   endif
   if filereadable(new)
@@ -3842,7 +3842,7 @@ def PullDiagnostics()
       diagnostic_ids[string(bufnr)] = id
     endif
     # "unchanged" means the last report still stands.
-    if result->get('kind', 'full') ==# 'full'
+    if result->get('kind', 'full') == 'full'
       cl.diagnostics[uri] = result->get('items', [])
       if bufexists(bufnr)
         diag.Update(bufnr, ClientKey(cl.name, cl.root), cl.diagnostics[uri],
@@ -3890,7 +3890,7 @@ def TakeWorkspaceReport(cl: dict<any>, report: any)
     cl.workspace_ids[uri] = id
   endif
   # "unchanged" means what was reported before still stands.
-  if report->get('kind', 'full') !=# 'full'
+  if report->get('kind', 'full') != 'full'
     return
   endif
   var bufnr = bufnr(util.OpenName(util.UriToPath(uri)))
@@ -4085,7 +4085,7 @@ def ShowDocument(params: any, encoding: string): bool
     return OpenExternal(uri)
   endif
   var path = util.UriToPath(uri)
-  if path ==# uri
+  if path == uri
     # Not a file, so there is no window to put it in.
     return OpenExternal(uri)
   endif
@@ -4101,39 +4101,39 @@ enddef
 # down by the caller.
 def OnRequest(cl: dict<any>, method: string, params: any,
     Answer: func(any)): bool
-  if method ==# 'window/workDoneProgress/create'
+  if method == 'window/workDoneProgress/create'
     Answer(v:null)
     return true
   endif
-  if method ==# 'workspace/workspaceFolders'
+  if method == 'workspace/workspaceFolders'
     Answer(cl.folders->mapnew((_, root) => Folder(root)))
     return true
   endif
   # What the server told us has gone out of date, usually because a file it
   # depends on changed, so it is asked for again.  The answer goes first: the
   # server is waiting on it while the asking is done.
-  if method ==# 'workspace/semanticTokens/refresh'
+  if method == 'workspace/semanticTokens/refresh'
     Answer(v:null)
     semantic_asked = {}
     SemanticTokens()
     return true
   endif
-  if method ==# 'workspace/codeLens/refresh'
+  if method == 'workspace/codeLens/refresh'
     Answer(v:null)
     CodeLenses()
     return true
   endif
-  if method ==# 'workspace/inlayHint/refresh'
+  if method == 'workspace/inlayHint/refresh'
     Answer(v:null)
     InlayHints()
     return true
   endif
-  if method ==# 'workspace/foldingRange/refresh'
+  if method == 'workspace/foldingRange/refresh'
     Answer(v:null)
     FoldingRanges()
     return true
   endif
-  if method ==# 'workspace/diagnostic/refresh'
+  if method == 'workspace/diagnostic/refresh'
     Answer(v:null)
     # What was reported before no longer stands, so no "unchanged" answer.
     diagnostic_ids = {}
@@ -4143,17 +4143,17 @@ def OnRequest(cl: dict<any>, method: string, params: any,
     PullWorkspace(cl)
     return true
   endif
-  if method ==# 'window/showMessageRequest'
+  if method == 'window/showMessageRequest'
     ShowMessageRequest(params, Answer)
     return true
   endif
-  if method ==# 'window/showDocument'
+  if method == 'window/showDocument'
     Answer({success: ShowDocument(params, cl.encoding)})
     return true
   endif
-  if method ==# 'client/registerCapability'
-      || method ==# 'client/unregisterCapability'
-    if method ==# 'client/registerCapability'
+  if method == 'client/registerCapability'
+      || method == 'client/unregisterCapability'
+    if method == 'client/registerCapability'
       Register(cl, params)
     else
       Unregister(cl, params)
@@ -4161,7 +4161,7 @@ def OnRequest(cl: dict<any>, method: string, params: any,
     Answer(v:null)
     return true
   endif
-  if method !=# 'workspace/applyEdit'
+  if method != 'workspace/applyEdit'
     return false
   endif
   var edit = type(params) == v:t_dict ? params->get('edit', {}) : {}
@@ -4182,7 +4182,7 @@ lspclient.SetNotifyHandler(OnNotify)
 lspclient.SetRequestHandler(OnRequest)
 
 # test/run sets this to have every :def compiled as the script is read.
-if $LSP_COMPILE_CHECK !=# ''
+if $LSP_COMPILE_CHECK != ''
   defcompile
 endif
 

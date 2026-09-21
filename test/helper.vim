@@ -53,7 +53,7 @@ export def StartServer(scenario: dict<any>, lines: list<string>,
 
   # Starting Python for the first time is slow on a cold machine, so this
   # waits longer than anything else does.
-  var ready = WaitFor(() => execute('LspStatus') =~# 'ready', 30000)
+  var ready = WaitFor(() => execute('LspStatus') =~ 'ready', 30000)
   if !ready
     # Report what the server did instead, there is no guessing from "false".
     add(v:errors, 'the server did not come up; status: '
@@ -89,7 +89,7 @@ export def StartServers(specs: list<dict<any>>, lines: list<string>): bool
   setfiletype c
 
   var ready = WaitFor(() => execute('LspStatus')->split("\n")
-    ->filter((_, line) => line =~# 'ready')->len() == len(specs), 30000)
+    ->filter((_, line) => line =~ 'ready')->len() == len(specs), 30000)
   if !ready
     add(v:errors, 'the servers did not come up; status: '
       .. execute('LspStatus')->trim())
@@ -134,7 +134,7 @@ export def TraceOf(i: number): list<dict<any>>
 enddef
 
 export def SentTo(i: number, method: string): list<dict<any>>
-  return TraceOf(i)->filter((_, m) => m->get('method', '') ==# method)
+  return TraceOf(i)->filter((_, m) => m->get('method', '') == method)
 enddef
 
 def Messages(path: string): list<dict<any>>
@@ -155,7 +155,7 @@ def Messages(path: string): list<dict<any>>
 enddef
 
 export def Sent(method: string): list<dict<any>>
-  return Trace()->filter((_, m) => m->get('method', '') ==# method)
+  return Trace()->filter((_, m) => m->get('method', '') == method)
 enddef
 
 # vim: ts=2 sw=0 et

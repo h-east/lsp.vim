@@ -72,7 +72,7 @@ export def Update(bufnr: number, items: list<any>, encoding: string)
 enddef
 
 # test/run sets this to have every :def compiled as the script is read.
-if $LSP_COMPILE_CHECK !=# ''
+if $LSP_COMPILE_CHECK != ''
   defcompile
 endif
 

@@ -23,7 +23,7 @@ def PercentDecode(s: string): string
   var len = strlen(s)
   while i < len
     var c = strpart(s, i, 1)
-    if c ==# '%' && i + 2 < len
+    if c == '%' && i + 2 < len
       bytes->add(str2nr(strpart(s, i + 1, 2), 16))
       i += 3
     else
@@ -41,7 +41,7 @@ export def PathToUri(path: string): string
   if has('win32')
     full = substitute(full, '\\', '/', 'g')
     # A drive letter needs a leading slash: "C:/x" becomes "/C:/x".
-    if full =~# '^\a:'
+    if full =~ '^\a:'
       full = '/' .. full
     endif
   endif
@@ -56,7 +56,7 @@ export def UriToPath(uri: string): string
     return uri
   endif
   var path = PercentDecode(uri[7 : ])
-  if has('win32') && path =~# '^/\a:'
+  if has('win32') && path =~ '^/\a:'
     path = path[1 : ]
   endif
   return simplify(path)
@@ -79,7 +79,7 @@ enddef
 export def SamePath(a: string, b: string): bool
   var one = fnamemodify(a, ':p')
   var two = fnamemodify(b, ':p')
-  return has('win32') ? one ==? two : one ==# two
+  return has('win32') ? one ==? two : one == two
 enddef
 
 const TYPES = {E: ' error', W: ' warning', I: ' info', N: ' note'}
@@ -114,11 +114,11 @@ enddef
 # count in is handed in rather than looked up.
 export def PosToLsp(bufnr: number, lnum: number, col: number,
     encoding: string): dict<number>
-  if encoding ==# 'utf-8'
+  if encoding == 'utf-8'
     return {line: lnum - 1, character: col - 1}
   endif
   var line = getbufline(bufnr, lnum)->get(0, '')
-  var idx = encoding ==# 'utf-32' ? charidx(line, col - 1, true)
+  var idx = encoding == 'utf-32' ? charidx(line, col - 1, true)
     : utf16idx(line, col - 1, 1)
   return {line: lnum - 1, character: idx < 0 ? 0 : idx}
 enddef
@@ -127,11 +127,11 @@ enddef
 # is not open; the encoding has to come along for the same reason.
 export def ColFromLsp(line: string, character: number,
     encoding: string): number
-  if encoding ==# 'utf-8'
+  if encoding == 'utf-8'
     var last = line->strlen()
     return (character > last ? last : character) + 1
   endif
-  var idx = encoding ==# 'utf-32' ? byteidxcomp(line, character)
+  var idx = encoding == 'utf-32' ? byteidxcomp(line, character)
     : byteidxcomp(line, character, true)
   return (idx < 0 ? line->strlen() : idx) + 1
 enddef
@@ -151,7 +151,7 @@ enddef
 # bufnr() would take the path as a pattern, hence the walk.
 export def FileLines(path: string): list<string>
   for info in getbufinfo({bufloaded: 1})
-    if info.name ==# path
+    if info.name == path
       return getbufline(info.bufnr, 1, '$')
     endif
   endfor
@@ -189,7 +189,7 @@ export def WarningMsg(msg: string)
 enddef
 
 # test/run sets this to have every :def compiled as the script is read.
-if $LSP_COMPILE_CHECK !=# ''
+if $LSP_COMPILE_CHECK != ''
   defcompile
 endif
 

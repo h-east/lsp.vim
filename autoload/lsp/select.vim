@@ -37,7 +37,7 @@ enddef
 def Fresh(): bool
   return !steps->empty() && at >= 0
     && for_buf == bufnr('%') && for_tick == b:changedtick
-    && mode() =~# "^[vV\<C-v>]" && Now() == steps[at]
+    && mode() =~ "^[vV\<C-v>]" && Now() == steps[at]
 enddef
 
 # The character before a position, which is where a range ends for Vim: the
@@ -58,7 +58,7 @@ enddef
 
 # The chain as it arrived, kept as the positions Vim selects between.
 export def Remember(bufnr: number, chain: any, encoding: string)
-  var was_visual = mode() =~# "^[vV\<C-v>]"
+  var was_visual = mode() =~ "^[vV\<C-v>]"
   var was = was_visual ? Now() : [line('.'), col('.'), line('.'), col('.')]
   Forget()
   began = was
@@ -85,7 +85,7 @@ enddef
 # Put the step on screen, always character wise however the last selection
 # was made.
 def Show(step: list<number>)
-  if mode() =~# "^[vV\<C-v>]"
+  if mode() =~ "^[vV\<C-v>]"
     execute "normal! \<Esc>"
   endif
   cursor(step[0], step[1])
@@ -127,7 +127,7 @@ export def Start(): bool
     return false
   endif
   at = 0
-  if mode() =~# "^[vV\<C-v>]" && Now() == steps[0] && len(steps) > 1
+  if mode() =~ "^[vV\<C-v>]" && Now() == steps[0] && len(steps) > 1
     at = 1
   endif
   Show(steps[at])
