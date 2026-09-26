@@ -3395,6 +3395,11 @@ def g:Test_progress_is_shown_in_a_popup()
   assert_true(t.WaitFor(() => ProgressShown() ==
       ['fake: Indexing 4/10 [####------]  40%']),
     'the progress should be shown: ' .. string(ProgressShown()))
+  # With a border, as the other popups have where nothing else is asked.
+  assert_true(popup_list()->filter((_, i) =>
+      getbufline(winbufnr(i), 1)[0] =~ '^fake:')
+    ->mapnew((_, i) => popup_getoptions(i))[0]->has_key('border'),
+    'the popup should have a border')
 
   setline(1, 'int two;')
   assert_true(t.WaitFor(() => ProgressShown()->empty()),
@@ -3412,6 +3417,26 @@ def g:Test_progress_goes_with_the_server()
   LspStop
   assert_true(t.WaitFor(() => ProgressShown()->empty()),
     'the popup should go with the server')
+enddef
+
+# The popup of the work a server is busy with is drawn as "progress_popup"
+# asks, the way the other popups are.
+def g:Test_the_progress_popup_is_drawn_as_asked()
+  g:lsp_client_config = get(g:, 'lsp_client_config', {})
+  g:lsp_client_config.progress_popup = {opt: 'border:ascii',
+    highlights: 'Normal:ErrorMsg'}
+  defer execute('unlet g:lsp_client_config.progress_popup')
+  assert_true(t.StartServer({
+    notify: [{method: '$/progress', params: {token: 'work',
+      value: {kind: 'begin', title: 'Indexing'}}}],
+  }, ['int one;']))
+  assert_true(t.WaitFor(() => ProgressShown() == ['fake: Indexing']),
+    'the progress should be shown: ' .. string(ProgressShown()))
+  var id = popup_list()->filter((_, i) =>
+    getbufline(winbufnr(i), 1)[0] =~ '^fake:')[0]
+  var opts = popup_getoptions(id)
+  assert_equal(['-', '|', '-', '|', '+', '+', '+', '+'], opts.borderchars)
+  assert_equal('Normal:ErrorMsg', opts.highlights)
 enddef
 
 # vim: ts=2 sw=0 et

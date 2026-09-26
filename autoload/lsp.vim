@@ -68,10 +68,12 @@ const DEFAULTS = {
   hover_popup: {},
   menu_popup: {},
   signature_popup: {},
+  progress_popup: {},
 }
 
 # The popups the plugin puts up.
-const POPUPS = ['hover_popup', 'menu_popup', 'signature_popup']
+const POPUPS = ['hover_popup', 'menu_popup', 'signature_popup',
+  'progress_popup']
 
 # What a popup takes, and what a g:lsp_server_list entry takes.
 const POPUP_KEYS = {opt: v:t_string, highlights: v:t_string}
@@ -649,7 +651,7 @@ def DrawProgress()
     padding: [0, 1, 0, 1],
     zindex: 300,
     tabpage: -1,
-  })
+  }->extend(PopupStyle('progress_popup')))
 enddef
 
 def ShowProgress(cl: dict<any>, params: any)

@@ -299,6 +299,7 @@ g:lsp_client_config
 		hover_popup
 		menu_popup
 		signature_popup
+		progress_popup
 				How each popup is drawn; see |lsp-popup|.
 				Default: an empty Dictionary
 
@@ -340,10 +341,11 @@ g:loaded_lsp_vim
 		the plugin has something to offer is `exists(':LspStart')`.
 
 						*lsp-popup*
-Three of the things the plugin puts up are popups: what |:LspHover| answers,
-the list |:LspCodeAction| offers, and the signature of the call being typed.
-Each is asked for on its own, under "hover_popup", "menu_popup" and
-"signature_popup" in |g:lsp_client_config|.  Each takes a Dictionary with:
+Four of the things the plugin puts up are popups: what |:LspHover| answers,
+the list |:LspCodeAction| offers, the signature of the call being typed, and
+the work a server reports it is busy with.  Each is asked for on its own,
+under "hover_popup", "menu_popup", "signature_popup" and "progress_popup" in
+|g:lsp_client_config|.  Each takes a Dictionary with:
 
 	opt		A String read the way 'pumopt' is.  Only "border:"
 			and "opacity:" mean anything here; the rest of
@@ -359,7 +361,7 @@ Each is asked for on its own, under "hover_popup", "menu_popup" and
 			rest goes to 'winhighlight' as it stands.
 
 Where "opt" is left out, the border 'pumopt' names is taken, so setting that
-is enough for all four to match.  Where 'pumopt' names none, the popup keeps
+is enough for all five to match.  Where 'pumopt' names none, the popup keeps
 a border of its own; only "opt" naming none takes it away.  Examples: >vim9
 
 	# Everything the same, the completion menu included.
