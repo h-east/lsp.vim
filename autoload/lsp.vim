@@ -568,11 +568,20 @@ def ShowMessage(type: number, message: string)
 enddef
 
 # What the servers are busy with, by server and the token it named:
-# {client, title, message, percentage}.  Only the first message of a run
-# carries the title; a report may leave out the message or the percentage,
-# which then stay as they were.
+# {client, title, message, percentage, began, shown, done}.  Only the first
+# message of a run carries the title; a report may leave out the message or
+# the percentage, which then stay as they were.  Work is shown once it has
+# gone on for PROGRESS_DELAY msec, so that what is over at once does not
+# flash by; what was shown stays after its end, as done, until a key is
+# typed.
 var progress: dict<dict<any>> = {}
 var progress_popup = 0
+var progress_timer = -1
+const PROGRESS_DELAY = 1000
+
+# Keys that nobody typed, which leave the popup alone.
+const NOT_TYPED = ["\<Ignore>", "\<CursorHold>", "\<FocusGained>",
+  "\<FocusLost>", "\<MouseMove>"]
 
 # How many cells the bar of a percentage has.
 const PROGRESS_CELLS = 10
@@ -610,23 +619,69 @@ enddef
 # One piece of work as a line: the server, what it does, and how far it has
 # got as a bar and a number when it tells.
 def ProgressLine(p: dict<any>): string
-  var parts = [p.client.name .. ':', p.title, p.message]
-  if p.percentage >= 0
-    var filled = min([p.percentage, 100]) * PROGRESS_CELLS / 100
+  var percentage = p.done && p.percentage >= 0 ? 100 : p.percentage
+  var parts = [p.client.name .. ':', p.title,
+    !p.done ? p.message : percentage < 0 ? 'done' : '']
+  if percentage >= 0
+    var filled = min([percentage, 100]) * PROGRESS_CELLS / 100
     parts += ['[' .. repeat('#', filled)
       .. repeat('-', PROGRESS_CELLS - filled) .. ']',
-      printf('%3d%%', p.percentage)]
+      printf('%3d%%', percentage)]
   endif
   return parts->filter((_, s) => !s->empty())->join(' ')
+enddef
+
+# A key typed once all that is shown is done closes the popup, and goes on
+# to do what it does.
+def ProgressKey(id: number, key: string): bool
+  if index(NOT_TYPED, key) < 0 && progress->values()
+      ->filter((_, p) => p.shown && !p.done)->empty()
+    popup_close(id)
+  endif
+  return false
+enddef
+
+# The popup is gone, and what was done with it.
+def ProgressClosed(id: number, result: any)
+  if id == progress_popup
+    progress_popup = 0
+  endif
+  filter(progress, (_, p) => !p.done)
 enddef
 
 # Shows what the servers are busy with in a popup at the bottom right, one
 # line each, so that the command line is left alone; without popups on the
 # command line, cut to fit so that it does not ask for Enter.
 def DrawProgress()
+  # What has gone on for long enough is shown from now on; the rest is looked
+  # at again when the first of it is due.
+  var due = -1
+  for p in progress->values()
+    if !p.shown
+      var left = PROGRESS_DELAY
+        - float2nr(reltimefloat(reltime(p.began)) * 1000)
+      if left <= 0
+        p.shown = true
+      elseif due < 0 || left < due
+        due = left
+      endif
+    endif
+  endfor
+  if due >= 0 && progress_timer < 0
+    progress_timer = timer_start(due, (_) => {
+      progress_timer = -1
+      DrawProgress()
+    })
+  endif
   var lines = progress->keys()->sort()
+    ->filter((_, key) => progress[key].shown)
     ->mapnew((_, key) => ProgressLine(progress[key]))
   if !has('popupwin')
+    # Nothing waits for a key on the command line.
+    filter(progress, (_, p) => !p.done)
+    lines = progress->keys()->sort()
+      ->filter((_, key) => progress[key].shown)
+      ->mapnew((_, key) => ProgressLine(progress[key]))
     echo lines->empty() ? ''
       : strcharpart('lsp: ' .. lines[-1], 0, v:echospace)
     return
@@ -651,6 +706,8 @@ def DrawProgress()
     padding: [0, 1, 0, 1],
     zindex: 300,
     tabpage: -1,
+    filter: ProgressKey,
+    callback: ProgressClosed,
   }->extend(PopupStyle('progress_popup')))
 enddef
 
@@ -672,12 +729,17 @@ def ShowProgress(cl: dict<any>, params: any)
   endif
   if kind == 'end'
     if progress->has_key(key)
-      remove(progress, key)
+      if progress[key].shown
+        progress[key].done = true
+      else
+        remove(progress, key)
+      endif
     endif
   elseif kind == 'begin' || progress->has_key(key)
     if kind == 'begin'
       progress[key] = {client: cl, title: value->get('title', ''),
-        message: '', percentage: -1}
+        message: '', percentage: -1, began: reltime(), shown: false,
+        done: false}
     endif
     var p = progress[key]
     p.message = value->get('message', p.message)

@@ -3401,9 +3401,36 @@ def g:Test_progress_is_shown_in_a_popup()
     ->mapnew((_, i) => popup_getoptions(i))[0]->has_key('border'),
     'the popup should have a border')
 
+  # A key typed while the work goes on leaves the popup be.
+  feedkeys("\<Esc>", 'xt')
+  assert_equal(['fake: Indexing 4/10 [####------]  40%'], ProgressShown())
+
+  # At the end it stays, as done, until a key is typed.
   setline(1, 'int two;')
-  assert_true(t.WaitFor(() => ProgressShown()->empty()),
-    'the popup should go at the end')
+  listener_flush()
+  assert_true(t.WaitFor(() => ProgressShown()
+      == ['fake: Indexing [##########] 100%']),
+    'the work should be shown as done: ' .. string(ProgressShown()))
+  feedkeys("\<Esc>", 'xt')
+  assert_equal([], ProgressShown())
+enddef
+
+# Work that is over within a second is not shown at all.
+def g:Test_short_work_is_not_shown()
+  assert_true(t.StartServer({
+    notify: [{method: '$/progress', params: {token: 'quick',
+      value: {kind: 'begin', title: 'Quick'}}}],
+    ask: {'textDocument/didChange': [{notify: true, method: '$/progress',
+      params: {token: 'quick', value: {kind: 'end'}}}]},
+  }, ['int one;']))
+  sleep 300m
+  assert_equal([], ProgressShown(), 'not shown yet')
+  setline(1, 'int two;')
+  listener_flush()
+  assert_true(t.WaitFor(() => !t.Sent('textDocument/didChange')->empty()),
+    'the change should be sent')
+  sleep 1200m
+  assert_equal([], ProgressShown(), 'not shown after its end either')
 enddef
 
 # A server that is stopped while it is busy leaves no popup behind.
