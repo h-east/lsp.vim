@@ -21,8 +21,8 @@ than one of these run at a time, each with a scenario of its own.
                   parts of an answer are handed over under "$/progress".
                   Set "before" to send it ahead of the reply, which is the
                   order the parts of an answer arrive in.  A "token" like
-                  "$workDoneToken" is the one of that name the request
-                  came with
+                  "$workDoneToken" is the one of that name the message
+                  came with, or else the last request that had one
     hold          methods whose requests are not answered, kept open the
                   way a server keeps "workspace/diagnostic"
 
@@ -40,12 +40,21 @@ TRACE = open(sys.argv[2] if len(sys.argv) > 2
              else os.environ.get('LSP_TRACE', os.devnull), 'w')
 
 
+# The tokens the requests came with, the last of each name.
+_tokens = {}
+
+
 def fill(params, msg):
     """The params of a message to send, with a token like "$workDoneToken"
-    replaced by the one of that name the request "msg" came with."""
+    replaced by the one of that name the message "msg" came with, or else
+    the last request that had one."""
     token = params.get('token') if isinstance(params, dict) else None
     if isinstance(token, str) and token.startswith('$'):
-        return dict(params, token=msg.get('params', {}).get(token[1:]))
+        name = token[1:]
+        given = msg.get('params', {})
+        value = given.get(name) if isinstance(given, dict) else None
+        return dict(params, token=value if value is not None
+                    else _tokens.get(name))
     return params
 
 
@@ -101,6 +110,11 @@ def main():
             return
         trace(msg)
         method = msg.get('method', '')
+        given = msg.get('params')
+        if isinstance(given, dict):
+            for name, value in given.items():
+                if name.endswith('Token'):
+                    _tokens[name] = value
 
         if method == 'initialize':
             send({'jsonrpc': '2.0', 'id': msg['id'],

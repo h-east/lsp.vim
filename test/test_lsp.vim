@@ -2545,6 +2545,8 @@ def g:Test_how_far_the_workspace_has_got_is_told()
   }, ['int one;']))
 
   LspWorkspaceDiag
+  # The list is opened while the server reads, and the window taken.
+  wincmd p
   assert_true(t.WaitFor(() => ProgressShown()
       == ['fake: Reading [###-------]  30%']),
     'the progress should be shown: ' .. string(ProgressShown()))
@@ -3378,6 +3380,55 @@ enddef
 def ProgressShown(): list<string>
   return popup_list()->mapnew((_, id) => getbufline(winbufnr(id), 1, '$'))
     ->flattennew()->filter((_, l) => l =~ '^fake:')
+enddef
+
+# While the server reads the workspace the list is opened as it is, empty
+# at first, and filled in when the server is through; a list put in its
+# place meanwhile is left alone.
+def g:Test_the_workspace_list_is_filled_in_at_the_end()
+  const HEADER = t.SRC->substitute('\.c$', '.h', '')
+  defer delete(HEADER)
+  writefile(['int two;'], HEADER)
+  const THERE = {uri: 'file://' .. HEADER, kind: 'full',
+    items: [{range: {start: {line: 0, character: 4},
+      end: {line: 0, character: 7}},
+    severity: 2, source: 'test', message: 'a fault there'}]}
+  assert_true(t.StartServer({
+    capabilities: Offering({diagnosticProvider:
+      {interFileDependencies: true, workspaceDiagnostics: true}}),
+    hold: ['workspace/diagnostic'],
+    ask: {
+      'workspace/diagnostic': [{notify: true, before: true,
+        method: '$/progress', params: {token: '$workDoneToken',
+          value: {kind: 'begin', title: 'Reading', percentage: 0}}}],
+      'textDocument/didChange': [
+        {notify: true, method: '$/progress',
+          params: {token: '$partialResultToken', value: {items: [THERE]}}},
+        {notify: true, method: '$/progress',
+          params: {token: '$workDoneToken', value: {kind: 'end'}}}],
+    },
+  }, ['int one;']))
+  defer setqflist([], 'f')
+
+  LspWorkspaceDiag
+  assert_equal('LSP workspace diagnostics', getqflist({title: 0}).title)
+  assert_equal([], getqflist())
+  cclose
+
+  setline(1, 'int three;')
+  listener_flush()
+  assert_true(t.WaitFor(() => getqflist()
+      ->filter((_, e) => e.text =~ 'a fault there')->len() == 1),
+    'the list should be filled in')
+
+  # Another list is left alone when the end comes again.
+  setqflist([], ' ', {title: 'other', items: []})
+  setline(1, 'int four;')
+  listener_flush()
+  assert_true(t.WaitFor(() => len(t.Sent('textDocument/didChange')) >= 2),
+    'the second change should be sent')
+  sleep 300m
+  assert_equal(['other', 0], [getqflist({title: 0}).title, len(getqflist())])
 enddef
 
 # What a server is busy with goes to a popup at the bottom right, the

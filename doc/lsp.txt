@@ -766,7 +766,10 @@ it is below it, with "~" for the home directory otherwise.
 		on as with "workspace_diagnostics" in |g:lsp_client_config|.
 		While the server is still reading the workspace a message
 		tells so, with how far it has got when the server reports
-		that; run it again for a list that has caught up.  See
+		that, and the list is opened even when empty.  When the
+		server is through, the list is filled in with all that came,
+		as long as it is still the current one; otherwise run it
+		again for a list that has caught up.  See
 		|lsp-workspace-diagnostics|.
 
 Changing the text ~

@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.023'
+const VERSION = '0.2.024'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -726,6 +726,9 @@ def ShowProgress(cl: dict<any>, params: any)
   if !cl.workspace_work->empty() && token == cl.workspace_work
     cl.workspace_reading = kind == 'end' ? -1
       : value->get('percentage', max([cl.workspace_reading, 0]))
+    if kind == 'end'
+      RefreshWorkspaceList(cl)
+    endif
   endif
   if kind == 'end'
     if progress->has_key(key)
@@ -4121,13 +4124,43 @@ enddef
 
 # The workspace pull runs on its own; this is what shows what it has
 # reported, an open buffer included.
+const WORKSPACE_TITLE = 'LSP workspace diagnostics'
+
+# What "servers" have reported about the workspace, as quickfix entries.
+def WorkspaceEntries(servers: list<dict<any>>): list<dict<any>>
+  var entries: list<dict<any>> = []
+  for cl in servers
+    for uri in cl.diagnostics->keys()->sort()
+      entries += diag.Entries(util.UriToPath(uri), cl.diagnostics[uri],
+        cl.encoding)
+    endfor
+  endfor
+  return entries
+enddef
+
+# Once "cl" is through reading the workspace, the list :LspWorkspaceDiag
+# made for it is filled in with all that came, if it is still the current
+# one.
+def RefreshWorkspaceList(cl: dict<any>)
+  var info = getqflist({title: 0, context: 0})
+  if info.title != WORKSPACE_TITLE || type(info.context) != v:t_dict
+    return
+  endif
+  var keys = info.context->get('lsp_workspace', [])
+  if index(keys, ClientKey(cl.name, cl.root)) < 0
+    return
+  endif
+  setqflist([], 'r', {items: WorkspaceEntries(keys
+    ->filter((_, key) => clients->has_key(key))
+    ->mapnew((_, key) => clients[key]))})
+enddef
+
 export def WorkspaceDiagnostics()
   var here = BufClients(bufnr('%'))->filter((_, cl) => cl.initialized)
   if here->empty()
     util.WarningMsg('no server for this buffer')
     return
   endif
-  var entries: list<dict<any>> = []
   var began = false
   for cl in here
     # Asked for once, the workspace is followed from then on, as it is from
@@ -4136,11 +4169,8 @@ export def WorkspaceDiagnostics()
     cl.workspace_wanted = true
     PullWorkspace(cl)
     began = began || (idle && cl.workspace_pull > 0)
-    for uri in cl.diagnostics->keys()->sort()
-      entries += diag.Entries(util.UriToPath(uri), cl.diagnostics[uri],
-        cl.encoding)
-    endfor
   endfor
+  var entries = WorkspaceEntries(here)
   # The list may lack what has not come yet: tell so, on one line, which
   # asks for no Enter.
   var reading = here->mapnew((_, cl) => cl.workspace_reading)
@@ -4148,13 +4178,16 @@ export def WorkspaceDiagnostics()
   var note = !reading->empty()
     ? printf('lsp: reading the workspace, %d%% so far', min(reading))
     : began ? 'lsp: reading the workspace so far' : ''
-  if entries->empty()
-    echo note->empty()
-      ? 'lsp: the server has reported nothing for the workspace' : note
+  if entries->empty() && note->empty()
+    echo 'lsp: the server has reported nothing for the workspace'
     return
   endif
-  setqflist([], ' ', {title: 'LSP workspace diagnostics', items: entries,
-    quickfixtextfunc: util.ListText})
+  # While the servers read, the list is filled in when they are through, an
+  # empty one included.
+  setqflist([], ' ', {title: WORKSPACE_TITLE, items: entries,
+    quickfixtextfunc: util.ListText,
+    context: {lsp_workspace: here->mapnew((_, cl) =>
+      ClientKey(cl.name, cl.root))}})
   copen
   if !note->empty()
     echo strcharpart(note, 0, v:echospace)
