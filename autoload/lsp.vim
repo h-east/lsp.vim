@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.022'
+const VERSION = '0.2.023'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -657,13 +657,17 @@ def ShowProgress(cl: dict<any>, params: any)
     return
   endif
   var raw = params->get('token', '')
-  var key = ClientKey(cl.name, cl.root) .. "\n"
-    .. (type(raw) == v:t_string ? raw : string(raw))
+  var token = type(raw) == v:t_string ? raw : string(raw)
+  var key = ClientKey(cl.name, cl.root) .. "\n" .. token
   var value = params->get('value', {})
   if type(value) != v:t_dict
     return
   endif
   var kind = value->get('kind', '')
+  if !cl.workspace_work->empty() && token == cl.workspace_work
+    cl.workspace_reading = kind == 'end' ? -1
+      : value->get('percentage', max([cl.workspace_reading, 0]))
+  endif
   if kind == 'end'
     if progress->has_key(key)
       remove(progress, key)
@@ -3930,6 +3934,8 @@ def ForgetWorkspacePull(cl: dict<any>)
   endif
   cl.workspace_pull = -1
   cl.workspace_token = ''
+  cl.workspace_work = ''
+  cl.workspace_reading = -1
 enddef
 
 def StopWorkspacePull(cl: dict<any>)
@@ -3973,7 +3979,8 @@ def TakeWorkspaceReport(cl: dict<any>, report: any)
 enddef
 
 def PullWorkspace(cl: dict<any>)
-  if cl.workspace_pull > 0 || !Setting('workspace_diagnostics')
+  if cl.workspace_pull > 0 || !cl.running || cl.stopping
+      || !(Setting('workspace_diagnostics') || cl.workspace_wanted)
     return
   endif
   var provider = Capability(cl, 'diagnosticProvider')
@@ -3983,10 +3990,14 @@ def PullWorkspace(cl: dict<any>)
   endif
   workspace_asked += 1
   cl.workspace_token = 'lsp-workspace-diagnostic-' .. workspace_asked
+  # A server that tells how far it has got with the request does so under
+  # this one, which :LspWorkspaceDiag reports.
+  cl.workspace_work = 'lsp-workspace-work-' .. workspace_asked
   var params: dict<any> = {
     previousResultIds: cl.workspace_ids->keys()
       ->mapnew((_, u) => ({uri: u, value: cl.workspace_ids[u]})),
     partialResultToken: cl.workspace_token,
+    workDoneToken: cl.workspace_work,
   }
   var identifier = provider->get('identifier', '')
   if !identifier->empty()
@@ -4052,27 +4063,38 @@ export def WorkspaceDiagnostics()
     util.WarningMsg('no server for this buffer')
     return
   endif
-  if !Setting('workspace_diagnostics')
-    util.WarningMsg('"workspace_diagnostics" is off')
-    return
-  endif
   var entries: list<dict<any>> = []
+  var began = false
   for cl in here
-    # The pull starts as the server comes up, so a setting turned on after
-    # that has left nothing running.
+    # Asked for once, the workspace is followed from then on, as it is from
+    # the start with "workspace_diagnostics" set.
+    var idle = cl.workspace_pull <= 0
+    cl.workspace_wanted = true
     PullWorkspace(cl)
+    began = began || (idle && cl.workspace_pull > 0)
     for uri in cl.diagnostics->keys()->sort()
       entries += diag.Entries(util.UriToPath(uri), cl.diagnostics[uri],
         cl.encoding)
     endfor
   endfor
+  # The list may lack what has not come yet: tell so, on one line, which
+  # asks for no Enter.
+  var reading = here->mapnew((_, cl) => cl.workspace_reading)
+    ->filter((_, p) => p >= 0)
+  var note = !reading->empty()
+    ? printf('lsp: reading the workspace, %d%% so far', min(reading))
+    : began ? 'lsp: reading the workspace so far' : ''
   if entries->empty()
-    echo 'lsp: the server has reported nothing for the workspace'
+    echo note->empty()
+      ? 'lsp: the server has reported nothing for the workspace' : note
     return
   endif
   setqflist([], ' ', {title: 'LSP workspace diagnostics', items: entries,
     quickfixtextfunc: util.ListText})
   copen
+  if !note->empty()
+    echo strcharpart(note, 0, v:echospace)
+  endif
 enddef
 
 export def Log()

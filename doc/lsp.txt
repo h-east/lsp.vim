@@ -266,8 +266,8 @@ g:lsp_client_config
 
 		workspace_diagnostics
 				When true, a server that reports on the whole
-				workspace is asked to, and what comes back
-				about a file no buffer holds is kept as well.
+				workspace is asked to as soon as it is ready.
+				Otherwise |:LspWorkspaceDiag| is what asks it.
 				Off by default: it has the server look at
 				every file in the project.  See
 				|lsp-workspace-diagnostics|.
@@ -756,9 +756,13 @@ it is below it, with "~" for the home directory otherwise.
 						*:LspWorkspaceDiag*
 :LspWorkspaceDiag
 		Put what the server has reported about the workspace by now
-		into the |quickfix| list and open it.  Run it again for a list
-		that has caught up.  Needs "workspace_diagnostics" in
-		|g:lsp_client_config|.  See |lsp-workspace-diagnostics|.
+		into the |quickfix| list and open it.  The server is asked
+		first when that has not been done, and from then on it goes
+		on as with "workspace_diagnostics" in |g:lsp_client_config|.
+		While the server is still reading the workspace a message
+		tells so, with how far it has got when the server reports
+		that; run it again for a list that has caught up.  See
+		|lsp-workspace-diagnostics|.
 
 Changing the text ~
 						*:LspCodeAction*
@@ -1041,8 +1045,9 @@ be given a look of its own with |:highlight|:
 					*lsp-workspace-diagnostics*
 What is above is about the file being edited.  A server may also report on the
 whole workspace, files no buffer holds included, and offers
-"workspaceDiagnostics" when it can.  Set "workspace_diagnostics" in
-|g:lsp_client_config| to |true| to ask it to: >vim9
+"workspaceDiagnostics" when it can.  |:LspWorkspaceDiag| asks it to; set
+"workspace_diagnostics" in |g:lsp_client_config| to |true| to have it asked as
+soon as the server is ready: >vim9
 
 	g:lsp_client_config = {workspace_diagnostics: true}
 <
@@ -1062,14 +1067,15 @@ the "settings" of |g:lsp_server_list|.  Example: >vim9
 	  settings: {python: {analysis: {diagnosticMode: 'workspace'}}},
 	}]
 <
-The request is made once the server is ready and is left open: the protocol
-lets the server keep it that way for as long as it likes and hand over what it
-works out a piece at a time.  Each piece is taken as it arrives rather than at
-the end, so reports appear while the server is still going.  When the server
-closes the request it is made again, with the "resultId" of every report
-handed back, so that what has not changed need not be listed again.  Setting
-this after the server came up leaves nothing running, which
-|:LspWorkspaceDiag| puts right by starting it.
+The request is made once the server is ready, or by |:LspWorkspaceDiag|, and
+is left open: the protocol lets the server keep it that way for as long as it
+likes and hand over what it works out a piece at a time.  Each piece is taken
+as it arrives rather than at the end, so reports appear while the server is
+still going.  When the server closes the request it is made again, with the
+"resultId" of every report handed back, so that what has not changed need not
+be listed again.  The request carries a token for the work done as well: how
+far a server that reports it has got is shown like any other work it is busy
+with, see |:LspLog|, and |:LspWorkspaceDiag| tells it.
 
 A report about a file that is open is left to the request made for that
 buffer, which the protocol has win over this one.  The rest is kept, and

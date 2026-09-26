@@ -2455,7 +2455,7 @@ def g:Test_the_workspace_is_pulled_for_as_long_as_the_server_answers()
     replies: {'workspace/diagnostic': {items: []}},
     ask: {'workspace/diagnostic': [{
       notify: true, before: true, method: '$/progress',
-      params: {token: 'lsp-workspace-diagnostic-1', value: {items: [THERE]}},
+      params: {token: '$partialResultToken', value: {items: [THERE]}},
     }]},
   }, ['int one;']))
 
@@ -2464,7 +2464,7 @@ def g:Test_the_workspace_is_pulled_for_as_long_as_the_server_answers()
   var sent = t.Sent('workspace/diagnostic')[0].params
   assert_equal('test', sent.identifier)
   assert_equal([], sent.previousResultIds)
-  assert_equal('lsp-workspace-diagnostic-1', sent.partialResultToken)
+  assert_match('^lsp-workspace-diagnostic-\d\+$', sent.partialResultToken)
 
   # The answer closed the request, so it goes out again; by then the part
   # that came before it has been taken.
@@ -2497,18 +2497,62 @@ def g:Test_the_workspace_is_left_alone_where_the_server_says_no()
     'nothing should be asked for')
 enddef
 
-def g:Test_the_workspace_is_left_alone_when_turned_off()
+# With the setting off the workspace is not asked about when the server
+# starts; :LspWorkspaceDiag asks, tells that the server is still reading,
+# and the request goes on from then as it does with the setting on.
+def g:Test_the_workspace_is_asked_about_by_the_command()
   assert_true(t.StartServer({
     capabilities: Offering({diagnosticProvider:
       {interFileDependencies: false,
         workspaceDiagnostics: true}}),
+    replies: {'workspace/diagnostic': {items: []}},
   }, ['int one;']))
 
   sleep 300m
   assert_true(t.Sent('workspace/diagnostic')->empty(),
     'nothing should be asked for with the setting off')
+  assert_match('lsp: reading the workspace so far',
+    execute('LspWorkspaceDiag'))
+  assert_true(t.WaitFor(() => !t.Sent('workspace/diagnostic')->empty()),
+    'the command should ask about the workspace')
+  assert_match('^lsp-workspace-work-\d\+$',
+    t.Sent('workspace/diagnostic')[0].params.workDoneToken)
+  # The answer closed the request; it is made again all the same.
+  assert_true(t.WaitFor(() => len(t.Sent('workspace/diagnostic')) >= 2),
+    'a closed request should be sent again')
+enddef
+
+# What the server tells of how far it has got with the workspace is shown,
+# and the list tells that it is not complete yet.
+def g:Test_how_far_the_workspace_has_got_is_told()
+  const HEADER = t.SRC->substitute('\.c$', '.h', '')
+  defer delete(HEADER)
+  writefile(['int two;'], HEADER)
+  const THERE = {uri: 'file://' .. HEADER, kind: 'full',
+    items: [{range: {start: {line: 0, character: 4},
+      end: {line: 0, character: 7}},
+    severity: 2, source: 'test', message: 'a fault there'}]}
+  assert_true(t.StartServer({
+    capabilities: Offering({diagnosticProvider:
+      {interFileDependencies: true, workspaceDiagnostics: true}}),
+    hold: ['workspace/diagnostic'],
+    ask: {'workspace/diagnostic': [
+      {notify: true, before: true, method: '$/progress',
+        params: {token: '$partialResultToken', value: {items: [THERE]}}},
+      {notify: true, before: true, method: '$/progress',
+        params: {token: '$workDoneToken', value: {kind: 'begin',
+          title: 'Reading', percentage: 30}}}]},
+  }, ['int one;']))
+
   LspWorkspaceDiag
-  assert_equal('lsp: "workspace_diagnostics" is off', LastMessage())
+  assert_true(t.WaitFor(() => ProgressShown()
+      == ['fake: Reading [###-------]  30%']),
+    'the progress should be shown: ' .. string(ProgressShown()))
+  assert_match('lsp: reading the workspace, 30% so far',
+    execute('LspWorkspaceDiag'))
+  assert_equal(1, getqflist()->filter((_, e) => e.text =~ 'a fault there')
+    ->len())
+  cclose
 enddef
 
 def g:Test_a_watched_file_being_written_is_reported()

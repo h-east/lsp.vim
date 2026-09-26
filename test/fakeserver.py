@@ -20,7 +20,11 @@ than one of these run at a time, each with a scenario of its own.
                   notification rather than a request, which is how the
                   parts of an answer are handed over under "$/progress".
                   Set "before" to send it ahead of the reply, which is the
-                  order the parts of an answer arrive in
+                  order the parts of an answer arrive in.  A "token" like
+                  "$workDoneToken" is the one of that name the request
+                  came with
+    hold          methods whose requests are not answered, kept open the
+                  way a server keeps "workspace/diagnostic"
 
 Every message that comes in is appended to $LSP_TRACE as one JSON object per
 line, so a test can check what the client sent as well as what it did with
@@ -34,6 +38,15 @@ SCENARIO = json.load(open(sys.argv[1] if len(sys.argv) > 1
                           else os.environ['LSP_SCENARIO']))
 TRACE = open(sys.argv[2] if len(sys.argv) > 2
              else os.environ.get('LSP_TRACE', os.devnull), 'w')
+
+
+def fill(params, msg):
+    """The params of a message to send, with a token like "$workDoneToken"
+    replaced by the one of that name the request "msg" came with."""
+    token = params.get('token') if isinstance(params, dict) else None
+    if isinstance(token, str) and token.startswith('$'):
+        return dict(params, token=msg.get('params', {}).get(token[1:]))
+    return params
 
 
 _counter = [0]
@@ -108,9 +121,11 @@ def main():
             for item in SCENARIO.get('ask', {}).get(method, []):
                 if item.get('before'):
                     send({'jsonrpc': '2.0', 'method': item['method'],
-                          'params': item.get('params', {})})
+                          'params': fill(item.get('params', {}), msg)})
             error = SCENARIO.get('errors', {}).get(method)
-            if error is not None:
+            if method in SCENARIO.get('hold', []):
+                pass
+            elif error is not None:
                 send({'jsonrpc': '2.0', 'id': msg['id'], 'error': error})
             else:
                 send({'jsonrpc': '2.0', 'id': msg['id'],
@@ -124,7 +139,7 @@ def main():
                 continue
             out = {'jsonrpc': '2.0',
                    'method': item['method'],
-                   'params': item.get('params', {})}
+                   'params': fill(item.get('params', {}), msg)}
             if not item.get('notify'):
                 out['id'] = item.get('id', 100000 + next_id())
             send(out)

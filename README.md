@@ -344,7 +344,7 @@ reason given.
 | `workspace/didChangeWatchedFiles` | yes | for the files a server asks to watch |
 | `workspace/executeCommand` | yes | for a code action or lens the server runs |
 | `workspace/applyEdit` | yes | changes the server works out on its own |
-| `workspace/diagnostic` | yes | off unless "workspace_diagnostics" is set |
+| `workspace/diagnostic` | yes | asked by `:LspWorkspaceDiag`, or at startup when "workspace_diagnostics" is set |
 | `workspace/willCreateFiles` | yes |  |
 | `workspace/didCreateFiles` | yes |  |
 | `workspace/willRenameFiles` | yes | `:LspRenameFile` |

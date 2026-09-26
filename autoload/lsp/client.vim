@@ -502,6 +502,9 @@ export def Start(config: dict<any>, root: string,
     workspace_pull: -1,
     workspace_token: '',
     workspace_ids: {},
+    workspace_wanted: false,
+    workspace_work: '',
+    workspace_reading: -1,
   }
 
   var job = job_start(cmd, {
