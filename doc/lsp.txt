@@ -627,8 +627,11 @@ The server ~
 
 		What a server sends as "window/showMessage" is not kept here;
 		that one is meant to be read at once and goes to the message
-		line as it arrives.  So does the work a server reports it is
-		busy with, such as indexing a project.
+		line as it arrives.  The work a server reports it is busy
+		with, such as indexing a project, is shown while it lasts in a
+		popup at the bottom right, a line each, with a bar and a
+		number for how far it has got; without |+popupwin| it goes to
+		the message line, cut to fit.
 
 		A server may find that what it told us has gone out of date,
 		because a file it depends on changed, and ask for it to be

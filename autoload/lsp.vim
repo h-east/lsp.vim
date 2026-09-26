@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.021'
+const VERSION = '0.2.022'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -565,9 +565,15 @@ def ShowMessage(type: number, message: string)
   endif
 enddef
 
-# What a server is busy with, kept by the token it named, since only
-# the first message of a run carries the title.
-var progress_title: dict<string> = {}
+# What the servers are busy with, by server and the token it named:
+# {client, title, message, percentage}.  Only the first message of a run
+# carries the title; a report may leave out the message or the percentage,
+# which then stay as they were.
+var progress: dict<dict<any>> = {}
+var progress_popup = 0
+
+# How many cells the bar of a percentage has.
+const PROGRESS_CELLS = 10
 
 # What to do with a part of an answer, by the token the request named.
 var partial_cb: dict<func(any)> = {}
@@ -599,36 +605,90 @@ def TookPartial(params: any): bool
   return true
 enddef
 
-def ShowProgress(params: any)
+# One piece of work as a line: the server, what it does, and how far it has
+# got as a bar and a number when it tells.
+def ProgressLine(p: dict<any>): string
+  var parts = [p.client.name .. ':', p.title, p.message]
+  if p.percentage >= 0
+    var filled = min([p.percentage, 100]) * PROGRESS_CELLS / 100
+    parts += ['[' .. repeat('#', filled)
+      .. repeat('-', PROGRESS_CELLS - filled) .. ']',
+      printf('%3d%%', p.percentage)]
+  endif
+  return parts->filter((_, s) => !s->empty())->join(' ')
+enddef
+
+# Shows what the servers are busy with in a popup at the bottom right, one
+# line each, so that the command line is left alone; without popups on the
+# command line, cut to fit so that it does not ask for Enter.
+def DrawProgress()
+  var lines = progress->keys()->sort()
+    ->mapnew((_, key) => ProgressLine(progress[key]))
+  if !has('popupwin')
+    echo lines->empty() ? ''
+      : strcharpart('lsp: ' .. lines[-1], 0, v:echospace)
+    return
+  endif
+  if lines->empty()
+    if progress_popup > 0
+      popup_close(progress_popup)
+      progress_popup = 0
+    endif
+    return
+  endif
+  if progress_popup > 0 && !popup_getpos(progress_popup)->empty()
+    popup_settext(progress_popup, lines)
+    return
+  endif
+  progress_popup = popup_create(lines, {
+    line: &lines - &cmdheight - 1,
+    col: &columns,
+    pos: 'botright',
+    maxwidth: &columns - 2,
+    wrap: false,
+    padding: [0, 1, 0, 1],
+    zindex: 300,
+    tabpage: -1,
+  })
+enddef
+
+def ShowProgress(cl: dict<any>, params: any)
   if type(params) != v:t_dict
     return
   endif
-  var token = string(params->get('token', ''))
+  var raw = params->get('token', '')
+  var key = ClientKey(cl.name, cl.root) .. "\n"
+    .. (type(raw) == v:t_string ? raw : string(raw))
   var value = params->get('value', {})
   if type(value) != v:t_dict
     return
   endif
   var kind = value->get('kind', '')
   if kind == 'end'
-    if progress_title->has_key(token)
-      remove(progress_title, token)
+    if progress->has_key(key)
+      remove(progress, key)
     endif
-    echo ''
+  elseif kind == 'begin' || progress->has_key(key)
+    if kind == 'begin'
+      progress[key] = {client: cl, title: value->get('title', ''),
+        message: '', percentage: -1}
+    endif
+    var p = progress[key]
+    p.message = value->get('message', p.message)
+    p.percentage = value->get('percentage', p.percentage)
+  else
     return
   endif
-  if kind == 'begin'
-    progress_title[token] = value->get('title', '')
+  DrawProgress()
+enddef
+
+# A server that has gone is busy with nothing.
+def ForgetProgress(cl: dict<any>)
+  var before = len(progress)
+  filter(progress, (_, p) => p.client isnot cl)
+  if len(progress) != before
+    DrawProgress()
   endif
-  var parts = [progress_title->get(token, '')]
-  var message = value->get('message', '')
-  if !message->empty()
-    parts->add(message)
-  endif
-  var percentage = value->get('percentage', -1)
-  if percentage >= 0
-    parts->add(percentage .. '%')
-  endif
-  echo 'lsp: ' .. parts->filter((_, s) => !s->empty())->join(' ')
 enddef
 
 def OnNotify(cl: dict<any>, method: string, params: any)
@@ -651,7 +711,7 @@ def OnNotify(cl: dict<any>, method: string, params: any)
     endif
   elseif method == '$/progress'
     if !TookPartial(params)
-      ShowProgress(params)
+      ShowProgress(cl, params)
     endif
   endif
 enddef
@@ -4188,6 +4248,7 @@ enddef
 
 lspclient.SetNotifyHandler(OnNotify)
 lspclient.SetRequestHandler(OnRequest)
+lspclient.SetExitHandler(ForgetProgress)
 
 # test/run sets this to have every :def compiled as the script is read.
 if $LSP_COMPILE_CHECK != ''

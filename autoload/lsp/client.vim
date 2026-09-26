@@ -36,6 +36,13 @@ export def SetRequestHandler(
   RequestHandler = Handler
 enddef
 
+# Told when a server has gone, whether it was stopped or it died.
+var ExitHandler: func(dict<any>)
+
+export def SetExitHandler(Handler: func(dict<any>))
+  ExitHandler = Handler
+enddef
+
 def ClientCapabilities(snippet: bool, hover_format: list<string>): dict<any>
   return {
     general: {
@@ -237,6 +244,9 @@ def OnExit(client: dict<any>, job: job, status: number)
   if status != 0 && !client.stopping
     util.ErrorMsg(printf('server "%s" exited with status %d, see :LspLog',
       client.name, status))
+  endif
+  if ExitHandler != null_function
+    ExitHandler(client)
   endif
 enddef
 

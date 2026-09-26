@@ -3330,4 +3330,44 @@ def g:Test_the_status_shortens_the_root()
   assert_equal('fake@' .. fnamemodify(root, ':~:.'), line->matchstr('^\S\+'))
 enddef
 
+# The text of the popups that show what a server is busy with.
+def ProgressShown(): list<string>
+  return popup_list()->mapnew((_, id) => getbufline(winbufnr(id), 1, '$'))
+    ->flattennew()->filter((_, l) => l =~ '^fake:')
+enddef
+
+# What a server is busy with goes to a popup at the bottom right, the
+# percentage as a bar and a number, and goes away at the end.
+def g:Test_progress_is_shown_in_a_popup()
+  assert_true(t.StartServer({
+    notify: [
+      {method: '$/progress', params: {token: 'work',
+        value: {kind: 'begin', title: 'Indexing', percentage: 0}}},
+      {method: '$/progress', params: {token: 'work',
+        value: {kind: 'report', message: '4/10', percentage: 40}}}],
+    ask: {'textDocument/didChange': [{notify: true, method: '$/progress',
+      params: {token: 'work', value: {kind: 'end'}}}]},
+  }, ['int one;']))
+  assert_true(t.WaitFor(() => ProgressShown() ==
+      ['fake: Indexing 4/10 [####------]  40%']),
+    'the progress should be shown: ' .. string(ProgressShown()))
+
+  setline(1, 'int two;')
+  assert_true(t.WaitFor(() => ProgressShown()->empty()),
+    'the popup should go at the end')
+enddef
+
+# A server that is stopped while it is busy leaves no popup behind.
+def g:Test_progress_goes_with_the_server()
+  assert_true(t.StartServer({
+    notify: [{method: '$/progress', params: {token: 7,
+      value: {kind: 'begin', title: 'Loading'}}}],
+  }, ['int one;']))
+  assert_true(t.WaitFor(() => ProgressShown() == ['fake: Loading']),
+    'the progress should be shown: ' .. string(ProgressShown()))
+  LspStop
+  assert_true(t.WaitFor(() => ProgressShown()->empty()),
+    'the popup should go with the server')
+enddef
+
 # vim: ts=2 sw=0 et
