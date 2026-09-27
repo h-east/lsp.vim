@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.024'
+const VERSION = '0.2.025'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -616,19 +616,32 @@ def TookPartial(params: any): bool
   return true
 enddef
 
-# One piece of work as a line: the server, what it does, and how far it has
-# got as a bar and a number when it tells.
-def ProgressLine(p: dict<any>): string
-  var percentage = p.done && p.percentage >= 0 ? 100 : p.percentage
-  var parts = [p.client.name .. ':', p.title,
-    !p.done ? p.message : percentage < 0 ? 'done' : '']
-  if percentage >= 0
-    var filled = min([percentage, 100]) * PROGRESS_CELLS / 100
-    parts += ['[' .. repeat('#', filled)
-      .. repeat('-', PROGRESS_CELLS - filled) .. ']',
-      printf('%3d%%', percentage)]
+# One piece of work as [left, right]: the server and what it does, and how
+# far it has got as a bar and a number when it tells, "done" at its end.
+def ProgressParts(p: dict<any>): list<string>
+  var left = [p.client.name .. ':', p.title, p.done ? '' : p.message]
+    ->filter((_, s) => !s->empty())->join(' ')
+  if p.percentage < 0
+    return [left, p.done ? 'done' : '']
   endif
-  return parts->filter((_, s) => !s->empty())->join(' ')
+  var filled = (p.done ? 100 : min([p.percentage, 100])) * PROGRESS_CELLS / 100
+  return [left, '[' .. repeat('#', filled)
+    .. repeat('-', PROGRESS_CELLS - filled) .. '] '
+    .. (p.done ? 'done' : printf('%3d%%', p.percentage))]
+enddef
+
+# The pieces of work "keys" as lines, what is on the right of each ending in
+# the same column.
+def ProgressLines(keys: list<string>): list<string>
+  var parts = keys->mapnew((_, key) => ProgressParts(progress[key]))
+  var width = 0
+  for [left, right] in parts
+    width = max([width, strdisplaywidth(left)
+      + (right->empty() ? 0 : 1 + strdisplaywidth(right))])
+  endfor
+  return parts->mapnew((_, lr) => lr[1]->empty() ? lr[0]
+    : lr[0] .. repeat(' ', width - strdisplaywidth(lr[0])
+      - strdisplaywidth(lr[1])) .. lr[1])
 enddef
 
 # A key typed once all that is shown is done closes the popup, and goes on
@@ -673,15 +686,15 @@ def DrawProgress()
       DrawProgress()
     })
   endif
-  var lines = progress->keys()->sort()
-    ->filter((_, key) => progress[key].shown)
-    ->mapnew((_, key) => ProgressLine(progress[key]))
+  var lines = ProgressLines(progress->keys()->sort()
+    ->filter((_, key) => progress[key].shown))
   if !has('popupwin')
     # Nothing waits for a key on the command line.
     filter(progress, (_, p) => !p.done)
     lines = progress->keys()->sort()
       ->filter((_, key) => progress[key].shown)
-      ->mapnew((_, key) => ProgressLine(progress[key]))
+      ->mapnew((_, key) => ProgressParts(progress[key])
+        ->filter((_, s) => !s->empty())->join(' '))
     echo lines->empty() ? ''
       : strcharpart('lsp: ' .. lines[-1], 0, v:echospace)
     return
@@ -702,7 +715,7 @@ def DrawProgress()
     col: &columns,
     pos: 'botright',
     maxwidth: &columns - 2,
-    wrap: false,
+    wrap: true,
     padding: [0, 1, 0, 1],
     zindex: 300,
     tabpage: -1,

@@ -3460,7 +3460,7 @@ def g:Test_progress_is_shown_in_a_popup()
   setline(1, 'int two;')
   listener_flush()
   assert_true(t.WaitFor(() => ProgressShown()
-      == ['fake: Indexing [##########] 100%']),
+      == ['fake: Indexing [##########] done']),
     'the work should be shown as done: ' .. string(ProgressShown()))
   feedkeys("\<Esc>", 'xt')
   assert_equal([], ProgressShown())
@@ -3515,6 +3515,27 @@ def g:Test_the_progress_popup_is_drawn_as_asked()
   var opts = popup_getoptions(id)
   assert_equal(['-', '|', '-', '|', '+', '+', '+', '+'], opts.borderchars)
   assert_equal('Normal:ErrorMsg', opts.highlights)
+enddef
+
+# With more than one piece of work, the bars and numbers end in the same
+# column, what the server does on the left of each.
+def g:Test_progress_lines_are_lined_up()
+  assert_true(t.StartServer({
+    notify: [
+      {method: '$/progress', params: {token: 'a',
+        value: {kind: 'begin', title: 'Indexing', percentage: 40}}},
+      {method: '$/progress', params: {token: 'b',
+        value: {kind: 'begin', title: 'Reading the workspace',
+          percentage: 10}}},
+      {method: '$/progress', params: {token: 'c',
+        value: {kind: 'begin', title: 'Loading'}}}],
+  }, ['int one;']))
+  assert_true(t.WaitFor(() => len(ProgressShown()) == 3),
+    'the progress should be shown: ' .. string(ProgressShown()))
+  assert_equal([
+    'fake: Indexing              [####------]  40%',
+    'fake: Reading the workspace [#---------]  10%',
+    'fake: Loading'], ProgressShown())
 enddef
 
 # vim: ts=2 sw=0 et
