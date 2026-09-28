@@ -621,6 +621,13 @@ The server ~
 		open.  It is what the folder brings with it, such as the
 		symbols of the files that are not open, that goes.
 
+						*:LspExecuteCommand*
+:LspExecuteCommand {command}
+		Have a server of the current buffer run {command}, one of the
+		commands it offers; completion offers them.  What a command
+		does is up to the server, read about it there.  The work it
+		reports while running is shown as described at |:LspLog|.
+
 						*:LspLog*
 :LspLog		Open a scratch buffer holding what the servers for the current
 		buffer have logged, which is where one explains why it is

@@ -210,6 +210,7 @@ Only what a server offers is asked for, so what you get depends on the server.
 |  | `:LspConfigReload` | Tell every running server that its settings changed |
 |  | `:LspWorkspaceFolderAdd [{dir}]` | Hand a directory to this server as another workspace folder |
 |  | `:LspWorkspaceFolderRemove {dir}` | Take a workspace folder back from this server |
+|  | `:LspExecuteCommand {command}` | Have this server run one of the commands it offers |
 |  | `:LspLog` | Open what the servers for this buffer have logged |
 | Asking | `:LspHover` | What the server knows about the symbol |
 |  | `:LspSignature` | What the call the cursor is in takes |
@@ -342,7 +343,7 @@ reason given.
 | `workspace/workspaceFolders` | yes |  |
 | `workspace/didChangeWorkspaceFolders` | yes | `:LspWorkspaceFolderAdd`, `:LspWorkspaceFolderRemove` |
 | `workspace/didChangeWatchedFiles` | yes | for the files a server asks to watch |
-| `workspace/executeCommand` | yes | for a code action or lens the server runs |
+| `workspace/executeCommand` | yes | for a code action or lens the server runs, and `:LspExecuteCommand` |
 | `workspace/applyEdit` | yes | changes the server works out on its own |
 | `workspace/diagnostic` | yes | asked by `:LspWorkspaceDiag`, or at startup when "workspace_diagnostics" is set |
 | `workspace/willCreateFiles` | yes |  |

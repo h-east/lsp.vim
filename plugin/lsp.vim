@@ -39,6 +39,10 @@ def FolderNames(arglead: string, _: string, _: number): list<string>
   return lsp.RemovableFolders()->filter((_, f) => f->stridx(arglead) == 0)
 enddef
 
+def CommandNames(arglead: string, _: string, _: number): list<string>
+  return lsp.ServerCommands()->filter((_, c) => c->stridx(arglead) == 0)
+enddef
+
 command! -bar LspStart      lsp.Attach(true)
 command! -bar LspStop       lsp.Stop(true)
 command! -bar -bang LspStatus lsp.Status(<bang>0 ? true : false)
@@ -49,6 +53,9 @@ command! -bar -nargs=? -complete=dir LspWorkspaceFolderAdd {
 }
 command! -bar -nargs=1 -complete=customlist,FolderNames LspWorkspaceFolderRemove {
   lsp.WorkspaceFolderRemove(<q-args>)
+}
+command! -bar -nargs=1 -complete=customlist,CommandNames LspExecuteCommand {
+  lsp.ExecuteCommand(<q-args>)
 }
 command! -bar -nargs=? LspHover lsp.Hover()
 command! -bar LspDefinition lsp.Definition(<q-mods>)

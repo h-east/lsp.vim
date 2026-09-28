@@ -922,6 +922,30 @@ def g:Test_a_folder_is_added_and_taken_back_by_hand()
   assert_notmatch('folders:', execute('LspStatus'))
 enddef
 
+def g:Test_a_command_the_server_offers_is_run_by_hand()
+  assert_true(t.StartServer({
+    capabilities: extend(Offering({}), {executeCommandProvider:
+      {commands: ['fake.two', 'fake.one', 'other']}}),
+    replies: {'workspace/executeCommand': v:null},
+  }, ['int one;']))
+  assert_equal(['fake.one', 'fake.two'],
+    getcompletion('LspExecuteCommand fake', 'cmdline'))
+
+  LspExecuteCommand fake.two
+  assert_true(t.WaitFor(() => !t.Sent('workspace/executeCommand')->empty()),
+    'the command should be sent')
+  var sent = t.Sent('workspace/executeCommand')[0].params
+  assert_equal('fake.two', sent.command)
+  assert_match('^lsp-execute-\d\+$', sent.workDoneToken)
+  assert_true(t.WaitFor(() => LastMessage() == 'lsp: fake.two is done'))
+
+  # What the server does not offer is not sent.
+  LspExecuteCommand fake.three
+  assert_match('no server for this buffer offers "fake.three"', LastMessage())
+  sleep 100m
+  assert_equal(1, len(t.Sent('workspace/executeCommand')))
+enddef
+
 def g:Test_a_folder_is_refused_by_a_server_taking_one_root()
   assert_true(t.StartServer({capabilities: SYNC}, ['int one;']))
 

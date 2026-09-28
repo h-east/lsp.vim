@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.026'
+const VERSION = '0.2.027'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -1299,6 +1299,39 @@ export def WorkspaceFolderRemove(path: string)
   lspclient.Notify(cl, 'workspace/didChangeWorkspaceFolders',
     {event: {added: [], removed: [Folder(dir)]}})
   echomsg printf('lsp: %s no longer covers %s', cl.name, dir)
+enddef
+
+def OfferedCommands(cl: dict<any>): list<string>
+  var provider = Capability(cl, 'executeCommandProvider')
+  var commands = type(provider) == v:t_dict ? provider->get('commands', []) : []
+  return type(commands) == v:t_list
+    ? commands->copy()->filter((_, c) => type(c) == v:t_string) : []
+enddef
+
+# What ":LspExecuteCommand" can be given.
+export def ServerCommands(): list<string>
+  var names: list<string> = []
+  for cl in BufClients(bufnr('%'))->filter((_, cl) => cl.initialized)
+    names += OfferedCommands(cl)
+  endfor
+  return names->sort()->uniq()
+enddef
+
+var executed = 0
+
+export def ExecuteCommand(name: string)
+  var here = BufClients(bufnr('%'))->filter((_, cl) => cl.initialized
+    && index(OfferedCommands(cl), name) >= 0)
+  if here->empty()
+    util.WarningMsg(printf('no server for this buffer offers "%s"', name))
+    return
+  endif
+  executed += 1
+  # The work the command reports goes to the progress popup.
+  lspclient.Request(here[0], 'workspace/executeCommand',
+    {command: name, workDoneToken: 'lsp-execute-' .. executed}, (_) => {
+      echomsg printf('lsp: %s is done', name)
+    })
 enddef
 
 # The formats to name, the one "hover_format" asks for first: the protocol
