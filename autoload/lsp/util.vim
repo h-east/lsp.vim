@@ -158,7 +158,7 @@ export def FileLines(path: string): list<string>
   return filereadable(path) ? readfile(path) : []
 enddef
 
-# Falls back to the directory of "path", so a server always gets a root.
+# Empty when none of "patterns" is found from "path" upwards.
 export def FindRoot(path: string, patterns: list<string>): string
   var dir = fnamemodify(path, ':p:h')
   for pattern in patterns
@@ -173,7 +173,7 @@ export def FindRoot(path: string, patterns: list<string>): string
       return fnamemodify(found, ':p:h')
     endif
   endfor
-  return dir
+  return ''
 enddef
 
 export def ErrorMsg(msg: string)

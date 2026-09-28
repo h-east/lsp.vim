@@ -488,6 +488,8 @@ export def Start(config: dict<any>, root: string,
     # The roots this one covers; a server that takes workspace folders can be
     # given more than the one it started with.
     folders: [root],
+    # False when no "rootPatterns" was found: the file is in no project.
+    rooted: true,
     # How the server counts a position, which it picks at startup.
     encoding: 'utf-16',
     # What the server asked to be told about at run time, and what that comes

@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.025'
+const VERSION = '0.2.026'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -896,6 +896,10 @@ export def Attach(loud: bool = false)
   var keys: list<string> = []
   for config in configs
     var root = util.FindRoot(name, config->get('rootPatterns', ['.git']))
+    var rooted = !root->empty()
+    if !rooted
+      root = fnamemodify(name, ':p:h')
+    endif
     var key = ClientFor(config.name, root)
     if key->empty()
       key = ClientKey(config.name, root)
@@ -904,6 +908,7 @@ export def Attach(loud: bool = false)
       if fresh->empty()
         continue
       endif
+      fresh.rooted = rooted
       clients[key] = fresh
     endif
     if index(keys, key) < 0
@@ -4060,7 +4065,8 @@ enddef
 
 def PullWorkspace(cl: dict<any>)
   if cl.workspace_pull > 0 || !cl.running || cl.stopping
-      || !(Setting('workspace_diagnostics') || cl.workspace_wanted)
+      || !((Setting('workspace_diagnostics') && cl.rooted)
+        || cl.workspace_wanted)
     return
   endif
   var provider = Capability(cl, 'diagnosticProvider')

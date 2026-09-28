@@ -2497,6 +2497,28 @@ def g:Test_the_workspace_is_left_alone_where_the_server_says_no()
     'nothing should be asked for')
 enddef
 
+# A file where no root marker is found is in no project, so the setting does
+# not have its workspace read; :LspWorkspaceDiag still asks.
+def g:Test_the_workspace_is_left_alone_where_no_root_is_found()
+  defer execute('cclose')
+  g:lsp_client_config = get(g:, 'lsp_client_config', {})
+  g:lsp_client_config.workspace_diagnostics = true
+  defer execute('unlet g:lsp_client_config.workspace_diagnostics')
+  assert_true(t.StartServer({
+    capabilities: Offering({diagnosticProvider:
+      {interFileDependencies: false,
+        workspaceDiagnostics: true}}),
+    replies: {'workspace/diagnostic': {items: []}},
+  }, ['int one;'], {rootPatterns: ['Xno-such-marker']}))
+
+  sleep 300m
+  assert_true(t.Sent('workspace/diagnostic')->empty(),
+    'nothing should be asked for outside a project')
+  LspWorkspaceDiag
+  assert_true(t.WaitFor(() => !t.Sent('workspace/diagnostic')->empty()),
+    'the command should ask')
+enddef
+
 # With the setting off the workspace is not asked about when the server
 # starts; :LspWorkspaceDiag asks, tells that the server is still reading,
 # and the request goes on from then as it does with the setting on.

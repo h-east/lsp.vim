@@ -266,8 +266,10 @@ g:lsp_client_config
 
 		workspace_diagnostics
 				When true, a server that reports on the whole
-				workspace is asked to as soon as it is ready.
-				Otherwise |:LspWorkspaceDiag| is what asks it.
+				workspace is asked to as soon as it is ready,
+				except for a file where none of "rootPatterns"
+				is found, which is in no project.  Otherwise
+				|:LspWorkspaceDiag| is what asks it.
 				Off by default: it has the server look at
 				every file in the project.  See
 				|lsp-workspace-diagnostics|.
