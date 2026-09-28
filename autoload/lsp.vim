@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.027'
+const VERSION = '0.2.028'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -778,12 +778,12 @@ enddef
 def OnNotify(cl: dict<any>, method: string, params: any)
   if method == 'textDocument/publishDiagnostics'
     var uri = params->get('uri', '')
-    cl.diagnostics[uri] = params->get('diagnostics', [])
+    var items = params->get('diagnostics', [])
+    cl.diagnostics[uri] = items
     # A server may report on a file that is not open here.
     var bufnr = bufnr(util.UriToPath(uri))
     if bufnr > 0 && Uses(cl, 'diagnostics')
-      diag.Update(bufnr, ClientKey(cl.name, cl.root), cl.diagnostics[uri],
-        cl.encoding)
+      diag.Update(bufnr, ClientKey(cl.name, cl.root), items, cl.encoding)
     endif
   elseif method == 'window/showMessage'
     ShowMessage(params->get('type', 0), params->get('message', ''))
@@ -4033,10 +4033,10 @@ def PullDiagnostics()
     endif
     # "unchanged" means the last report still stands.
     if result->get('kind', 'full') == 'full'
-      cl.diagnostics[uri] = result->get('items', [])
+      var items = result->get('items', [])
+      cl.diagnostics[uri] = items
       if bufexists(bufnr)
-        diag.Update(bufnr, ClientKey(cl.name, cl.root), cl.diagnostics[uri],
-          cl.encoding)
+        diag.Update(bufnr, ClientKey(cl.name, cl.root), items, cl.encoding)
       endif
     endif
   })
@@ -4075,7 +4075,7 @@ def TakeWorkspaceReport(cl: dict<any>, report: any)
   endif
   var id = report->get('resultId', '')
   if id->empty()
-    if cl.workspace_ids->has_key(uri)
+    if cl.workspace_ids->get(uri, '') != ''
       remove(cl.workspace_ids, uri)
     endif
   else
@@ -4089,10 +4089,10 @@ def TakeWorkspaceReport(cl: dict<any>, report: any)
   if bufnr > 0 && cl.documents->has_key(uri)
     return
   endif
-  cl.diagnostics[uri] = report->get('items', [])
+  var items = report->get('items', [])
+  cl.diagnostics[uri] = items
   if bufnr > 0 && Uses(cl, 'diagnostics')
-    diag.Update(bufnr, ClientKey(cl.name, cl.root), cl.diagnostics[uri],
-      cl.encoding)
+    diag.Update(bufnr, ClientKey(cl.name, cl.root), items, cl.encoding)
   endif
 enddef
 
@@ -4113,8 +4113,8 @@ def PullWorkspace(cl: dict<any>)
   # this one, which :LspWorkspaceDiag reports.
   cl.workspace_work = 'lsp-workspace-work-' .. workspace_asked
   var params: dict<any> = {
-    previousResultIds: cl.workspace_ids->keys()
-      ->mapnew((_, u) => ({uri: u, value: cl.workspace_ids[u]})),
+    previousResultIds: cl.workspace_ids->items()
+      ->mapnew((_, kv) => ({uri: kv[0], value: kv[1]})),
     partialResultToken: cl.workspace_token,
     workDoneToken: cl.workspace_work,
   }
@@ -4183,7 +4183,7 @@ def WorkspaceEntries(servers: list<dict<any>>): list<dict<any>>
   var entries: list<dict<any>> = []
   for cl in servers
     for uri in cl.diagnostics->keys()->sort()
-      entries += diag.Entries(util.UriToPath(uri), cl.diagnostics[uri],
+      entries += diag.Entries(util.UriToPath(uri), cl.diagnostics->get(uri),
         cl.encoding)
     endfor
   endfor
