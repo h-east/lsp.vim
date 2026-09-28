@@ -3477,6 +3477,57 @@ def g:Test_the_workspace_list_is_filled_in_at_the_end()
   assert_equal(['other', 0], [getqflist({title: 0}).title, len(getqflist())])
 enddef
 
+# The entry selected in the list stays selected when the list is filled in.
+def g:Test_the_workspace_list_keeps_the_selected_entry()
+  const HEADER = t.SRC->substitute('\.c$', '.h', '')
+  defer delete(HEADER)
+  writefile(['int two;', 'int three;'], HEADER)
+  var Fault = (line: number, message: string) => ({
+    range: {start: {line: line, character: 0},
+      end: {line: line, character: 3}},
+    severity: 2, source: 'test', message: message})
+  const BEFORE = {uri: 'file://' .. HEADER, kind: 'full',
+    items: [Fault(0, 'first'), Fault(1, 'second')]}
+  const AFTER = {uri: 'file://' .. HEADER, kind: 'full',
+    items: [Fault(0, 'first'), Fault(0, 'new'), Fault(1, 'second')]}
+  assert_true(t.StartServer({
+    capabilities: Offering({diagnosticProvider:
+      {interFileDependencies: true, workspaceDiagnostics: true}}),
+    hold: ['workspace/diagnostic'],
+    ask: {
+      'workspace/diagnostic': [
+        {notify: true, before: true, method: '$/progress',
+          params: {token: '$workDoneToken',
+            value: {kind: 'begin', title: 'Reading', percentage: 0}}},
+        {notify: true, before: true, method: '$/progress',
+          params: {token: '$partialResultToken', value: {items: [BEFORE]}}}],
+      'textDocument/didChange': [
+        {notify: true, method: '$/progress',
+          params: {token: '$partialResultToken', value: {items: [AFTER]}}},
+        {notify: true, method: '$/progress',
+          params: {token: '$workDoneToken', value: {kind: 'end'}}}],
+    },
+  }, ['int one;']))
+  defer setqflist([], 'f')
+
+  # The list is opened from the buffer the server has, not from itself.
+  assert_true(t.WaitFor(() => {
+    LspWorkspaceDiag
+    cclose
+    return len(getqflist()) == 2
+  }), 'the first reports should be listed')
+  # Selected without opening the file, which would make it a document of its
+  # own that the workspace no longer reports on.
+  setqflist([], 'a', {idx: 2})
+
+  setline(1, 'int four;')
+  listener_flush()
+  assert_true(t.WaitFor(() => len(getqflist()) == 3),
+    'the list should be filled in')
+  var at = getqflist({idx: 0}).idx
+  assert_match('second', getqflist()[at - 1].text)
+enddef
+
 # What a server is busy with goes to a popup at the bottom right, the
 # percentage as a bar and a number, and goes away at the end.
 def g:Test_progress_is_shown_in_a_popup()

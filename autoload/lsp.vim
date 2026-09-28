@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.028'
+const VERSION = '0.2.029'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -4192,7 +4192,7 @@ enddef
 
 # Once "cl" is through reading the workspace, the list :LspWorkspaceDiag
 # made for it is filled in with all that came, if it is still the current
-# one.
+# one, keeping the entry that was selected.
 def RefreshWorkspaceList(cl: dict<any>)
   var info = getqflist({title: 0, context: 0})
   if info.title != WORKSPACE_TITLE || type(info.context) != v:t_dict
@@ -4202,7 +4202,7 @@ def RefreshWorkspaceList(cl: dict<any>)
   if index(keys, ClientKey(cl.name, cl.root)) < 0
     return
   endif
-  setqflist([], 'r', {items: WorkspaceEntries(keys
+  setqflist([], 'u', {items: WorkspaceEntries(keys
     ->filter((_, key) => clients->has_key(key))
     ->mapnew((_, key) => clients[key]))})
 enddef

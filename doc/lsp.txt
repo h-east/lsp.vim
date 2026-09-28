@@ -777,9 +777,9 @@ it is below it, with "~" for the home directory otherwise.
 		tells so, with how far it has got when the server reports
 		that, and the list is opened even when empty.  When the
 		server is through, the list is filled in with all that came,
-		as long as it is still the current one; otherwise run it
-		again for a list that has caught up.  See
-		|lsp-workspace-diagnostics|.
+		as long as it is still the current one, and the entry that
+		was selected stays selected; otherwise run it again for a
+		list that has caught up.  See |lsp-workspace-diagnostics|.
 
 Changing the text ~
 						*:LspCodeAction*
