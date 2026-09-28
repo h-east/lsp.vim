@@ -9,6 +9,7 @@
 :LspDocumentLink	lsp.txt	/*:LspDocumentLink*
 :LspDocumentLinkInfo	lsp.txt	/*:LspDocumentLinkInfo*
 :LspDocumentLinkOpen	lsp.txt	/*:LspDocumentLinkOpen*
+:LspExecuteCommand	lsp.txt	/*:LspExecuteCommand*
 :LspFolding	lsp.txt	/*:LspFolding*
 :LspFormat	lsp.txt	/*:LspFormat*
 :LspHover	lsp.txt	/*:LspHover*
