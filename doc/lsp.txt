@@ -1038,7 +1038,9 @@ moment.  It is handed back the "resultId" of its last report, which is how it
 can answer that nothing has changed instead of listing everything again.
 
 |:LspDiag| collects them into the location list, which is the way to walk
-through them with |:lnext| and |:lprevious|.
+through them with |:lnext| and |:lprevious|.  They are in the order of the
+lines, whatever order the server sent them in; so is the |quickfix| list of
+|:LspWorkspaceDiag| for each file.
 
 Every report replaces the one before it, so the signs and the highlights
 follow the file as it is edited.

@@ -261,17 +261,26 @@ def RelatedEntries(bufnr: number, item: dict<any>,
   return out
 enddef
 
+# Orders diagnostics "a" and "b" by where they start.
+def ByStart(a: dict<any>, b: dict<any>): number
+  var sa = a->get('range', {})->get('start', {})
+  var sb = b->get('range', {})->get('start', {})
+  var d = sa->get('line', 0) - sb->get('line', 0)
+  return d != 0 ? d : sa->get('character', 0) - sb->get('character', 0)
+enddef
+
 # What |setqflist()| and |setloclist()| take for a file, whether or not there
 # is a buffer for it: one without has no lines to count a character offset
-# in, so the column is the one the protocol gives.
+# in, so the column is the one the protocol gives.  The protocol leaves the
+# order of the diagnostics to the server; they are put in the order of the
+# lines, each with its related information after it.
 export def Entries(path: string, items: list<any>,
     encoding: string): list<dict<any>>
   var bufnr = bufnr(util.OpenName(path))
   var entries: list<dict<any>> = []
-  for item in items
-    if type(item) != v:t_dict
-      continue
-    endif
+  var diags: list<dict<any>> = items->copy()
+    ->filter((_, item) => type(item) == v:t_dict)
+  for item in diags->sort(ByStart)
     var start = item->get('range', {})->get('start', {})
     var lnum = start->get('line', 0) + 1
     var col = start->get('character', 0) + 1

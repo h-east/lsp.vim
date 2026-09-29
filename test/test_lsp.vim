@@ -120,6 +120,38 @@ def g:Test_diagnostics_reach_the_location_list()
   lclose
 enddef
 
+# The server may report in any order; the list is in the order of the lines
+# and columns, the related information staying after its report.
+def g:Test_the_list_is_in_the_order_of_the_lines()
+  def Report(line: number, character: number, message: string): dict<any>
+    return {range: {start: {line: line, character: character},
+      end: {line: line, character: character + 1}}, message: message}
+  enddef
+  var related = Report(2, 4, 'third')
+  related.relatedInformation = [{
+    location: {uri: 'file://' .. t.SRC, range: {
+      start: {line: 1, character: 0}, end: {line: 1, character: 1}}},
+    message: 'declared here',
+  }]
+  assert_true(t.StartServer({
+    capabilities: SYNC,
+    notify: [{method: 'textDocument/publishDiagnostics',
+      params: {uri: 'file://' .. t.SRC, diagnostics: [
+        related, Report(0, 7, 'second'), Report(0, 4, 'first')]}}],
+  }, ['int a, b;', 'int main(void)', '    return a + b;']))
+
+  assert_true(t.WaitFor(() =>
+    !sign_getplaced('%', {group: 'lsp'})[0].signs->empty()),
+    'the signs should be placed')
+
+  LspDiag
+  assert_equal([[1, 5, 'first'], [1, 8, 'second'], [3, 5, 'third'],
+    [2, 1, '  declared here']],
+    getloclist(0)->mapnew((_, e) => [e.lnum, e.col,
+      e.text->substitute('^\[.\{-}\] ', '', '')]))
+  lclose
+enddef
+
 # Only a file under the home directory and not under the current one is named
 # with "~".
 def g:Test_a_list_names_the_file_as_ls_does()
