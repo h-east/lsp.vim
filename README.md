@@ -38,13 +38,14 @@ what it asked to hear about, and what it reports about itself is under
 
 ## Requirements
 
-- Vim [9.2.1004](https://github.com/vim/vim/commit/1f56c351dedad288f79c89b6b6f64be762ec3b9b) or later, with the `+job` and `+channel` features
-  (9.2.1xxx or later when the server is vim9ls)
+- Vim [9.2.1004](https://github.com/vim/vim/commit/1f56c351dedad288f79c89b6b6f64be762ec3b9b) or later, with the `+job` and `+channel` features  
+  ([9.2.1160](https://github.com/vim/vim/commit/89c0f361635943234bd293b13e4fa4e507e8ca86) or later when the server is [vim9ls](https://github.com/h-east/vim9ls))
 - A language server for the language you work in, installed separately
 
 <details>
 <summary>What those patches are for</summary>
 
+- [9.2.1160](https://github.com/vim/vim/commit/89c0f361635943234bd293b13e4fa4e507e8ca86): vim9ls needs it for `getinfo()`
 - [9.2.1004](https://github.com/vim/vim/commit/1f56c351dedad288f79c89b6b6f64be762ec3b9b): `complete_info()` reports in `"auto"` whether `'autocomplete'` or
   a typed key called the `'omnifunc'` function
 - [9.2.0997](https://github.com/vim/vim/commit/6308df41bfb29c22586b202b72c7e2b2052a09d0): `ch_sendexpr()` takes a String `"id"`, which answers a request the
@@ -72,6 +73,8 @@ g:lsp_server_list = [{
   cmd: ['clangd', '--background-index', '--clang-tidy', '--header-insertion=never'],
   rootPatterns: ['compile_commands.json', '.git'],
 }, {
+  filetypes: ['vim'], name: 'vim9ls', cmd: function('vim9ls#Command'),
+}, {
   filetypes: ['python'], name: 'pylsp',
   cmd: ['pylsp'], rootPatterns: ['pyproject.toml', '.git'],
 }, {
@@ -88,6 +91,7 @@ let g:lsp_server_list = [
       \ #{filetypes: ['c', 'cpp'], name: 'clangd',
       \   cmd: ['clangd', '--background-index', '--clang-tidy', '--header-insertion=never'],
       \   rootPatterns: ['compile_commands.json', '.git']},
+      \ #{filetypes: ['vim'], name: 'vim9ls', cmd: function('vim9ls#Command')},
       \ #{filetypes: ['python'], name: 'pylsp',
       \   cmd: ['pylsp'], rootPatterns: ['pyproject.toml', '.git']},
       \ #{filetypes: ['go'], name: 'gopls',
@@ -193,7 +197,7 @@ augroup END
 ## Servers it has been used with
 
 - C/C++: clangd 18.1.3
-- Vim script: vim9ls 0.1.002 (not released publicly yet)
+- Vim script: vim9ls 0.1.002
 - Python: pylsp 1.15.0, pyright 1.1.411, basedpyright 1.39.10, ty 0.0.78
 - Go: gopls 0.18.0
 

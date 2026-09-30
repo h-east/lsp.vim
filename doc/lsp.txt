@@ -67,16 +67,18 @@ first, and the write waits for the answer; "will_save" in
 ==============================================================================
 2. Requirements					*lsp-requirements*
 
-Vim 9.2.1004 or later, with the |+job| and |+channel| features (9.2.1xxx or
-later when the server is vim9ls).
+Vim 9.2.1004 or later, with the |+job| and |+channel| features
+(9.2.1160 or later when the server is vim9ls).
 
 What those patches are for:
+9.2.1160: |getinfo()| names and types the arguments in the signature help of a
+	  builtin
 9.2.1004: |complete_info()| reports in "auto" whether 'autocomplete' or a
-          typed key called the 'omnifunc' function
+	  typed key called the 'omnifunc' function
 9.2.0997: |ch_sendexpr()| takes a String "id", which answers a request the
-          server named with a string
+	  server named with a string
 9.2.0970: |listener_add()| takes a "text" option, which gives the callback
-          the text of each change (|listener-text|)
+	  the text of each change (|listener-text|)
 
 Without them, or without the features, nothing of the plugin is set up and
 |:LspStatus| is left to report what is missing.
@@ -156,13 +158,21 @@ g:lsp_server_list
 
 		Example: >vim9
 
-			packadd! lsp.vim
-			g:lsp_server_list = [{
-			  name: 'clangd',
-			  filetypes: ['c', 'cpp'],
-			  cmd: ['clangd', '--background-index'],
-			  rootPatterns: ['compile_commands.json', '.git'],
-			}]
+		    g:lsp_server_list = [{
+		      filetypes: ['c', 'cpp'], name: 'clangd',
+		      cmd: ['clangd', '--background-index', '--clang-tidy',
+		        '--header-insertion=never'],
+		      rootPatterns: ['compile_commands.json', '.git'],
+		    }, {
+		      filetypes: ['vim'], name: 'vim9ls',
+		      cmd: function('vim9ls#Command'),
+		    }, {
+		      filetypes: ['python'], name: 'pylsp', cmd: ['pylsp'],
+		      rootPatterns: ['pyproject.toml', '.git'],
+		    }, {
+		      filetypes: ['go'], name: 'gopls', cmd: ['gopls'],
+		      rootPatterns: ['go.work', 'go.mod', '.git'],
+		    }]
 <
 		One server is started per workspace root rather than per
 		buffer, so buffers from the same project share a server.
@@ -307,10 +317,10 @@ g:lsp_client_config
 
 		Example: >vim9
 
-			g:lsp_client_config = {
-			  highlight_delay: 150,
-			  inlay_hint: true,
-			}
+		    g:lsp_client_config = {
+		      highlight_delay: 150,
+		      inlay_hint: true,
+		    }
 <
 		|:LspInlayHint|, |:LspCodeLens|, |:LspFolding| and
 		|:LspSemanticTokens| write into this Dictionary, so what they
@@ -325,10 +335,9 @@ g:lsp_client_config
 
 		Example: >vim9
 
-			autocmd BufEnter * {
-			  g:lsp_client_config.on_type_formatting =
-			    &filetype ==# 'c'
-			}
+		    autocmd BufEnter * {
+		      g:lsp_client_config.on_type_formatting = &filetype ==# 'c'
+		    }
 <
 						*g:loaded_lsp_vim*
 g:loaded_lsp_vim
