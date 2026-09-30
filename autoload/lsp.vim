@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.031'
+const VERSION = '0.2.032'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -696,7 +696,7 @@ def DrawProgress()
       ->mapnew((_, key) => ProgressParts(progress[key])
         ->filter((_, s) => !s->empty())->join(' '))
     echo lines->empty() ? ''
-      : strcharpart('lsp: ' .. lines[-1], 0, v:echospace)
+      : util.Truncate('lsp: ' .. lines[-1], v:echospace)
     return
   endif
   if lines->empty()
@@ -1565,8 +1565,9 @@ def DefineSignatureProp()
 enddef
 
 # A parameter's "label" is either a substring of the signature or a pair of
-# offsets into it, in UTF-16 units as everywhere else in the protocol.
-def ActiveRange(signature: dict<any>, index: number): list<number>
+# offsets into it, counted in "encoding" as the positions are.
+def ActiveRange(signature: dict<any>, index: number,
+    encoding: string): list<number>
   var params = signature->get('parameters', [])
   if index < 0 || index >= len(params)
     return []
@@ -1574,9 +1575,9 @@ def ActiveRange(signature: dict<any>, index: number): list<number>
   var label = signature->get('label', '')
   var plabel = params[index]->get('label', '')
   if type(plabel) == v:t_list && len(plabel) == 2
-    var from = byteidxcomp(label, plabel[0], true)
-    var to = byteidxcomp(label, plabel[1], true)
-    return from < 0 || to < 0 ? [] : [from, to - from]
+    var from = util.ColFromLsp(label, plabel[0], encoding) - 1
+    var to = util.ColFromLsp(label, plabel[1], encoding) - 1
+    return [from, to - from]
   endif
   if type(plabel) == v:t_string && !plabel->empty()
     var from = stridx(label, plabel)
@@ -1748,7 +1749,7 @@ def MoveSignature()
   endif
 enddef
 
-def ShowSignature(help: any)
+def ShowSignature(help: any, encoding: string)
   if type(help) != v:t_dict
     CloseSignature()
     return
@@ -1769,7 +1770,7 @@ def ShowSignature(help: any)
   # A signature may name the active parameter itself.
   var active = signature->get('activeParameter',
     help->get('activeParameter', -1))
-  var range = ActiveRange(signature, active)
+  var range = ActiveRange(signature, active, encoding)
   var text: any = label
   if !range->empty()
     DefineSignatureProp()
@@ -1809,7 +1810,7 @@ export def Signature()
   lspclient.Request(cl, 'textDocument/signatureHelp',
     CursorParams(cl.encoding), (result: any) => {
       if seq == signature_seq
-        ShowSignature(result)
+        ShowSignature(result, cl.encoding)
       endif
     })
 enddef
@@ -4242,7 +4243,7 @@ export def WorkspaceDiagnostics()
       ClientKey(cl.name, cl.root))}})
   copen
   if !note->empty()
-    echo strcharpart(note, 0, v:echospace)
+    echo util.Truncate(note, v:echospace)
   endif
 enddef
 

@@ -182,6 +182,21 @@ export def ErrorMsg(msg: string)
   echohl None
 enddef
 
+# "s" cut to fit in "width" screen cells, with a ">" where it was cut.
+export def Truncate(s: string, width: number): string
+  if strdisplaywidth(s) <= width
+    return s
+  endif
+  var out = ''
+  for c in s->split('\zs')
+    if strdisplaywidth(out .. c) > width - 1
+      break
+    endif
+    out ..= c
+  endfor
+  return out .. '>'
+enddef
+
 export def WarningMsg(msg: string)
   echohl WarningMsg
   echomsg 'lsp: ' .. msg

@@ -2,6 +2,7 @@ vim9script
 # Tests for the LSP client.  Run them with test/run.
 
 import './helper.vim' as t
+import autoload '../autoload/lsp/util.vim'
 
 # The message history holds every file that was opened as well.
 def LastMessage(): string
@@ -1989,6 +1990,41 @@ def g:Test_the_signature_goes_with_the_call_it_describes()
   assert_true(t.WaitFor(() => popup_list()->empty()),
     'the signature should go with the call')
   assert_equal(3, len(t.Sent('textDocument/signatureHelp')))
+enddef
+
+# The offsets of a parameter are counted as the positions are, so a
+# multibyte character in front of it does not move the mark.
+def g:Test_the_signature_marks_the_parameter_in_the_encoding_taken()
+  const LABEL = 'void f(char *s = "あ", int n)'
+  const START = stridx(LABEL, 'int n')
+  const UNITS = strutf16len(strpart(LABEL, 0, START))
+  # A different call each time: the same one is not asked about again.
+  for [encoding, from, call] in [['utf-8', START, '    f(x, '],
+      ['utf-16', UNITS, '    f(y, ']]
+    popup_clear()
+    assert_true(t.StartServer({
+      capabilities: Offering({positionEncoding: encoding,
+        signatureHelpProvider: {triggerCharacters: ['(', ',']}}),
+      sequence: {'textDocument/signatureHelp': [{signatures: [{
+        label: LABEL, activeParameter: 1,
+        parameters: [{label: [7, 20]}, {label: [from, from + 5]}]}]}]},
+    }, [call]))
+    cursor(1, 10)
+    doautocmd TextChangedI
+    assert_true(t.WaitFor(() => !popup_list()->empty()), encoding)
+    var props = prop_list(1, {bufnr: winbufnr(popup_list()[0])})
+    assert_equal([[START + 1, 5]],
+      props->mapnew((_, p) => [p.col, p.length]), encoding)
+  endfor
+  popup_clear()
+enddef
+
+# A message is cut to the screen cells it may take, which a wide character
+# takes two of.
+def g:Test_a_message_is_cut_to_the_cells_it_may_take()
+  assert_equal('short', util.Truncate('short', 10))
+  assert_equal('あい>', util.Truncate('あいうえお', 5))
+  assert_equal(5, strdisplaywidth(util.Truncate('あいうえお', 5)))
 enddef
 
 def g:Test_the_signature_stands_over_the_call_it_describes()

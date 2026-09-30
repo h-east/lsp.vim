@@ -207,20 +207,6 @@ export def ForRange(bufnr: number, server: string, first: number,
     })
 enddef
 
-def Truncate(s: string, width: number): string
-  if strdisplaywidth(s) <= width
-    return s
-  endif
-  var out = ''
-  for c in s->split('\zs')
-    if strdisplaywidth(out .. c) > width - 1
-      break
-    endif
-    out ..= c
-  endfor
-  return out .. '>'
-enddef
-
 # Show the first diagnostic on the cursor line.  A line without one is left
 # alone rather than cleared, so this does not wipe other messages.
 export def EchoAtCursor()
@@ -231,7 +217,7 @@ export def EchoAtCursor()
   var item = items[0]
   var text = printf('%s: %s', Kind(item).label,
     item->get('message', '')->substitute('\n', ' ', 'g'))
-  echo Truncate(text, v:echospace)
+  echo util.Truncate(text, v:echospace)
 enddef
 
 # A report may point at other places that explain it, such as where a name was
