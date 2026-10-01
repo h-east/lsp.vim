@@ -35,7 +35,7 @@ import os
 import sys
 
 SCENARIO = json.load(open(sys.argv[1] if len(sys.argv) > 1
-                          else os.environ['LSP_SCENARIO']))
+                          else os.environ['LSP_SCENARIO'], encoding='utf-8'))
 TRACE = open(sys.argv[2] if len(sys.argv) > 2
              else os.environ.get('LSP_TRACE', os.devnull), 'w')
 
