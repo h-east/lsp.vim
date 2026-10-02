@@ -3568,6 +3568,43 @@ def g:Test_what_every_server_reports_is_shown_together()
   lclose
 enddef
 
+# A new report puts the marks again only on the lines where they change.
+def g:Test_a_new_report_changes_only_the_lines_it_changes()
+  def Report(line: number, from: number, to: number): dict<any>
+    return {
+      range: {start: {line: line, character: from},
+        end: {line: line, character: to}},
+      severity: 4,
+      message: 'reported',
+    }
+  enddef
+  assert_true(t.StartServer({
+    capabilities: Offering({hoverProvider: true}),
+    notify: [{method: 'textDocument/publishDiagnostics',
+      params: {uri: 'file://' .. t.SRC,
+        diagnostics: [Report(0, 4, 7), Report(2, 4, 7)]}}],
+    ask: {'textDocument/hover': [{notify: true,
+      method: 'textDocument/publishDiagnostics',
+      params: {uri: 'file://' .. t.SRC,
+        diagnostics: [Report(0, 4, 7), Report(1, 0, 3)]}}]},
+  }, ['int one;', 'int two;', 'int six;']))
+  assert_true(t.WaitFor(() =>
+    len(prop_list(1)) == 1 && len(prop_list(3)) == 1),
+    'the first report should be drawn')
+
+  # The same mark with an ID shows whether line 1 was left alone.
+  prop_remove({type: 'LspDiagHintText', all: true}, 1)
+  prop_add(1, 5, {length: 3, type: 'LspDiagHintText', id: 7})
+
+  LspHover
+  assert_true(t.WaitFor(() => len(prop_list(2)) == 1),
+    'the second report should be drawn')
+  popup_clear()
+  assert_equal([7], prop_list(1)->mapnew((_, p) => p.id))
+  assert_equal([[1, 3]], prop_list(2)->mapnew((_, p) => [p.col, p.length]))
+  assert_equal([], prop_list(3))
+enddef
+
 # "use" names what a server is used for, so a feature it offers can be left to
 # the one named after it.
 def g:Test_use_hands_a_feature_to_the_next_server()

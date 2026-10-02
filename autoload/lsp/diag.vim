@@ -131,10 +131,16 @@ def Mark(bufnr: number, item: dict<any>, span: list<number>)
 enddef
 
 # The buffer has to be loaded: an unloaded one has no lines to draw on.
+# The marks are put again only on the lines where they differ from what is
+# there: marks removed all over the buffer have Vim work out the syntax
+# highlighting again.  A report over more than one line has them all put
+# again.
 def Draw(bufnr: number)
-  Erase(bufnr)
-  var reported = Reported(bufnr)
+  sign_unplace(SIGN_GROUP, {buffer: bufnr})
   var signs: list<dict<any>> = []
+  # "<lnum>": [item, span] for each mark wanted on the line.
+  var wanted: dict<list<list<any>>> = {}
+  var reported = Reported(bufnr)
   for server in Servers(bufnr)
     var encoding = EncodingFor(bufnr, server)
     for item in reported[server]
@@ -142,6 +148,40 @@ def Draw(bufnr: number)
       var span = Span(bufnr, encoding, item)
       signs->add({buffer: bufnr, group: SIGN_GROUP, lnum: span[0],
         name: kind.sign, priority: kind.priority})
+      var key = string(span[0])
+      if !wanted->has_key(key)
+        wanted[key] = []
+      endif
+      wanted[key]->add([item, span])
+    endfor
+  endfor
+
+  var there = prop_list(1, {bufnr: bufnr, end_lnum: -1, types: PROP_TYPES})
+  var lines = wanted->keys()
+  if there->indexof((_, p) => !p.start || !p.end) >= 0
+      || wanted->values()->flattennew(1)
+        ->indexof((_, m) => m[1][0] != m[1][2]) >= 0
+    prop_remove({types: PROP_TYPES, bufnr: bufnr, all: true})
+  else
+    # "<lnum>": [col, length, type] of each mark, for comparing.
+    var have: dict<list<string>> = {}
+    for p in there
+      var key = string(p.lnum)
+      if !have->has_key(key)
+        have[key] = []
+      endif
+      have[key]->add(string([p.col, p.length, p.type]))
+    endfor
+    var Want = (key: string) => wanted->get(key, [])->mapnew((_, m) =>
+      string([m[1][1], m[1][3] - m[1][1], Kind(m[0]).prop]))->sort()
+    lines = (lines + have->keys())->sort()->uniq()
+      ->filter((_, key) => Want(key) != have->get(key, [])->sort())
+    for key in lines
+      prop_remove({types: PROP_TYPES, bufnr: bufnr, all: true}, str2nr(key))
+    endfor
+  endif
+  for key in lines
+    for [item, span] in wanted->get(key, [])
       Mark(bufnr, item, span)
     endfor
   endfor
@@ -170,8 +210,9 @@ enddef
 # Completion takes the word it is replacing away, and the text properties on
 # it go with the text.  The server has no reason to report the same thing
 # twice, so what it last reported is drawn again from here, on line "lnum"
-# only: marks removed all over the buffer have Vim work out the syntax
-# highlighting again, on every move in the menu.
+# only: the marks elsewhere have moved along with what was typed since the
+# report, and would all be put back where it has them on every move in the
+# menu.
 export def Redraw(bufnr: number, lnum: number)
   if !diagnostics->has_key(string(bufnr)) || !bufloaded(bufnr)
     return
