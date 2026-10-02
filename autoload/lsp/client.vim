@@ -235,6 +235,8 @@ def ClientCapabilities(snippet: bool, hover_format: list<string>): dict<any>
       # handed to whatever the system opens it with.
       showDocument: {support: true},
     },
+    # Beyond the protocol; see |lsp-cmdline-completion|.
+    experimental: {cmdlineCompletion: true},
   }
 enddef
 

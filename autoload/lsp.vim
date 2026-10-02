@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.034'
+const VERSION = '0.2.035'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -3393,6 +3393,39 @@ def CompletionContext(cl: dict<any>, before: string): dict<any>
   return {triggerKind: TRIGGER_INVOKED}
 enddef
 
+# What Vim completes "before" to on the command line, for a server that asks
+# for it; see |lsp-cmdline-completion|.  Vim may replace more than the word,
+# "src/ma" with "src/main.c" for one, and only what follows the word goes in.
+def CmdlineItems(before: string): list<dict<any>>
+  # Too slow there to do as the user types.
+  if (has('win32') || has('win32unix') || exists('$WSLENV'))
+      && getcompletiontype(before) == 'shellcmd'
+    return []
+  endif
+  var save_wildoptions = &wildoptions
+  # "fuzzy" would have the matches not start with what was typed.
+  &wildoptions = ''
+  var found: list<string> = []
+  try
+    found = getcompletion(before, 'cmdline')
+  catch
+  finally
+    &wildoptions = save_wildoptions
+  endtry
+  var chunk = strlen(matchstr(strpart(before, 0, started.word), '\S*$'))
+  var items: list<dict<any>> = []
+  for match in found
+    for from in range(started.word - chunk, started.word)
+      if stridx(match, strpart(before, from)) == 0
+        items->add({word: strpart(match, started.word - from), abbr: match,
+          dup: 1})
+        break
+      endif
+    endfor
+  endfor
+  return items
+enddef
+
 export def OmniFunc(findstart: number, base: string): any
   var cl = ClientOffering(bufnr('%'), 'completionProvider')
   if cl->empty()
@@ -3428,6 +3461,11 @@ export def OmniFunc(findstart: number, base: string): any
     params, timeout)
   var items: list<any> = []
   var incomplete = false
+  if type(result) == v:t_dict
+      && result->get('cmdlineCompletion', false) == true
+    completion_incomplete = false
+    return CmdlineItems(before)
+  endif
   if type(result) == v:t_dict
     items = result->get('items', [])
     incomplete = result->get('isIncomplete', false)

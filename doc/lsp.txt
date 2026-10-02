@@ -1031,6 +1031,15 @@ the name being completed being the usual case.  Those are applied once the
 item is taken.  A single |undo| does not take those back with the word: they
 are a step of their own.
 
+						*lsp-cmdline-completion*
+Beyond the protocol, a server may answer with "cmdlineCompletion" set to
+|true| for the text before the cursor to be completed the way
+|i_CTRL-X_CTRL-V| does; vim9ls does so in the argument of a command.  The
+current value of an option, file names, buffer names and what a user command
+completes to then come out as they are in this Vim.  A shell command, after
+":!" for instance, is not completed on MS-Windows and in WSL, where that is
+too slow to do as the text is typed.
+
 ==============================================================================
 6. Diagnostics					*lsp-diagnostics*
 

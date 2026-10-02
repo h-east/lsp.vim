@@ -1247,6 +1247,63 @@ def g:Test_an_edit_taking_in_text_before_the_word()
   endtry
 enddef
 
+# A server may ask for the argument of a command to be completed as on the
+# command line.
+def g:Test_completion_as_on_the_command_line()
+  assert_true(t.StartServer({
+    capabilities: Offering({completionProvider: {resolveProvider: false,
+      triggerCharacters: ['=']}}),
+    replies: {'textDocument/completion':
+      {isIncomplete: false, items: [], cmdlineCompletion: true}},
+  }, ['int main(void)', '{', '    set cot=menu,po', '}']))
+  assert_equal({cmdlineCompletion: true},
+    t.Sent('initialize')[0].params.capabilities.experimental)
+
+  var save_cot = &completeopt
+  set completeopt=menuone,noinsert
+  try
+    cursor(3, 1)
+    feedkeys("A\<C-X>\<C-O>\<C-R>=string(complete_info(['items']).items"
+      .. "->mapnew((_, v) => v.word))\<CR>\<Esc>", 'tx')
+    assert_equal("    set cot=menu,po['popup', 'popuphidden']", getline(3))
+
+    # What Vim replaces reaches back before the word, which is "bu".
+    setline(3, '    nnoremap <bu')
+    feedkeys("A\<C-X>\<C-O>\<C-Y>\<Esc>", 'tx')
+    assert_equal('    nnoremap <buffer>', getline(3))
+
+    # A shell command is not completed on MS-Windows or in WSL.
+    var Shell = () => {
+      setline(3, '    !l')
+      feedkeys("A\<C-X>\<C-O>\<C-R>=complete_info(['items']).items->len()"
+        .. "\<CR>\<Esc>", 'tx')
+      return getline(3)
+    }
+    if !has('win32') && !has('win32unix')
+      assert_notequal('    !l0', Shell())
+    endif
+    var save_wslenv = getenv('WSLENV')
+    $WSLENV = 'x'
+    try
+      assert_equal('    !l0', Shell())
+    finally
+      setenv('WSLENV', save_wslenv)
+    endtry
+
+    # As the user types too, from the trigger character on.
+    setline(3, '    set bg')
+    setlocal complete=o
+    setlocal autocomplete
+    test_override('char_avail', 1)
+    feedkeys("A=\<C-R>=string(complete_info(['items']).items"
+      .. "->mapnew((_, v) => v.word))\<CR>\<Esc>", 'tx')
+    assert_equal("    set bg=['light', 'dark']", getline(3))
+  finally
+    &completeopt = save_cot
+    CleanUp()
+  endtry
+enddef
+
 # An item without documentation gets a blank info, and is asked about.
 def g:Test_an_item_without_documentation_is_resolved()
   const ITEM = {label: 'printf', kind: 3, data: {tag: 'printf()'}}

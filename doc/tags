@@ -46,6 +46,7 @@ g:lsp_server_list	lsp.txt	/*g:lsp_server_list*
 lsp#OmniFunc()	lsp.txt	/*lsp#OmniFunc()*
 lsp#TagFunc()	lsp.txt	/*lsp#TagFunc()*
 lsp-ai	lsp.txt	/*lsp-ai*
+lsp-cmdline-completion	lsp.txt	/*lsp-cmdline-completion*
 lsp-code-lens	lsp.txt	/*lsp-code-lens*
 lsp-commands	lsp.txt	/*lsp-commands*
 lsp-completion	lsp.txt	/*lsp-completion*
