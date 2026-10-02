@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.033'
+const VERSION = '0.2.034'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -3314,11 +3314,17 @@ enddef
 
 def ItemWord(item: dict<any>): string
   var text = ItemText(item)
-  if !IsSnippet(item)
-    return text
+  if IsSnippet(item)
+    # The menu can only put in one line; the rest follows once it is taken.
+    text = split(ExpandSnippet(text)[0], "\n", true)[0]
   endif
-  # The menu can only put in one line; the rest follows once it is taken.
-  return split(ExpandSnippet(text)[0], "\n", true)[0]
+  # For an edit taking in text before the word, "<b" becoming "<buffer>",
+  # only what follows that text: Vim narrows the menu down by the word.
+  var lead = EditLead(item)
+  if lead != '' && strpart(text, 0, strlen(lead)) == lead
+    return strpart(text, strlen(lead))
+  endif
+  return text
 enddef
 
 def ItemInfo(item: dict<any>): string
@@ -3350,13 +3356,15 @@ def ToCompleteItem(item: dict<any>, resolvable: bool): dict<any>
 enddef
 
 # The server is given the position and not the word, so the word still has to
-# be honoured here.
+# be honoured here.  An edit starting before the word is also matched with
+# the text typed from its start.
 def ItemMatches(item: dict<any>, base: string): bool
   if base->empty()
     return true
   endif
-  var against = item->get('filterText', item->get('label', ''))
-  return against->tolower()->stridx(base->tolower()) == 0
+  var against = item->get('filterText', item->get('label', ''))->tolower()
+  return against->stridx(base->tolower()) == 0
+    || against->stridx((EditLead(item) .. base)->tolower()) == 0
 enddef
 
 def CompletionTrigger(cl: dict<any>, typed: string): bool
@@ -3601,23 +3609,35 @@ def PutText(lnum: number, from: number, to: number, text: string,
   cursor(to_lnum, to_col)
 enddef
 
+# Where the edit of "item" starts in the line completion started on, when that
+# is before the word; -1 otherwise.
+def EditFrom(item: dict<any>): number
+  var edit = item->get('textEdit', {})
+  if started->empty() || type(edit) != v:t_dict || !edit->has_key('range')
+    return -1
+  endif
+  var first = edit.range->get('start', {})
+  if first->get('line', -1) != started.lnum - 1
+    return -1
+  endif
+  var from = util.ColFromLsp(started.line, first->get('character', 0),
+    started->get('encoding', 'utf-16')) - 1
+  return from < started.word ? from : -1
+enddef
+
+# The text an edit takes in before the word, "" for one that does not.
+def EditLead(item: dict<any>): string
+  var from = EditFrom(item)
+  return from < 0 ? '' : strpart(started.line, from, started.word - from)
+enddef
+
 # A server answers against the line as it was when it was asked, and the
 # request goes out from the column completion starts at.  So an edit starting
 # there is the word and no more; one starting before it reaches further back
 # than completion can, "obj->fie" becoming "obj.field" for instance.
 def FixWiderEdit(item: dict<any>): bool
-  var edit = item->get('textEdit', {})
-  if started->empty() || type(edit) != v:t_dict || !edit->has_key('range')
-      || line('.') != started.lnum
-    return false
-  endif
-  var first = edit.range->get('start', {})
-  if first->get('line', -1) != started.lnum - 1
-    return false
-  endif
-  var from = util.ColFromLsp(started.line, first->get('character', 0),
-    started->get('encoding', 'utf-16')) - 1
-  if from >= started.word
+  var from = EditFrom(item)
+  if from < 0 || line('.') != started.lnum
     return false
   endif
 

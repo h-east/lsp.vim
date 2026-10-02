@@ -1209,6 +1209,44 @@ def g:Test_an_edit_wider_than_the_word()
   assert_equal('    obj->fie', getline(3))
 enddef
 
+def g:Test_an_edit_taking_in_text_before_the_word()
+  # "<" is no keyword character, so the word is "b" while each item replaces
+  # "<b".
+  def Item(name: string): dict<any>
+    return {
+      label: name,
+      kind: 14,
+      textEdit: {
+        newText: name,
+        range: {start: {line: 2, character: 8}, end: {line: 2, character: 10}},
+      },
+    }
+  enddef
+  assert_true(t.StartServer({
+    capabilities: Offering({completionProvider: {resolveProvider: false}}),
+    replies: {'textDocument/completion': {isIncomplete: false,
+      items: [Item('<bar>'), Item('<buffer>'), Item('<expr>')]}},
+  }, ['int main(void)', '{', '    x = <b', '}']))
+
+  var save_cot = &completeopt
+  set completeopt=menuone,noinsert
+  try
+    # "<expr>" does not start with "<b"; typing "u" with the menu up leaves
+    # "<buffer>".
+    cursor(3, 10)
+    feedkeys("A\<C-X>\<C-O>\<C-R>=string(complete_info(['items']).items"
+      .. "->mapnew((_, v) => v.abbr))\<CR>\<Esc>", 'tx')
+    assert_equal("    x = <b['<bar>', '<buffer>']", getline(3))
+
+    setline(3, '    x = <b')
+    cursor(3, 10)
+    feedkeys("A\<C-X>\<C-O>u\<C-Y>\<Esc>", 'tx')
+    assert_equal('    x = <buffer>', getline(3))
+  finally
+    &completeopt = save_cot
+  endtry
+enddef
+
 # An item without documentation gets a blank info, and is asked about.
 def g:Test_an_item_without_documentation_is_resolved()
   const ITEM = {label: 'printf', kind: 3, data: {tag: 'printf()'}}
