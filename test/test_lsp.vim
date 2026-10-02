@@ -1247,6 +1247,78 @@ def g:Test_an_edit_taking_in_text_before_the_word()
   endtry
 enddef
 
+# The report on the word that completion replaces is drawn again as the menu
+# moves, and only on that line.
+def g:Test_completion_draws_the_report_on_its_line_again()
+  def Report(line: number, from: number, to: number): dict<any>
+    return {
+      range: {start: {line: line, character: from},
+        end: {line: line, character: to}},
+      severity: 4,
+      message: 'reported',
+    }
+  enddef
+  assert_true(t.StartServer({
+    capabilities: Offering({completionProvider: {resolveProvider: false}}),
+    replies: {'textDocument/completion': {isIncomplete: false,
+      items: [{label: 'foo'}, {label: 'fob'}]}},
+    notify: [{method: 'textDocument/publishDiagnostics',
+      params: {uri: 'file://' .. t.SRC,
+        diagnostics: [Report(0, 4, 7), Report(2, 4, 6)]}}],
+  }, ['int one;', 'int two;', '    fo']))
+  assert_true(t.WaitFor(() =>
+    len(prop_list(1)) == 1 && len(prop_list(3)) == 1),
+    'both reports should be drawn')
+
+  # The mark on line 1 moves along with what is typed before it; drawing the
+  # whole buffer again would put it back where the report has it.
+  feedkeys("ggIXX\<Esc>", 'tx')
+  assert_equal(7, prop_list(1)[0].col)
+
+  var save_cot = &completeopt
+  set completeopt=menuone,noinsert
+  try
+    cursor(3, 1)
+    feedkeys("A\<C-X>\<C-O>\<C-N>\<C-R>=string(prop_list(3)"
+      .. "->mapnew((_, p) => [p.col, p.type]))\<CR>\<Esc>", 'tx')
+    assert_equal("    fob[[5, 'LspDiagHintText']]", getline(3))
+    assert_equal(7, prop_list(1)[0].col)
+  finally
+    &completeopt = save_cot
+  endtry
+enddef
+
+# A report running on from the line above is neither lost on the line of the
+# word nor doubled on the other.
+def g:Test_completion_draws_a_report_over_lines_again()
+  assert_true(t.StartServer({
+    capabilities: Offering({completionProvider: {resolveProvider: false}}),
+    replies: {'textDocument/completion': {isIncomplete: false,
+      items: [{label: 'foo'}, {label: 'fob'}]}},
+    notify: [{method: 'textDocument/publishDiagnostics',
+      params: {uri: 'file://' .. t.SRC, diagnostics: [{
+        range: {start: {line: 0, character: 4},
+          end: {line: 1, character: 6}},
+        severity: 4,
+        message: 'reported',
+      }]}}],
+  }, ['int one;', '    fo']))
+  assert_true(t.WaitFor(() =>
+    len(prop_list(1)) == 1 && len(prop_list(2)) == 1),
+    'the report should be drawn')
+
+  var save_cot = &completeopt
+  set completeopt=menuone,noinsert
+  try
+    cursor(2, 1)
+    feedkeys("A\<C-X>\<C-O>\<C-N>\<C-R>=len(prop_list(1)) .. len(prop_list(2))"
+      .. "\<CR>\<Esc>", 'tx')
+    assert_equal('    fob11', getline(2))
+  finally
+    &completeopt = save_cot
+  endtry
+enddef
+
 # A server may ask for the argument of a command to be completed as on the
 # command line.
 def g:Test_completion_as_on_the_command_line()

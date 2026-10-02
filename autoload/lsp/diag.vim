@@ -107,6 +107,29 @@ def Erase(bufnr: number)
   prop_remove({types: PROP_TYPES, bufnr: bufnr, all: true})
 enddef
 
+# Where an item is marked: [lnum, col, end_lnum, end_col].
+def Span(bufnr: number, encoding: string, item: dict<any>): list<number>
+  var range = item->get('range', {})
+  var [lnum, col] = util.PosFromLsp(bufnr, range->get('start', {}), encoding)
+  var [end_lnum, end_col] = util.PosFromLsp(bufnr, range->get('end', {}),
+    encoding)
+  # A zero-width range would not be visible, widen it to one character.
+  if end_lnum == lnum && end_col <= col
+    end_col = col + 1
+  endif
+  return [lnum, col, end_lnum, end_col]
+enddef
+
+def Mark(bufnr: number, item: dict<any>, span: list<number>)
+  try
+    prop_add(span[0], span[1], {end_lnum: span[2], end_col: span[3],
+      bufnr: bufnr, type: Kind(item).prop})
+  catch /^Vim\%((\a\+)\)\=:E96[456]:/
+    # The buffer moved on since the server looked at it; the next round will
+    # line up again.
+  endtry
+enddef
+
 # The buffer has to be loaded: an unloaded one has no lines to draw on.
 def Draw(bufnr: number)
   Erase(bufnr)
@@ -116,25 +139,10 @@ def Draw(bufnr: number)
     var encoding = EncodingFor(bufnr, server)
     for item in reported[server]
       var kind = Kind(item)
-      var range = item->get('range', {})
-      var [lnum, col] = util.PosFromLsp(bufnr, range->get('start', {}),
-        encoding)
-      var [end_lnum, end_col] = util.PosFromLsp(bufnr, range->get('end', {}),
-        encoding)
-      signs->add({buffer: bufnr, group: SIGN_GROUP, lnum: lnum,
+      var span = Span(bufnr, encoding, item)
+      signs->add({buffer: bufnr, group: SIGN_GROUP, lnum: span[0],
         name: kind.sign, priority: kind.priority})
-
-      # A zero-width range would not be visible, widen it to one character.
-      if end_lnum == lnum && end_col <= col
-        end_col = col + 1
-      endif
-      try
-        prop_add(lnum, col, {end_lnum: end_lnum, end_col: end_col,
-          bufnr: bufnr, type: kind.prop})
-      catch /^Vim\%((\a\+)\)\=:E96[456]:/
-        # The buffer moved on since the server looked at it; the next round
-        # will line up again.
-      endtry
+      Mark(bufnr, item, span)
     endfor
   endfor
   if !signs->empty()
@@ -161,11 +169,33 @@ enddef
 
 # Completion takes the word it is replacing away, and the text properties on
 # it go with the text.  The server has no reason to report the same thing
-# twice, so what it last reported is drawn again from here.
-export def Redraw(bufnr: number)
-  if diagnostics->has_key(string(bufnr)) && bufloaded(bufnr)
-    Draw(bufnr)
+# twice, so what it last reported is drawn again from here, on line "lnum"
+# only: marks removed all over the buffer have Vim work out the syntax
+# highlighting again, on every move in the menu.
+export def Redraw(bufnr: number, lnum: number)
+  if !diagnostics->has_key(string(bufnr)) || !bufloaded(bufnr)
+    return
   endif
+  var marks: list<list<any>> = []
+  var reported = Reported(bufnr)
+  for server in Servers(bufnr)
+    var encoding = EncodingFor(bufnr, server)
+    for item in reported[server]
+      var span = Span(bufnr, encoding, item)
+      if span[0] > lnum || span[2] < lnum
+        continue
+      elseif span[0] != span[2]
+        # Drawn again on the line alone, it would be doubled on the others.
+        Draw(bufnr)
+        return
+      endif
+      marks->add([item, span])
+    endfor
+  endfor
+  prop_remove({types: PROP_TYPES, bufnr: bufnr, all: true}, lnum)
+  for [item, span] in marks
+    Mark(bufnr, item, span)
+  endfor
 enddef
 
 export def Clear(bufnr: number)
