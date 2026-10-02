@@ -1369,7 +1369,9 @@ def g:Test_completion_as_on_the_command_line()
     test_override('char_avail', 1)
     feedkeys("A=\<C-R>=string(complete_info(['items']).items"
       .. "->mapnew((_, v) => v.word))\<CR>\<Esc>", 'tx')
-    assert_equal("    set bg=['light', 'dark']", getline(3))
+    # The current value comes first.
+    var other = &background == 'light' ? 'dark' : 'light'
+    assert_equal($"    set bg={[&background, other]}", getline(3))
   finally
     &completeopt = save_cot
     CleanUp()
