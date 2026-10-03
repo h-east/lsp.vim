@@ -676,11 +676,16 @@ def g:Test_the_tag_function_leaves_the_tags_files_a_name_and_a_pattern()
   assert_equal(v:null, lsp#TagFunc('demo', '', {}))
   assert_equal(v:null, lsp#TagFunc('demo', 'r', {}))
   assert_equal(v:null, lsp#TagFunc('demo', 'cir', {}))
-  # Without one, v:null would only make Vim say there is no tags file.
+  # Without one, v:null would only make Vim report that there is no tags
+  # file.  An empty local value uses the global one, which may find a "tags"
+  # file in the current directory.
+  var saved_global = &g:tags
   setlocal tags=
+  &g:tags = ''
   assert_equal([], lsp#TagFunc('demo', '', {}))
   assert_equal([], lsp#TagFunc('demo', 'cir', {}))
   &l:tags = saved
+  &g:tags = saved_global
   assert_true(t.Sent('textDocument/definition')->empty(),
     'the server should not have been asked')
 
