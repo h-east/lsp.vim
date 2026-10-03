@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.036'
+const VERSION = '0.2.037'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -358,16 +358,29 @@ def SetBufferOptions(cl: dict<any>, bufnr: number)
   setbufvar(bufnr, '&omnifunc', 'lsp#OmniFunc')
 enddef
 
+# Buffers whose LspAttached waits for a window to show them in.
+var pending_attached: dict<bool> = {}
+
 # Fired for the buffer it is about, so a buffer-local setting lands on it.
-# One no window holds is passed over: nothing can make it current.
+# For one no window shows, LspAttached waits until a window does, and
+# LspDetached is not fired.
 def BufEvent(name: string, bufnr: number)
   if bufnr == bufnr('%')
     execute 'silent doautocmd <nomodeline> User' name
     return
   endif
-  var winid = bufwinid(bufnr)
-  if winid > 0
-    win_execute(winid, 'silent doautocmd <nomodeline> User ' .. name)
+  var winids = win_findbuf(bufnr)
+  if !winids->empty()
+    win_execute(winids[0], 'silent doautocmd <nomodeline> User ' .. name)
+  elseif name == 'LspAttached'
+    pending_attached[bufnr] = true
+  endif
+enddef
+
+def FirePendingAttached(bufnr: number)
+  if pending_attached->has_key(bufnr)
+    pending_attached->remove(bufnr)
+    BufEvent('LspAttached', bufnr)
   endif
 enddef
 
@@ -809,6 +822,7 @@ def HookBuffer()
   augroup lsp_buf
     autocmd! * <buffer>
     autocmd BufUnload <buffer> Detach(expand('<abuf>')->str2nr())
+    autocmd BufWinEnter <buffer> FirePendingAttached(expand('<abuf>')->str2nr())
     autocmd BufWritePre <buffer> WillSave(expand('<abuf>')->str2nr())
     autocmd BufWritePost <buffer> DidSave(expand('<abuf>')->str2nr())
     autocmd CompleteChanged <buffer> OnCompleteChanged()
@@ -940,6 +954,11 @@ export def Detach(bufnr: number = bufnr('%'))
   # A buffer may be let go of more than once, since the autocommand that
   # leads here stays with it; only the time it had a server is an event.
   var was_served = !getbufvar(bufnr, 'lsp_client_keys', [])->empty()
+  # LspAttached never came for it, so neither does LspDetached.
+  if pending_attached->has_key(bufnr)
+    pending_attached->remove(bufnr)
+    was_served = false
+  endif
   var listener = getbufvar(bufnr, 'lsp_listener', 0)
   if listener > 0
     listener_remove(listener)

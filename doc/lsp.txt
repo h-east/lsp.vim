@@ -441,7 +441,9 @@ it loses one:
 
 Each is fired for the buffer it is about, which is the current one while the
 autocommand runs, so |:map-<buffer>| and |:setlocal| land where they are meant
-to.  A buffer no window holds is passed over.
+to.  A window in another tab page counts as well.  A buffer no window shows
+gets LspAttached when a window first shows it, and gets no LspDetached;
+neither does a buffer that loses its server before then.
 
 This is where the settings a server makes worth having belong, rather than
 under a |FileType| autocommand: where a server is set up but not installed,

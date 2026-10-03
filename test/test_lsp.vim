@@ -3166,6 +3166,77 @@ def g:Test_the_events_a_buffer_gaining_and_losing_a_server_fires()
   assert_equal([['attached', again], ['detached', again]], g:seen)
 enddef
 
+# The events for a buffer taken on while the server starts come once it is
+# up, when the buffer may be shown only in another tab page or nowhere.
+def g:Test_the_events_reach_a_buffer_that_is_not_in_the_current_window()
+  g:seen = []
+  augroup lsp_test_events
+    autocmd!
+    autocmd User LspAttached add(g:seen, ['attached', bufnr('%')])
+    autocmd User LspDetached add(g:seen, ['detached', bufnr('%')])
+  augroup END
+  defer execute('autocmd! lsp_test_events')
+  defer execute('unlet g:seen')
+  defer execute('tabonly!')
+  defer execute('set ' .. (&hidden ? '' : 'no') .. 'hidden')
+  set hidden
+
+  const OTHER = t.SRC->substitute('\.c$', '_tab.c', '')
+  const HIDDEN = t.SRC->substitute('\.c$', '_hidden.c', '')
+  const UNSEEN = t.SRC->substitute('\.c$', '_unseen.c', '')
+  for file in [OTHER, HIDDEN, UNSEEN]
+    writefile(['int x;'], file)
+  endfor
+  defer delete(OTHER)
+  defer delete(HIDDEN)
+  defer delete(UNSEEN)
+  const SCENARIO = t.SRC->substitute('\.c$', '_scenario.json', '')
+  const TRACE = t.SRC->substitute('\.c$', '_trace.jsonl', '')
+  writefile([json_encode({capabilities: SYNC})], SCENARIO)
+  defer delete(SCENARIO)
+  defer delete(TRACE)
+
+  var saved = get(g:, 'lsp_server_list', [])
+  defer execute('g:lsp_server_list = ' .. string(saved))
+  g:lsp_server_list = [{name: 'fake', filetypes: ['c'],
+    cmd: t.CMD + [SCENARIO, TRACE], rootPatterns: ['.git']}]
+  writefile(['int x;'], t.SRC)
+  execute 'edit! ' .. fnameescape(t.SRC)
+  setfiletype c
+  var first = bufnr('%')
+  var hidden = bufadd(HIDDEN)
+  bufload(hidden)
+  setbufvar(hidden, '&filetype', 'c')
+  var unseen = bufadd(UNSEEN)
+  bufload(unseen)
+  setbufvar(unseen, '&filetype', 'c')
+  execute 'tabedit ' .. fnameescape(OTHER)
+  setfiletype c
+  var other = bufnr('%')
+  assert_equal([], g:seen, 'nothing before the server is up')
+
+  assert_true(t.WaitFor(() => execute('LspStatus') =~ 'ready', 30000))
+  assert_equal([['attached', first], ['attached', other]], g:seen)
+
+  # A hidden buffer gets LspAttached when a window first shows it.
+  g:seen = []
+  execute 'buffer' hidden
+  assert_equal([['attached', hidden]], g:seen)
+  execute 'buffer' other
+  execute 'buffer' hidden
+  assert_equal([['attached', hidden]], g:seen, 'and only then')
+
+  # No LspDetached for a buffer that never got LspAttached.
+  g:seen = []
+  execute 'bwipe!' unseen
+  assert_equal([], g:seen)
+
+  # LspDetached reaches the buffer in the other tab page, not a hidden one.
+  LspStop
+  assert_equal(sort([['detached', first], ['detached', hidden]]),
+    g:seen->sort())
+enddef
+
 def g:Test_the_character_references_in_a_hover()
   defer popup_clear()
   assert_true(t.StartServer({
