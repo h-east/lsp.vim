@@ -3812,6 +3812,32 @@ def g:Test_the_status_names_a_server_that_exited()
   assert_notmatch('starting', execute('LspStatus'))
 enddef
 
+# Another server is started in place of one that went away, with ":LspStart"
+# or when the buffer is opened again.
+def g:Test_a_server_that_exited_is_started_again()
+  def ServerLines(): list<string>
+    return execute('LspStatus')->split("\n")->filter((_, l) => l =~ '^fake@')
+  enddef
+  assert_true(t.StartServer({capabilities: Offering({hoverProvider: true}),
+    die: ['textDocument/hover']}, ['int one;']))
+
+  silent! LspHover
+  assert_true(t.WaitFor(() => execute('LspStatus') =~ 'exited'))
+  LspStart
+  assert_true(t.WaitFor(() => execute('LspStatus') =~ 'ready'),
+    ':LspStart should start the server again')
+  assert_equal(1, len(ServerLines()))
+  assert_match('  1 buffer  ', ServerLines()[0])
+
+  silent! LspHover
+  assert_true(t.WaitFor(() => execute('LspStatus') =~ 'exited'))
+  edit!
+  assert_true(t.WaitFor(() => execute('LspStatus') =~ 'ready'),
+    'opening the buffer again should start the server again')
+  assert_equal(1, len(ServerLines()))
+  assert_match('  1 buffer  ', ServerLines()[0])
+enddef
+
 def g:Test_the_status_names_the_server_version()
   assert_true(t.StartServer({capabilities: SYNC,
     serverInfo: {name: 'fakels', version: '1.2.3'}}, ['int one;']))

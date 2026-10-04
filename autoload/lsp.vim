@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.038'
+const VERSION = '0.2.039'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -265,10 +265,16 @@ enddef
 # on before, or one running under the same name that can take it on now.
 def ClientFor(name: string, root: string): string
   var key = ClientKey(name, root)
+  if HasExited(key)
+    DropExited(key)
+  endif
   if clients->has_key(key)
     return key
   endif
   key = adopted->get(root, '')
+  if HasExited(key)
+    DropExited(key)
+  endif
   if clients->has_key(key)
     return key
   endif
@@ -282,6 +288,28 @@ def ClientFor(name: string, root: string): string
     endif
   endfor
   return ''
+enddef
+
+# Whether the server of "key" went away without having been stopped.
+def HasExited(key: string): bool
+  return clients->has_key(key) && !clients[key].running
+enddef
+
+# A server that went away is let go of with the buffers it had, so that
+# another can be started in its place.
+def DropExited(key: string)
+  var cl = clients[key]
+  var bufnrs = cl.documents->values()->mapnew((_, doc) => doc.bufnr)
+    + pending_open->get(key, [])
+  for bufnr in bufnrs->filter((_, nr) => bufexists(nr))
+    Detach(bufnr)
+  endfor
+  StopWorkspacePull(cl)
+  clients->remove(key)
+  adopted->filter((_, at) => at != key)
+  if pending_open->has_key(key)
+    remove(pending_open, key)
+  endif
 enddef
 
 # A path as the server may have written it: on its own, and from each of the
@@ -878,7 +906,11 @@ export def Attach(loud: bool = false)
     PopupStyle(popup)
   endfor
   var bufnr = bufnr('%')
-  if !getbufvar(bufnr, 'lsp_client_keys', [])->empty()
+  var held: list<string> = getbufvar(bufnr, 'lsp_client_keys', [])
+  if held->copy()->filter((_, key) => HasExited(key))->len() > 0
+    # Taken on again, so that a server is started in place of the one gone.
+    Detach(bufnr)
+  elseif !held->empty()
     if loud
       echomsg 'lsp: this buffer already has a server'
     endif
