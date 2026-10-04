@@ -151,7 +151,7 @@ def LspBuffer()
   setlocal tagfunc=lsp#TagFunc
   # The Vim filetype points 'keywordprg' at ":help", which offers more
   # than a popup of the same text.
-  if &filetype !=# 'vim'
+  if &filetype != 'vim'
     setlocal keywordprg=:LspHover
   endif
 
