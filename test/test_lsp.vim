@@ -3812,6 +3812,47 @@ def g:Test_the_status_names_a_server_that_exited()
   assert_notmatch('starting', execute('LspStatus'))
 enddef
 
+# What a server reported on a buffer it never had goes with the server, and
+# is not taken for what the next one under the same name reported.
+def g:Test_the_reports_of_a_server_go_with_it()
+  def Report(line: number): dict<any>
+    return {range: {start: {line: line, character: 0},
+      end: {line: line, character: 1}}, message: 'fault'}
+  enddef
+  const OTHER = fnamemodify(t.SRC, ':h') .. '/Xother.c'
+  writefile(['int a;', 'int b;'], OTHER)
+  defer delete(OTHER)
+  const REPORTING = {
+    capabilities: Offering({hoverProvider: true}),
+    die: ['textDocument/hover'],
+    notify: [{method: 'textDocument/publishDiagnostics',
+      params: {uri: 'file://' .. OTHER, diagnostics: [Report(0), Report(1)]}}],
+  }
+
+  for how in ['LspStop', 'exit']
+    execute 'badd ' .. fnameescape(OTHER)
+    assert_true(t.StartServer(REPORTING, ['int one;']))
+    assert_true(t.WaitFor(() => execute('LspStatus') =~ ' 2 diagnostics'))
+    if how == 'LspStop'
+      LspStop
+    else
+      silent! LspHover
+      assert_true(t.WaitFor(() => execute('LspStatus') =~ 'exited'))
+    endif
+
+    # The next one reports nothing.
+    assert_true(t.StartServer({capabilities: SYNC}, ['int one;']))
+    assert_match(' 0 diagnostics', execute('LspStatus'), how)
+    execute 'buffer ' .. bufnr(OTHER)
+    setloclist(0, [], 'f')
+    silent! LspDiag
+    assert_equal([], getloclist(0), how)
+    lclose
+    LspStop
+    execute 'bwipe! ' .. fnameescape(OTHER)
+  endfor
+enddef
+
 # Another server is started in place of one that went away, with ":LspStart"
 # or when the buffer is opened again.
 def g:Test_a_server_that_exited_is_started_again()

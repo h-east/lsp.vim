@@ -304,6 +304,7 @@ def DropExited(key: string)
   for bufnr in bufnrs->filter((_, nr) => bufexists(nr))
     Detach(bufnr)
   endfor
+  diag.Forget(key)
   StopWorkspacePull(cl)
   clients->remove(key)
   adopted->filter((_, at) => at != key)
@@ -1025,12 +1026,13 @@ enddef
 
 export def Stop(loud: bool = false)
   var running = len(clients)
-  for cl in clients->values()
+  for [key, cl] in clients->items()
     # The buffers go back to what they were before the server took them on,
     # while it is still there to be told they are closed.
     for doc in cl.documents->values()
       Detach(doc.bufnr)
     endfor
+    diag.Forget(key)
     StopWorkspacePull(cl)
     lspclient.Stop(cl)
   endfor

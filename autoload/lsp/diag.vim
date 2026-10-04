@@ -239,6 +239,26 @@ export def Redraw(bufnr: number, lnum: number)
   endfor
 enddef
 
+# What a server that is gone reported, on every buffer.  One started again in
+# its place is known by the same name, and would otherwise be taken to have
+# reported it.
+export def Forget(server: string)
+  for [key, reported] in diagnostics->items()
+    if !reported->has_key(server)
+      continue
+    endif
+    remove(reported, server)
+    remove(encodings[key], server)
+    if reported->empty()
+      remove(diagnostics, key)
+      remove(encodings, key)
+    endif
+    if bufloaded(str2nr(key))
+      Draw(str2nr(key))
+    endif
+  endfor
+enddef
+
 export def Clear(bufnr: number)
   var key = string(bufnr)
   if diagnostics->has_key(key)
