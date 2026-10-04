@@ -450,7 +450,7 @@ under a |FileType| autocommand: where a server is set up but not installed,
 the buffer is then left as it was: >vim9
 
 	def LspBuffer()
-	  setlocal complete^=o completeopt=menuone,popup signcolumn=yes
+	  setlocal complete^=o completeopt+=popup signcolumn=yes
 	  # CTRL-] and the other tag commands reach the server, see
 	  # |lsp-tagfunc|.
 	  setlocal tagfunc=lsp#TagFunc

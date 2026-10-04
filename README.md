@@ -145,7 +145,7 @@ def LspBuffer()
   # which the plugin has set.
   setlocal complete^=o
   setlocal autocomplete    # See also 'autocompletedelay'
-  setlocal completeopt=menuone,popup
+  setlocal completeopt+=popup
   setlocal signcolumn=yes
   # CTRL-] and the other tag commands ask the server.
   setlocal tagfunc=lsp#TagFunc
@@ -174,7 +174,7 @@ function! s:LspBuffer()
   " which the plugin has set.
   setlocal complete^=o
   setlocal autocomplete    " See also 'autocompletedelay'
-  setlocal completeopt=menuone,popup
+  setlocal completeopt+=popup
   setlocal signcolumn=yes
   " The Vim filetype points 'keywordprg' at ":help", which offers more
   " than a popup of the same text.
