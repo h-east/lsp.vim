@@ -3848,8 +3848,10 @@ def g:Test_the_reports_of_a_server_go_with_it()
     silent! LspDiag
     assert_equal([], getloclist(0), how)
     lclose
-    LspStop
+    # Wiped out while a server runs, so that the buffer coming into the window
+    # does not start one that outlives the test.
     execute 'bwipe! ' .. fnameescape(OTHER)
+    LspStop
   endfor
 enddef
 

@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.039'
+const VERSION = '0.2.040'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
