@@ -571,16 +571,24 @@ The server ~
 
 						*:LspStatus*
 :LspStatus	Name the version of the plugin and of Vim, then list the
-		running servers, whether each one finished starting up, how
-		many buffers it has, and how many reports of its own are
-		known for the current buffer.  A server that was given more
-		than one workspace folder lists them under its own line.
+		servers it started, whether each one is "starting", "ready",
+		or "exited" without having been stopped, how many buffers it
+		has, and how many reports of its own are known over all the
+		buffers.  The name and version the server reports for itself
+		follow in parentheses, when it reports them; the name is left
+		out when it is the one the line starts with, and of the
+		version only the number is shown.  A server that was given
+		more than one workspace folder lists them under its own line.
 		Anything in |g:lsp_client_config| that could not be read is
 		listed first; |:LspConfigCheck| goes over it all.
 
-		With a "!", which server answers each feature of the current
-		buffer follows, which is what to read where more than one of
-		them holds it; see |lsp-more-than-one-server|.
+		With a "!", the version is shown the way the server reports
+		it, and the current buffer is named with which server answers
+		each feature of it, which is what to read where more than one
+		of them holds it; see |lsp-more-than-one-server|.  A feature
+		that no server offers is left out.  A feature that is off in
+		|g:lsp_client_config|, whether by its default or as set there,
+		is followed by "(off:" and the key.
 
 						*:LspConfigCheck*
 :LspConfigCheck	Read |g:lsp_client_config| and |g:lsp_server_list| and

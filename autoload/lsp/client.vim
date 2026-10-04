@@ -431,6 +431,8 @@ def Initialize(client: dict<any>, OnReady: func(dict<any>))
       return
     endif
     client.capabilities = result->get('capabilities', {})
+    var info = result->get('serverInfo', {})
+    client.serverInfo = type(info) == v:t_dict ? info : {}
     # clangd answers under a name of its own, next to the capabilities
     # rather than in them, so both places are read.
     var encoding = client.capabilities->get('positionEncoding',
@@ -483,6 +485,8 @@ export def Start(config: dict<any>, root: string,
     stopping: false,
     initialized: false,
     capabilities: {},
+    # The "serverInfo" it answered "initialize" with.
+    serverInfo: {},
     stderr: [],
     log: [],
     documents: {},

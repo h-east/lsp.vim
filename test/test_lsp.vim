@@ -3749,17 +3749,23 @@ enddef
 
 # Which server answers what is asked for with a "!", and left out without it.
 def g:Test_the_status_names_what_answers_for_the_buffer()
+  g:lsp_client_config.signature_help = false
+  defer execute('unlet g:lsp_client_config.signature_help')
   assert_true(t.StartServers([
     {scenario: {capabilities: Offering({documentFormattingProvider: true})}},
-    {scenario: {capabilities: Offering({hoverProvider: true})}},
+    {scenario: {capabilities: Offering({hoverProvider: true,
+      signatureHelpProvider: {}})}},
   ], ['int one;']))
 
-  assert_notmatch('this buffer:', execute('LspStatus'))
+  assert_notmatch('current buffer:', execute('LspStatus'))
 
   var text = execute('LspStatus!')
-  assert_match('this buffer:', text)
-  assert_match('formatting\s\+fake0', text)
-  assert_match('hover\s\+fake1', text)
+  assert_match('\n\ncurrent buffer: ' .. escape(fnamemodify(t.SRC, ':~:.'), '\.~')
+    .. '\n  feature \+answered by\n', text)
+  assert_match('\n  formatting \+fake0\n', text)
+  assert_match('\n  hover \+fake1\n', text)
+  # A setting that keeps what the server offers from being used is named.
+  assert_match('\n  signatureHelp \+fake1  (off: signature_help)$', text)
 enddef
 
 # The root of a server is named the way :ls names a file, not in full.
@@ -3770,6 +3776,82 @@ def g:Test_the_status_shortens_the_root()
     ->filter((_, l) => l =~ '^fake@')->get(0, '')
   var root = fnamemodify(t.SRC, ':h:h')
   assert_equal('fake@' .. fnamemodify(root, ':~:.'), line->matchstr('^\S\+'))
+  assert_match('  1 buffer  0 diagnostics$', line)
+enddef
+
+# The reports of a server are counted over every buffer, not only this one.
+def g:Test_the_status_counts_every_report_of_a_server()
+  def Report(line: number): dict<any>
+    return {range: {start: {line: line, character: 0},
+      end: {line: line, character: 1}}, message: 'fault'}
+  enddef
+  const OTHER = fnamemodify(t.SRC, ':h') .. '/Xother.c'
+  execute 'badd ' .. fnameescape(OTHER)
+  assert_true(t.StartServer({
+    capabilities: SYNC,
+    notify: [
+      {method: 'textDocument/publishDiagnostics',
+        params: {uri: 'file://' .. t.SRC, diagnostics: [Report(0)]}},
+      {method: 'textDocument/publishDiagnostics',
+        params: {uri: 'file://' .. OTHER, diagnostics: [Report(0), Report(1)]}},
+    ],
+  }, ['int one;', 'int two;']))
+  assert_true(t.WaitFor(() => execute('LspStatus') =~ ' 3 diagnostics'),
+    'the reports on both buffers should be counted')
+  execute 'bwipe! ' .. fnameescape(OTHER)
+enddef
+
+# A server that went away without being told to is not taken for one that is
+# still starting.
+def g:Test_the_status_names_a_server_that_exited()
+  assert_true(t.StartServer({capabilities: Offering({hoverProvider: true}),
+    die: ['textDocument/hover']}, ['int one;']))
+  silent! LspHover
+  assert_true(t.WaitFor(() => execute('LspStatus') =~ 'exited'),
+    'the status should tell the server exited')
+  assert_notmatch('starting', execute('LspStatus'))
+enddef
+
+def g:Test_the_status_names_the_server_version()
+  assert_true(t.StartServer({capabilities: SYNC,
+    serverInfo: {name: 'fakels', version: '1.2.3'}}, ['int one;']))
+  var line = execute('LspStatus')->split("\n")
+    ->filter((_, l) => l =~ '^fake@')->get(0, '')
+  assert_match('diagnostics  (fakels 1\.2\.3)$', line)
+
+  LspStop
+  assert_true(t.StartServer({capabilities: SYNC,
+    serverInfo: {name: 'fakels'}}, ['int one;']))
+  line = execute('LspStatus')->split("\n")
+    ->filter((_, l) => l =~ '^fake@')->get(0, '')
+  assert_match('diagnostics  (fakels)$', line)
+
+  # The name the line starts with is not repeated.
+  LspStop
+  assert_true(t.StartServer({capabilities: SYNC,
+    serverInfo: {name: 'fake', version: '1.2.3'}}, ['int one;']))
+  line = execute('LspStatus')->split("\n")
+    ->filter((_, l) => l =~ '^fake@')->get(0, '')
+  assert_match('diagnostics  (1\.2\.3)$', line)
+
+  LspStop
+  assert_true(t.StartServer({capabilities: SYNC,
+    serverInfo: {name: 'fake'}}, ['int one;']))
+  line = execute('LspStatus')->split("\n")
+    ->filter((_, l) => l =~ '^fake@')->get(0, '')
+  assert_match('diagnostics$', line)
+
+  # Only the number of a long version, unless asked for with a "!".
+  LspStop
+  assert_true(t.StartServer({capabilities: SYNC,
+    serverInfo: {name: 'fake', version: 'Some fake version 18.1.3 (x86_64)'}},
+    ['int one;']))
+  line = execute('LspStatus')->split("\n")
+    ->filter((_, l) => l =~ '^fake@')->get(0, '')
+  assert_match('diagnostics  (18\.1\.3)$', line)
+  line = execute('LspStatus!')->split("\n")
+    ->filter((_, l) => l =~ '^fake@')->get(0, '')
+  assert_match('diagnostics  (Some fake version 18\.1\.3 (x86_64))$', line)
 enddef
 
 # The text of the popups that show what a server is busy with.

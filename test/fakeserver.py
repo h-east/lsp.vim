@@ -7,6 +7,7 @@ where what arrives is written.  Naming them as arguments is what lets more
 than one of these run at a time, each with a scenario of its own.
 
     capabilities  what to answer "initialize" with
+    serverInfo    what else to answer "initialize" with
     notify        messages to send once "initialized" arrives, in order
     replies       result by method name, for requests that arrive later
     sequence      results by method name, one per request in the order they
@@ -25,6 +26,8 @@ than one of these run at a time, each with a scenario of its own.
                   came with, or else the last request that had one
     hold          methods whose requests are not answered, kept open the
                   way a server keeps "workspace/diagnostic"
+    die           methods on whose arrival the server exits with status 1,
+                  without having been told to
 
 Every message that comes in is appended to $LSP_TRACE as one JSON object per
 line, so a test can check what the client sent as well as what it did with
@@ -116,9 +119,13 @@ def main():
                 if name.endswith('Token'):
                     _tokens[name] = value
 
+        if method in SCENARIO.get('die', []):
+            sys.exit(1)
         if method == 'initialize':
-            send({'jsonrpc': '2.0', 'id': msg['id'],
-                  'result': {'capabilities': SCENARIO.get('capabilities', {})}})
+            result = {'capabilities': SCENARIO.get('capabilities', {})}
+            if 'serverInfo' in SCENARIO:
+                result['serverInfo'] = SCENARIO['serverInfo']
+            send({'jsonrpc': '2.0', 'id': msg['id'], 'result': result})
         elif method == 'initialized':
             for item in SCENARIO.get('notify', []):
                 send({'jsonrpc': '2.0', 'method': item['method'],

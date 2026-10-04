@@ -380,9 +380,17 @@ export def Count(bufnr: number): number
   return len(AllFor(bufnr))
 enddef
 
-# What one server reported, which is what |:LspStatus| shows against it.
-export def CountFor(bufnr: number, server: string): number
-  return len(Reported(bufnr)->get(server, []))
+# What one server reported over all buffers, which is what |:LspStatus| shows
+# against it.
+export def CountFor(server: string): number
+  var count = 0
+  # A buffer that was never attached keeps its reports after it is wiped out.
+  for [key, reported] in diagnostics->items()
+    if bufexists(str2nr(key))
+      count += len(reported->get(server, []))
+    endif
+  endfor
+  return count
 enddef
 
 # test/run sets this to have every :def compiled as the script is read.

@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.037'
+const VERSION = '0.2.038'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -1195,13 +1195,17 @@ def ShowAnswering()
       continue
     endif
     var off = SETTING_OF->has_key(feature) && !Setting(SETTING_OF[feature])
-    lines->add(printf('    %-18s %s%s', feature, names->join(', '),
-      off ? '  (off)' : ''))
+    lines->add(printf('  %-18s %s%s', feature, names->join(', '),
+      off ? printf('  (off: %s)', SETTING_OF[feature]) : ''))
   endfor
   if lines->empty()
     return
   endif
-  echo '  this buffer:'
+  var name = bufname(bufnr)
+  # Not indented, so that it is not taken for a part of the last server.
+  echo "\ncurrent buffer: "
+    .. (name->empty() ? '[No Name]' : util.ShortPath(name))
+  echo printf('  %-18s %s', 'feature', 'answered by')
   for line in lines
     echo line
   endfor
@@ -1221,9 +1225,13 @@ export def Status(answering: bool = false)
     return
   endif
   for [key, cl] in clients->items()
-    echo printf('%s@%s  %s  %d buffer(s)  %d diagnostic(s) here', cl.name,
-      util.ShortPath(cl.root), cl.initialized ? 'ready' : 'starting',
-      len(cl.documents), diag.CountFor(bufnr('%'), key))
+    var buffers = len(cl.documents)
+    var diagnostics = diag.CountFor(key)
+    echo printf('%s@%s  %s  %d buffer%s  %d diagnostic%s%s', cl.name,
+      util.ShortPath(cl.root),
+      !cl.running ? 'exited' : cl.initialized ? 'ready' : 'starting',
+      buffers, buffers == 1 ? '' : 's',
+      diagnostics, diagnostics == 1 ? '' : 's', ServerVersion(cl, answering))
     # The root is named above already, so one folder is worth no list.
     if len(cl.folders) > 1
       for i in range(len(cl.folders))
@@ -1235,6 +1243,26 @@ export def Status(answering: bool = false)
   if answering
     ShowAnswering()
   endif
+enddef
+
+# What a server calls itself and its version, for the end of its line in
+# ":LspStatus".  Unless "full" is set, the version is cut down to its number,
+# as clangd puts its whole "--version" there.
+def ServerVersion(cl: dict<any>, full: bool): string
+  var name = cl.serverInfo->get('name', '')
+  if type(name) == v:t_string && name == cl.name
+    name = ''
+  endif
+  var version = cl.serverInfo->get('version', '')
+  if !full && type(version) == v:t_string
+    var number = version->matchstr('\d\+\%(\.\d\+\)\+')
+    if !number->empty()
+      version = number
+    endif
+  endif
+  var words = [name, version]
+    ->filter((_, w) => type(w) == v:t_string && !w->empty())
+  return words->empty() ? '' : printf('  (%s)', words->join(' '))
 enddef
 
 # What ":LspWorkspaceFolderRemove" can be given: not the root it started on.
