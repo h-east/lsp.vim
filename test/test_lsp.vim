@@ -2559,6 +2559,30 @@ def g:Test_the_diagnostics_are_asked_for_when_they_are_not_sent()
   assert_false(prop_list(1)->empty(), 'the report should still stand')
 enddef
 
+# Typing in Insert mode asks for nothing; leaving it does.
+def g:Test_the_diagnostics_are_asked_for_after_insert_mode()
+  assert_true(t.StartServer({
+    capabilities: Offering({diagnosticProvider:
+      {interFileDependencies: false, workspaceDiagnostics: false}}),
+    replies: {'textDocument/diagnostic': {kind: 'full', items: []}},
+  }, ['int main(void)', '{', '}']))
+  assert_true(t.WaitFor(() =>
+    !t.Sent('textDocument/diagnostic')->empty()))
+  sleep 400m
+  var first = len(t.Sent('textDocument/diagnostic'))
+
+  setline(2, '{ ')
+  doautocmd TextChangedI
+  doautocmd TextChangedP
+  sleep 400m
+  assert_equal(first, len(t.Sent('textDocument/diagnostic')),
+    'nothing should be asked while typing')
+  doautocmd InsertLeave
+  assert_true(t.WaitFor(() =>
+    len(t.Sent('textDocument/diagnostic')) > first),
+    'leaving Insert mode should ask')
+enddef
+
 def g:Test_a_report_is_asked_for_once_the_server_registers_for_it()
   const REPORT = {
     range: {start: {line: 0, character: 4}, end: {line: 0, character: 7}},

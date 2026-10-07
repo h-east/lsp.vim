@@ -1068,8 +1068,9 @@ on that line.  A line without a diagnostic leaves the message line alone
 rather than clearing it, so this does not wipe out other messages.
 
 A server that waits to be asked is asked once the typing has stopped for a
-moment.  It is handed back the "resultId" of its last report, which is how it
-can answer that nothing has changed instead of listing everything again.
+moment, and not before Insert mode is left: what is typed comes first.  It is
+handed back the "resultId" of its last report, which is how it can answer that
+nothing has changed instead of listing everything again.
 
 |:LspDiag| collects them into the location list, which is the way to walk
 through them with |:lnext| and |:lprevious|.  They are in the order of the

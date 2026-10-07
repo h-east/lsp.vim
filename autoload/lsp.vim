@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.040'
+const VERSION = '0.2.041'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -872,7 +872,7 @@ def HookBuffer()
     autocmd TextChanged,TextChangedI,TextChangedP,BufEnter <buffer> {
       SemanticLater()
     }
-    autocmd TextChanged,TextChangedI,TextChangedP,BufEnter <buffer> PullLater()
+    autocmd TextChanged,InsertLeave,BufEnter <buffer> PullLater()
     autocmd TextChangedI,TextChangedP <buffer> OnTextChanged()
     autocmd CursorMovedI <buffer> OnCursorMovedI()
     autocmd InsertLeave <buffer> CloseSignature()
