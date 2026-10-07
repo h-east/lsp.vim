@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.042'
+const VERSION = '0.2.043'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -3340,6 +3340,7 @@ enddef
 # so the letters are indexed by that number.
 #                     1234567890123456789012345
 const KIND_LETTERS = ' tfffmvcimpuvekSCFrDEdsVoT'
+const KIND_VALUE = 12
 
 def ItemKind(item: dict<any>): string
   var kind = item->get('kind', 0)
@@ -3504,8 +3505,9 @@ def CmdlineItems(before: string): list<dict<any>>
   for match in found
     for from in range(started.word - chunk, started.word)
       if stridx(match, strpart(before, from)) == 0
+        # Marked as a Value, so as not to look like a word of the buffer.
         items->add({word: strpart(match, started.word - from), abbr: match,
-          dup: 1})
+          kind: KIND_LETTERS[KIND_VALUE], dup: 1})
         break
       endif
     endfor

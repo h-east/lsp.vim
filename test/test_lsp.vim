@@ -1341,8 +1341,9 @@ def g:Test_completion_as_on_the_command_line()
   try
     cursor(3, 1)
     feedkeys("A\<C-X>\<C-O>\<C-R>=string(complete_info(['items']).items"
-      .. "->mapnew((_, v) => v.word))\<CR>\<Esc>", 'tx')
-    assert_equal("    set cot=menu,po['popup', 'popuphidden']", getline(3))
+      .. "->mapnew((_, v) => [v.word, v.kind]))\<CR>\<Esc>", 'tx')
+    assert_equal("    set cot=menu,po[['popup', 'v'], ['popuphidden', 'v']]",
+      getline(3))
 
     # What Vim replaces reaches back before the word, which is "bu".
     setline(3, '    nnoremap <bu')
