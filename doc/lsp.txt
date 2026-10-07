@@ -285,6 +285,15 @@ g:lsp_client_config
 				|lsp-workspace-diagnostics|.
 				Default: |false|
 
+		diagnostics_in_insert
+				When true, a server that waits to be asked for
+				its diagnostics is asked in Insert mode as
+				well, once the typing has stopped for a
+				moment.  Off by default: a server busy working
+				them out answers completion late.  See
+				|lsp-diagnostics|.
+				Default: |false|
+
 		will_save	When true, a server that wants to put the
 				file right on the way to disk is asked what to
 				change first, and the write waits for the
@@ -1071,6 +1080,8 @@ A server that waits to be asked is asked once the typing has stopped for a
 moment, and not before Insert mode is left: what is typed comes first.  It is
 handed back the "resultId" of its last report, which is how it can answer that
 nothing has changed instead of listing everything again.
+"diagnostics_in_insert" of |g:lsp_client_config| has it asked while typing
+too.  What a server reports on its own is shown in Insert mode either way.
 
 |:LspDiag| collects them into the location list, which is the way to walk
 through them with |:lnext| and |:lprevious|.  They are in the order of the

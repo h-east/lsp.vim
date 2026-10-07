@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.041'
+const VERSION = '0.2.042'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -63,6 +63,7 @@ const DEFAULTS = {
   semantic_tokens: false,
   on_type_formatting: false,
   workspace_diagnostics: false,
+  diagnostics_in_insert: false,
   will_save: true,
   hover_format: 'plaintext',
   hover_popup: {},
@@ -873,6 +874,11 @@ def HookBuffer()
       SemanticLater()
     }
     autocmd TextChanged,InsertLeave,BufEnter <buffer> PullLater()
+    autocmd TextChangedI,TextChangedP <buffer> {
+      if Setting('diagnostics_in_insert')
+        PullLater()
+      endif
+    }
     autocmd TextChangedI,TextChangedP <buffer> OnTextChanged()
     autocmd CursorMovedI <buffer> OnCursorMovedI()
     autocmd InsertLeave <buffer> CloseSignature()

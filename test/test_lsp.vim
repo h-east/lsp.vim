@@ -2583,6 +2583,30 @@ def g:Test_the_diagnostics_are_asked_for_after_insert_mode()
     'leaving Insert mode should ask')
 enddef
 
+# With "diagnostics_in_insert" typing asks too, once it stops for a moment.
+def g:Test_the_diagnostics_are_asked_for_in_insert_mode()
+  g:lsp_client_config.diagnostics_in_insert = true
+  defer execute('unlet g:lsp_client_config.diagnostics_in_insert')
+  assert_true(t.StartServer({
+    capabilities: Offering({diagnosticProvider:
+      {interFileDependencies: false, workspaceDiagnostics: false}}),
+    replies: {'textDocument/diagnostic': {kind: 'full', items: []}},
+  }, ['int main(void)', '{', '}']))
+  assert_true(t.WaitFor(() =>
+    !t.Sent('textDocument/diagnostic')->empty()))
+  sleep 400m
+  var first = len(t.Sent('textDocument/diagnostic'))
+
+  setline(2, '{ ')
+  doautocmd TextChangedI
+  sleep 100m
+  assert_equal(first, len(t.Sent('textDocument/diagnostic')),
+    'nothing should be asked before 200 msec')
+  assert_true(t.WaitFor(() =>
+    len(t.Sent('textDocument/diagnostic')) > first),
+    'typing should ask')
+enddef
+
 def g:Test_a_report_is_asked_for_once_the_server_registers_for_it()
   const REPORT = {
     range: {start: {line: 0, character: 4}, end: {line: 0, character: 7}},
