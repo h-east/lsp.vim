@@ -209,6 +209,11 @@ g:lsp_client_config
 				|lsp-tagfunc| for why there is a wait.
 				Default: 2000
 
+		format_timeout	How long |:LspFormat| waits for the formatted
+				text, in milliseconds.  When the time runs
+				out, the buffer is left as it is.
+				Default: 5000
+
 		document_highlight
 				When true, the other places the symbol under
 				the cursor is used are marked once the cursor
@@ -867,10 +872,11 @@ Changing the text ~
 :LspFormat
 :{range}LspFormat
 		Ask the server to format the current buffer, or the lines in
-		{range}, and apply what it answers.  The answer describes the
-		buffer as it was when the question went out, so nothing is
-		applied if the buffer moved on in the meantime.  A single
-		|undo| takes all of it back.
+		{range}, wait for the answer and apply it, so that a buffer can
+		be formatted before it is written: >
+			autocmd BufWritePre *.go LspFormat
+<		"format_timeout" in |g:lsp_client_config| bounds the wait.  A
+		single |undo| takes all of it back.
 
 		A server may offer to format a whole buffer without offering
 		to format part of one, or the other way around, so one of the

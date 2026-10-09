@@ -1158,6 +1158,54 @@ def g:Test_format_replaces_the_buffer_in_one_undo()
   assert_equal('  return 0;', getline(3))
 enddef
 
+def g:Test_format_before_the_buffer_is_written()
+  var edit = {
+    newText: 'int main(void);',
+    range: {start: {line: 0, character: 0}, end: {line: 0, character: 16}},
+  }
+  assert_true(t.StartServer({
+    capabilities: Offering({documentFormattingProvider: true}),
+    replies: {'textDocument/formatting': [edit]},
+  }, ['int  main(void);']))
+  autocmd BufWritePre <buffer> LspFormat
+  defer execute('autocmd! BufWritePre <buffer>')
+
+  # Writing resets 'modified', which moves b:changedtick on as a change does.
+  setline(1, getline(1))
+  assert_true(&modified)
+  write
+  assert_equal(['int main(void);'], readfile(t.SRC))
+  assert_false(&modified)
+enddef
+
+def g:Test_format_of_a_formatted_buffer_is_quiet()
+  assert_true(t.StartServer({
+    capabilities: Offering({documentFormattingProvider: true}),
+    replies: {'textDocument/formatting': []},
+  }, ['int main(void);']))
+
+  var before = execute('messages')
+  LspFormat
+  # A reply handled later would have shown its warning by now.
+  sleep 200m
+  assert_equal(before, execute('messages'))
+  assert_equal('int main(void);', getline(1))
+enddef
+
+def g:Test_format_gives_up_after_format_timeout()
+  assert_true(t.StartServer({
+    capabilities: Offering({documentFormattingProvider: true}),
+    hold: ['textDocument/formatting'],
+  }, ['int  main(void);']))
+  g:lsp_client_config.format_timeout = 200
+  defer execute('unlet g:lsp_client_config.format_timeout')
+
+  LspFormat
+  assert_match('textDocument/formatting: no answer within 200ms',
+    LastMessage())
+  assert_equal('int  main(void);', getline(1))
+enddef
+
 def g:Test_format_asks_about_the_range_it_was_given()
   var edit = {
     newText: '    return 0;',

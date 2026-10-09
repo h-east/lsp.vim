@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.043'
+const VERSION = '0.2.044'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -52,6 +52,7 @@ const DEFAULTS = {
   omnifunc: true,
   completion_timeout: 2000,
   tagjump_timeout: 2000,
+  format_timeout: 5000,
   document_highlight: true,
   highlight_delay: 300,
   signature_help: true,
@@ -2251,17 +2252,19 @@ export def Format(first: number, last: number)
   endif
   var method = whole ? 'textDocument/formatting'
     : 'textDocument/rangeFormatting'
-  lspclient.Request(cl, method, params, (result: any) => {
-    if type(result) != v:t_list || result->empty()
-      util.WarningMsg('nothing to format')
-      return
-    endif
-    if getbufvar(bufnr, 'changedtick') != tick
-      util.WarningMsg('the buffer changed while formatting, nothing applied')
-      return
-    endif
-    ApplyTextEdits(bufnr, result, cl.encoding)
-  })
+  listener_flush(bufnr)
+  # Waited for, so that a BufWritePre autocommand writes the result.
+  var result = lspclient.RequestSync(cl, method, params,
+    Setting('format_timeout'))
+  # No edits is the answer for a buffer that is formatted already.
+  if type(result) != v:t_list || result->empty()
+    return
+  endif
+  if getbufvar(bufnr, 'changedtick') != tick
+    util.WarningMsg('the buffer changed while formatting, nothing applied')
+    return
+  endif
+  ApplyTextEdits(bufnr, result, cl.encoding)
 enddef
 
 # A rename reaches files the user never opened.
