@@ -994,6 +994,11 @@ reached wherever the cursor stands.
 The server is told which of the two it was, and which character brought the
 menu on where one did, so that it can answer differently.
 
+The server is given where the cursor is, not the word, so its answer is
+narrowed down here to the items starting with the word, ignoring case, or,
+with "fuzzy" in 'completeopt', to those the word matches the way
+|matchfuzzy()| does.
+
 A server may cut its answer short, marking it with "isIncomplete".  What came
 back then fits the word as it stood, so it is asked for again as each
 character is typed rather than narrowed down here.  clangd cuts one short at a

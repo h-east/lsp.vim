@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.044'
+const VERSION = '0.2.045'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -3447,15 +3447,21 @@ def ToCompleteItem(item: dict<any>, resolvable: bool): dict<any>
 enddef
 
 # The server is given the position and not the word, so the word still has to
-# be honoured here.  An edit starting before the word is also matched with
-# the text typed from its start.
+# be honoured here, fuzzily with "fuzzy" in 'completeopt'.  An edit starting
+# before the word is also matched with the text typed from its start.
 def ItemMatches(item: dict<any>, base: string): bool
   if base->empty()
     return true
   endif
-  var against = item->get('filterText', item->get('label', ''))->tolower()
+  var against = item->get('filterText', item->get('label', ''))
+  var typed = EditLead(item) .. base
+  if &completeopt =~ '\<fuzzy\>'
+    return !matchfuzzy([against], base)->empty()
+      || !matchfuzzy([against], typed)->empty()
+  endif
+  against = against->tolower()
   return against->stridx(base->tolower()) == 0
-    || against->stridx((EditLead(item) .. base)->tolower()) == 0
+    || against->stridx(typed->tolower()) == 0
 enddef
 
 def CompletionTrigger(cl: dict<any>, typed: string): bool

@@ -261,6 +261,31 @@ def g:Test_a_list_the_server_cut_short_is_asked_for_again()
   doautocmd CompleteDone
 enddef
 
+# The items start with the word, or with "fuzzy" in 'completeopt' match it
+# the way matchfuzzy() does.
+def g:Test_the_word_is_matched_as_completeopt_says()
+  assert_true(t.StartServer({
+    capabilities: Offering({completionProvider: TRIGGERS}),
+    replies: {'textDocument/completion': {isIncomplete: false, items: [
+      {label: 'list2str'}, {label: 'strlen'}, {label: 'l2s_table'}]}},
+  }, ['int main(void)', '{', '    l2s', '}']))
+  var save_completeopt = &completeopt
+  try
+    cursor(3, 8)
+    set completeopt=menu
+    call('lsp#OmniFunc', [1, ''])
+    assert_equal(['l2s_table'], call('lsp#OmniFunc', [0, 'l2s'])
+      ->mapnew((_, w) => w.word))
+    set completeopt=menu,fuzzy
+    call('lsp#OmniFunc', [1, ''])
+    assert_equal(['list2str', 'l2s_table'], call('lsp#OmniFunc', [0, 'l2s'])
+      ->mapnew((_, w) => w.word))
+  finally
+    &completeopt = save_completeopt
+  endtry
+  doautocmd CompleteDone
+enddef
+
 # What the server returned for one list does not carry into the next.
 def g:Test_a_list_cut_short_does_not_outlive_its_completion()
   assert_true(t.StartServer({
