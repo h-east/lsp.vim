@@ -1259,6 +1259,29 @@ def g:Test_format_asks_about_the_range_it_was_given()
   assert_true(t.Sent('textDocument/formatting')->empty())
 enddef
 
+def g:Test_format_asks_for_the_indent_of_shiftwidth()
+  assert_true(t.StartServer({
+    capabilities: Offering({documentFormattingProvider: true}),
+    replies: {'textDocument/formatting': []},
+  }, ['if true', 'echo "test"', 'endif']))
+
+  # The size of one indent is 'shiftwidth', not the width of a tab.
+  setlocal shiftwidth=4 tabstop=8 expandtab
+  LspFormat
+  assert_true(t.WaitFor(() => !t.Sent('textDocument/formatting')->empty()),
+    'the buffer should be asked about')
+  assert_equal({tabSize: 4, insertSpaces: true},
+    t.Sent('textDocument/formatting')[0].params.options)
+
+  # A zero 'shiftwidth' stands for 'tabstop'.
+  setlocal shiftwidth=0 tabstop=6 noexpandtab
+  LspFormat
+  assert_true(t.WaitFor(() => len(t.Sent('textDocument/formatting')) == 2),
+    'the buffer should be asked about again')
+  assert_equal({tabSize: 6, insertSpaces: false},
+    t.Sent('textDocument/formatting')[1].params.options)
+enddef
+
 def g:Test_an_edit_wider_than_the_word()
   # The server wants "obj->fie" to become "obj.field", which is more than the
   # word before the cursor that omni completion can replace on its own.
@@ -1864,6 +1887,8 @@ def g:Test_a_trigger_character_has_the_server_look_at_the_text()
   # count as the buffer having changed under the reply.
   setlocal noautoindent nocindent indentexpr=
 
+  setlocal shiftwidth=4 tabstop=8 noexpandtab
+
   # Vim holds TextChangedI back until it waits for a key, which it never does
   # here.  <Cmd> fires it where the cursor stands in Insert mode, rather than
   # where leaving Insert mode puts it.
@@ -1875,6 +1900,7 @@ def g:Test_a_trigger_character_has_the_server_look_at_the_text()
   var sent = t.Sent('textDocument/onTypeFormatting')[0].params
   assert_equal("\n", sent.ch)
   assert_equal({line: 1, character: 0}, sent.position)
+  assert_equal({tabSize: 4, insertSpaces: false}, sent.options)
 
   assert_true(t.WaitFor(() => getline(2) == "\t"),
     'the indent the server sent should be applied')

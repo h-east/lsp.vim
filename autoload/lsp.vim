@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.045'
+const VERSION = '0.2.046'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -2205,7 +2205,7 @@ def OnTypeFormat()
     textDocument: {uri: util.PathToUri(bufname(bufnr))},
     position: util.PosToLsp(bufnr, line('.'), col('.'), cl.encoding),
     ch: ch,
-    options: {tabSize: &tabstop, insertSpaces: &expandtab ? true : false},
+    options: {tabSize: shiftwidth(), insertSpaces: &expandtab ? true : false},
   }
   listener_flush(bufnr)
   lspclient.Request(cl, 'textDocument/onTypeFormatting', params, (result: any) => {
@@ -2241,7 +2241,7 @@ export def Format(first: number, last: number)
   var tick = getbufvar(bufnr, 'changedtick')
   var params: dict<any> = {
     textDocument: {uri: util.PathToUri(bufname(bufnr))},
-    options: {tabSize: &tabstop, insertSpaces: &expandtab ? true : false},
+    options: {tabSize: shiftwidth(), insertSpaces: &expandtab ? true : false},
   }
   if !whole
     params.range = {
