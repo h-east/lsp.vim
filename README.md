@@ -3,6 +3,7 @@
 [![Test](https://github.com/h-east/lsp.vim/actions/workflows/test.yml/badge.svg)](https://github.com/h-east/lsp.vim/actions/workflows/test.yml)
 [![Update doc/tags](https://github.com/h-east/lsp.vim/actions/workflows/update-doc-tags.yml/badge.svg)](https://github.com/h-east/lsp.vim/actions/workflows/update-doc-tags.yml)
 [![Vim 9.2.1004+](https://img.shields.io/badge/Vim-9.2.1004%2B-015b01?logo=vim&logoColor=white)](#requirements)
+![ViAI](https://img.shields.io/badge/ViAI-1.0-06281A?logo=data:image/svg%2bxml;base64,PHN2ZyByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+VmlBSTwvdGl0bGU+PHBhdGggZmlsbD0iI0ZGRkZGRiIgZD0iTTUuNzAyIDMuNDg5TDE4Ljk3OSAzLjQ4OUwxOC45NzkgNy41NzRMMjQgNy41NzRMMjQgMjRMNS43MDIgMjRBNS43MDIgNS43MDIgMCAwIDEgMCAxOC4yOThMMCA5LjE5MUE1LjcwMiA1LjcwMiAwIDAgMSA1LjcwMiAzLjQ4OVpNOC45MzYgMjEuMTA2TDEyLjM0IDIxLjEwNkwxOC4yMTMgNy4wNjRMMTQuNTUzIDcuMDY0TDEwLjYzOCAxNy4xOTFMNi43MjMgNy4wNjRMMy4wNjQgNy4wNjRaTTE4Ljk3OSAyMS4xMDZMMjIuMDQzIDIxLjEwNkwyMi4wNDMgMTIuMjU1TDE4Ljk3OSAxMi4yNTVaTTE4Ljk3OSAwTDIyLjA0MyAwTDIyLjA0MyAzLjA2NEwxOC45NzkgMy4wNjRaTTIyLjcyMyAwTDI0IDBMMjQgMy4wNjRMMjIuNzIzIDMuMDY0WiIvPjwvc3ZnPgo=)
 
 A Language Server Protocol (LSP) client for Vim, written in Vim9 script.
 Nothing else to install: Vim frames the protocol messages and matches replies
