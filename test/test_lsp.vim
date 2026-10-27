@@ -1725,6 +1725,99 @@ def g:Test_a_jump_can_be_stepped_back_from()
   assert_equal([1, 5], [line('.'), col('.')])
 enddef
 
+# Every answer below leads to the call on line 5.
+const CALL_RANGE = {start: {line: 4, character: 11},
+  end: {line: 4, character: 17}}
+const CALLEE = {name: 'callee', kind: 12, uri: 'file://' .. t.SRC,
+  range: {start: {line: 0, character: 4}, end: {line: 0, character: 10}},
+  selectionRange: {start: {line: 0, character: 4},
+    end: {line: 0, character: 10}}}
+const LIST_SERVER = {
+  capabilities: Offering({referencesProvider: true,
+    callHierarchyProvider: true, typeHierarchyProvider: true}),
+  replies: {
+    'textDocument/references': [{uri: 'file://' .. t.SRC,
+      range: CALL_RANGE}],
+    'textDocument/prepareCallHierarchy': [CALLEE],
+    'callHierarchy/incomingCalls': [{from: CALLEE->extendnew({
+      name: 'caller'}), fromRanges: [CALL_RANGE]}],
+    'callHierarchy/outgoingCalls': [{to: CALLEE,
+      fromRanges: [CALL_RANGE]}],
+    'textDocument/prepareTypeHierarchy': [CALLEE],
+    'typeHierarchy/supertypes': [CALLEE->extendnew({range: CALL_RANGE,
+      selectionRange: CALL_RANGE})],
+    'typeHierarchy/subtypes': [CALLEE->extendnew({range: CALL_RANGE,
+      selectionRange: CALL_RANGE})],
+  },
+}
+const LIST_LINES = ['int callee(void);', '', 'int caller(void)', '{',
+  '    return callee();', '}']
+
+def g:Test_a_list_can_be_stepped_back_from()
+  assert_true(t.StartServer(LIST_SERVER, LIST_LINES))
+  var win = win_getid()
+  var buf = bufnr()
+  defer settagstack(win, {items: []})
+
+  for cmd in ['LspReferences', 'LspIncomingCalls', 'LspOutgoingCalls',
+      'LspSuperTypes', 'LspSubTypes']
+    settagstack(win, {items: []})
+    setqflist([], 'f')
+    cursor(1, 5)
+    execute cmd
+    assert_true(t.WaitFor(() => !getqflist()->empty()),
+      cmd .. ' should fill the list')
+
+    var stack = gettagstack(win)
+    assert_equal(1, stack.length, cmd .. ' should go on the tag stack')
+    assert_equal('callee', stack.items[0].tagname, cmd)
+    assert_equal([buf, 1, 5, 0], stack.items[0].from, cmd)
+
+    # <CR> in the quickfix window runs ".cc", which wants legacy syntax.
+    feedkeys("\<CR>", 'txc')
+    assert_equal([win, 5, 12], [win_getid(), line('.'), col('.')], cmd)
+    feedkeys("\<C-T>", 'tx')
+    assert_equal([1, 5], [line('.'), col('.')], cmd)
+    cclose
+  endfor
+enddef
+
+def g:Test_a_chain_of_calls_can_be_retraced()
+  assert_true(t.StartServer(LIST_SERVER, LIST_LINES))
+  var win = win_getid()
+  settagstack(win, {items: []})
+  defer settagstack(win, {items: []})
+
+  cursor(1, 5)
+  LspIncomingCalls
+  assert_true(t.WaitFor(() => getqflist({nr: '$'}).nr == 1))
+  feedkeys("\<CR>", 'txc')
+  LspIncomingCalls
+  assert_true(t.WaitFor(() => getqflist({nr: '$'}).nr == 2))
+  feedkeys("\<CR>", 'txc')
+  cclose
+
+  assert_equal(2, gettagstack(win).length)
+  feedkeys("\<C-T>", 'tx')
+  assert_equal([2, 5, 12], [gettagstack(win).curidx, line('.'), col('.')])
+  feedkeys("\<C-T>", 'tx')
+  assert_equal([1, 1, 5], [gettagstack(win).curidx, line('.'), col('.')])
+enddef
+
+def g:Test_an_empty_list_leaves_the_tag_stack_alone()
+  assert_true(t.StartServer({
+    capabilities: Offering({referencesProvider: true}),
+    replies: {'textDocument/references': []},
+  }, ['int one;']))
+  settagstack(win_getid(), {items: []})
+  defer settagstack(win_getid(), {items: []})
+
+  cursor(1, 5)
+  LspReferences
+  assert_true(t.WaitFor(() => LastMessage() =~ 'no references found'))
+  assert_equal(0, gettagstack(win_getid()).length)
+enddef
+
 # A server may write the path in another case than Vim did, which on Windows
 # is the same file: the jump stays in the buffer rather than opening it again,
 # which a buffer with unsaved changes would not take.

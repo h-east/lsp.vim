@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.046'
+const VERSION = '0.2.047'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -1995,22 +1995,35 @@ enddef
 const SPLIT_MODS = '\<\(aboveleft\|belowright\|botright\|horizontal'
   .. '\|leftabove\|rightbelow\|tab\|topleft\|vertical\)\>'
 
+# Where a request is made from; by the time the answer comes the cursor may
+# have moved.
+def TagFrom(): dict<any>
+  return {winid: win_getid(), item: {tagname: expand('<cword>'),
+    from: [bufnr('%'), line('.'), col('.'), 0]}}
+enddef
+
+# So that CTRL-T leads back to where "from" was taken.
+def PushTag(from: dict<any>)
+  if win_id2win(from.winid) > 0
+    settagstack(from.winid, {items: [from.item]}, 't')
+  endif
+enddef
+
 # Four requests have this shape: what comes back is a place to go to.
 def JumpTo(method: string, provider: string, what: string, mods: string)
   var cl = ReadyClient(provider, what)
   if cl->empty()
     return
   endif
+  var from = TagFrom()
   lspclient.Request(cl, method, CursorParams(cl.encoding), (result: any) => {
     var loc = FirstLocation(result)
     if loc->empty()
       util.WarningMsg(what .. ' not found')
       return
     endif
-    # Where the jump began, so CTRL-T leads back, and CTRL-O too where the
-    # jump stays in the file.
-    settagstack(win_getid(), {items: [{tagname: expand('<cword>'),
-      from: [bufnr('%'), line('.'), col('.'), 0]}]}, 't')
+    PushTag(from)
+    # CTRL-O leads back too, where the jump stays in the file.
     normal! m'
     var path = util.UriToPath(loc.uri)->util.OpenName()
     if mods =~ SPLIT_MODS
@@ -3062,12 +3075,14 @@ export def References()
   var params = CursorParams(cl.encoding)
   # The declaration is a mention as well, so it belongs in the list.
   params.context = {includeDeclaration: true}
+  var from = TagFrom()
   lspclient.Request(cl, 'textDocument/references', params, (result: any) => {
     var items = LocationItems(result, cl.encoding)
     if items->empty()
       util.WarningMsg('no references found')
       return
     endif
+    PushTag(from)
     setqflist([], ' ', {title: 'LSP references', items: items,
       quickfixtextfunc: util.ListText})
     copen
@@ -3180,6 +3195,7 @@ def CallHierarchy(incoming: bool)
     return
   endif
   var here = util.PathToUri(bufname('%'))
+  var from = TagFrom()
   lspclient.Request(cl, 'textDocument/prepareCallHierarchy',
     CursorParams(cl.encoding), (result: any) => {
 
@@ -3199,6 +3215,7 @@ def CallHierarchy(incoming: bool)
               : 'this calls nothing')
             return
           endif
+          PushTag(from)
           setqflist([], ' ', {title: 'LSP ' .. what .. ' calls: '
             .. items[0]->get('name', ''), items: qf,
             quickfixtextfunc: util.ListText})
@@ -3239,6 +3256,7 @@ def TypeHierarchy(up: bool)
   if cl->empty()
     return
   endif
+  var from = TagFrom()
   lspclient.Request(cl, 'textDocument/prepareTypeHierarchy',
     CursorParams(cl.encoding), (result: any) => {
       var items = type(result) == v:t_list ? result : []
@@ -3256,6 +3274,7 @@ def TypeHierarchy(up: bool)
             util.WarningMsg(msg)
             return
           endif
+          PushTag(from)
           setqflist([], ' ', {title: 'LSP ' .. what .. ': '
             .. items[0]->get('name', ''), items: qf,
             quickfixtextfunc: util.ListText})
