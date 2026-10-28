@@ -67,6 +67,12 @@ first, and the write waits for the answer; "will_save" in
 ==============================================================================
 2. Requirements					*lsp-requirements*
 
+ViAI 1.0 or later, with the |+job| and |+channel| features (recommended).
+	https://github.com/viai-editor/viai
+ViAI is a fork of Vim whose main aim is that this plugin and vim9ls work
+well.  With ViAI, vim9ls also reports the errors that Vim gives when
+sourcing a Vim9 script as diagnostics, without running the script.
+
 Vim 9.2.1004 or later, with the |+job| and |+channel| features
 (9.2.1160 or later when the server is vim9ls).
 

@@ -3,12 +3,17 @@
 [![Test](https://github.com/h-east/lsp.vim/actions/workflows/test.yml/badge.svg)](https://github.com/h-east/lsp.vim/actions/workflows/test.yml)
 [![Update doc/tags](https://github.com/h-east/lsp.vim/actions/workflows/update-doc-tags.yml/badge.svg)](https://github.com/h-east/lsp.vim/actions/workflows/update-doc-tags.yml)
 [![Vim 9.2.1004+](https://img.shields.io/badge/Vim-9.2.1004%2B-015b01?logo=vim&logoColor=white)](#requirements)
-![ViAI](https://img.shields.io/badge/ViAI-1.0-06281A?logo=data:image/svg%2bxml;base64,PHN2ZyByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+VmlBSTwvdGl0bGU+PHBhdGggZmlsbD0iI0ZGRkZGRiIgZD0iTTUuNzAyIDMuNDg5TDE4Ljk3OSAzLjQ4OUwxOC45NzkgNy41NzRMMjQgNy41NzRMMjQgMjRMNS43MDIgMjRBNS43MDIgNS43MDIgMCAwIDEgMCAxOC4yOThMMCA5LjE5MUE1LjcwMiA1LjcwMiAwIDAgMSA1LjcwMiAzLjQ4OVpNOC45MzYgMjEuMTA2TDEyLjM0IDIxLjEwNkwxOC4yMTMgNy4wNjRMMTQuNTUzIDcuMDY0TDEwLjYzOCAxNy4xOTFMNi43MjMgNy4wNjRMMy4wNjQgNy4wNjRaTTE4Ljk3OSAyMS4xMDZMMjIuMDQzIDIxLjEwNkwyMi4wNDMgMTIuMjU1TDE4Ljk3OSAxMi4yNTVaTTE4Ljk3OSAwTDIyLjA0MyAwTDIyLjA0MyAzLjA2NEwxOC45NzkgMy4wNjRaTTIyLjcyMyAwTDI0IDBMMjQgMy4wNjRMMjIuNzIzIDMuMDY0WiIvPjwvc3ZnPgo=)
+[![ViAI](https://img.shields.io/badge/ViAI-1.0-06281A?logo=data:image/svg%2bxml;base64,PHN2ZyByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+VmlBSTwvdGl0bGU+PHBhdGggZmlsbD0iI0ZGRkZGRiIgZD0iTTUuNzAyIDMuNDg5TDE4Ljk3OSAzLjQ4OUwxOC45NzkgNy41NzRMMjQgNy41NzRMMjQgMjRMNS43MDIgMjRBNS43MDIgNS43MDIgMCAwIDEgMCAxOC4yOThMMCA5LjE5MUE1LjcwMiA1LjcwMiAwIDAgMSA1LjcwMiAzLjQ4OVpNOC45MzYgMjEuMTA2TDEyLjM0IDIxLjEwNkwxOC4yMTMgNy4wNjRMMTQuNTUzIDcuMDY0TDEwLjYzOCAxNy4xOTFMNi43MjMgNy4wNjRMMy4wNjQgNy4wNjRaTTE4Ljk3OSAyMS4xMDZMMjIuMDQzIDIxLjEwNkwyMi4wNDMgMTIuMjU1TDE4Ljk3OSAxMi4yNTVaTTE4Ljk3OSAwTDIyLjA0MyAwTDIyLjA0MyAzLjA2NEwxOC45NzkgMy4wNjRaTTIyLjcyMyAwTDI0IDBMMjQgMy4wNjRMMjIuNzIzIDMuMDY0WiIvPjwvc3ZnPgo=)](#requirements)
 
 A Language Server Protocol (LSP) client for Vim, written in Vim9 script.
 Nothing else to install: Vim frames the protocol messages and matches replies
 to requests itself, so what is left to the plugin is the conversation and what
 to do with the answers.
+
+[ViAI](https://github.com/viai-editor/viai), a fork of Vim whose main aim
+is that lsp.vim and vim9ls work well, is recommended.  With ViAI, vim9ls
+also reports the errors that Vim gives when sourcing a Vim9 script as
+diagnostics, without running the script.
 
 75 of the 95 requests and notifications in the LSP 3.18 meta model are
 answered, and each of the rest is listed with the reason it is not.
@@ -39,6 +44,7 @@ what it asked to hear about, and what it reports about itself is under
 
 ## Requirements
 
+- [ViAI](https://github.com/viai-editor/viai) 1.0 or later, with the `+job` and `+channel` features (recommended)
 - Vim [9.2.1004](https://github.com/vim/vim/commit/1f56c351dedad288f79c89b6b6f64be762ec3b9b) or later, with the `+job` and `+channel` features  
   ([9.2.1160](https://github.com/vim/vim/commit/89c0f361635943234bd293b13e4fa4e507e8ca86) or later when the server is [vim9ls](https://github.com/h-east/vim9ls))
 - A language server for the language you work in, installed separately
