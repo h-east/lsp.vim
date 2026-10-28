@@ -17,15 +17,24 @@ concurrency:
 jobs:
   linux:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - editor: vim
+            repo: vim/vim
+          - editor: viai
+            repo: viai-editor/viai
     steps:
       - uses: actions/checkout@v5
 
-      - name: Build Vim
+      - name: Build ${{ matrix.editor }}
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libncurses-dev
-          git clone --depth 1 https://github.com/vim/vim.git "$RUNNER_TEMP/vim"
-          cd "$RUNNER_TEMP/vim"
+          git clone --depth 1 "https://github.com/${{ matrix.repo }}.git" \
+              "$RUNNER_TEMP/src"
+          cd "$RUNNER_TEMP/src"
           ./configure --prefix="$HOME/vim" \
               --enable-gui=no --without-x --disable-nls
           make -j"$(nproc)"
@@ -33,16 +42,27 @@ jobs:
           echo "$HOME/vim/bin" >> "$GITHUB_PATH"
 
       - name: Run the tests
+        env:
+          VIMPROG: ${{ matrix.editor }}
         run: |
-          vim --version | head -1
+          "$VIMPROG" --version | head -1
           cd test && ./run
 
       # :helptags never looks at the references, only at the tags.
       - name: Check the help links
+        if: matrix.editor == 'vim'
         run: ./tools/check-doc-links
 
   windows:
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - editor: vim
+            release: vim/vim-win32-installer
+          - editor: viai
+            release: viai-editor/viai-win32-installer
     defaults:
       run:
         shell: bash
@@ -56,20 +76,23 @@ jobs:
 
       # Building Vim here would want MSVC; these are the same sources,
       # already built, and new enough for the plugin.
-      - name: Take the newest Vim built for Windows
+      - name: Take the newest ${{ matrix.editor }} built for Windows
         env:
           GH_TOKEN: ${{ github.token }}
+          EDITOR_NAME: ${{ matrix.editor }}
         run: |
-          url=$(gh api repos/vim/vim-win32-installer/releases/latest \
+          url=$(gh api "repos/${{ matrix.release }}/releases/latest" \
                 --jq '.assets[]
-                      | select(.name | test("^gvim_.*_x64\\.zip$"))
+                      | select(.name
+                               | test("^g" + env.EDITOR_NAME + "_.*_x64\\.zip$"))
                       | .browser_download_url')
           echo "$url"
-          curl -sSLo "$HOME/gvim.zip" "$url"
-          unzip -q "$HOME/gvim.zip" -d "$HOME/vim-win"
-          # vim-launcher holds a stub that looks for an installed Vim.
-          echo "VIMPROG=$(find "$HOME/vim-win" -name vim.exe \
-              -not -path '*/vim-launcher/*' | head -n 1)" >> "$GITHUB_ENV"
+          curl -sSLo "$HOME/editor.zip" "$url"
+          unzip -q "$HOME/editor.zip" -d "$HOME/editor-win"
+          # *-launcher holds a stub that looks for an installed copy.
+          echo "VIMPROG=$(find "$HOME/editor-win" -name "$EDITOR_NAME.exe" \
+              -not -path "*/$EDITOR_NAME-launcher/*" | head -n 1)" \
+              >> "$GITHUB_ENV"
 
       - name: Run the tests
         run: |
