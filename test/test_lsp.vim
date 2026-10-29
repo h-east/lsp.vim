@@ -1768,14 +1768,14 @@ def g:Test_a_list_can_be_stepped_back_from()
     assert_true(t.WaitFor(() => !getqflist()->empty()),
       cmd .. ' should fill the list')
 
+    assert_equal(0, gettagstack(win).length, cmd .. ' before a jump')
+
+    feedkeys("\<CR>", 'txc')
+    assert_equal([win, 5, 12], [win_getid(), line('.'), col('.')], cmd)
     var stack = gettagstack(win)
     assert_equal(1, stack.length, cmd .. ' should go on the tag stack')
     assert_equal('callee', stack.items[0].tagname, cmd)
     assert_equal([buf, 1, 5, 0], stack.items[0].from, cmd)
-
-    # <CR> in the quickfix window runs ".cc", which wants legacy syntax.
-    feedkeys("\<CR>", 'txc')
-    assert_equal([win, 5, 12], [win_getid(), line('.'), col('.')], cmd)
     feedkeys("\<C-T>", 'tx')
     assert_equal([1, 5], [line('.'), col('.')], cmd)
     cclose
@@ -1802,6 +1802,99 @@ def g:Test_a_chain_of_calls_can_be_retraced()
   assert_equal([2, 5, 12], [gettagstack(win).curidx, line('.'), col('.')])
   feedkeys("\<C-T>", 'tx')
   assert_equal([1, 1, 5], [gettagstack(win).curidx, line('.'), col('.')])
+enddef
+
+const TWO_REFERENCES = {
+  capabilities: Offering({referencesProvider: true}),
+  replies: {'textDocument/references': [
+    {uri: 'file://' .. t.SRC, range: CALL_RANGE},
+    {uri: 'file://' .. t.SRC, range: {start: {line: 2, character: 4},
+      end: {line: 2, character: 10}}}]},
+}
+
+def g:Test_another_entry_leads_back_after_ctrl_t()
+  assert_true(t.StartServer(TWO_REFERENCES, LIST_LINES))
+  var win = win_getid()
+  settagstack(win, {items: []})
+  defer settagstack(win, {items: []})
+
+  cursor(1, 5)
+  LspReferences
+  assert_true(t.WaitFor(() => !getqflist()->empty()))
+  feedkeys("\<CR>", 'txc')
+  feedkeys("\<C-T>", 'tx')
+  assert_equal([1, 5], [line('.'), col('.')])
+
+  copen
+  cursor(2, 1)
+  feedkeys("\<CR>", 'txc')
+  assert_equal([win, 3, 5], [win_getid(), line('.'), col('.')])
+  cclose
+  assert_equal(1, gettagstack(win).length)
+  feedkeys("\<C-T>", 'tx')
+  assert_equal([1, 5], [line('.'), col('.')])
+enddef
+
+def g:Test_another_entry_takes_the_same_step()
+  assert_true(t.StartServer(TWO_REFERENCES, LIST_LINES))
+  var win = win_getid()
+  settagstack(win, {items: []})
+  defer settagstack(win, {items: []})
+
+  cursor(1, 5)
+  LspReferences
+  assert_true(t.WaitFor(() => !getqflist()->empty()))
+  feedkeys("\<CR>", 'txc')
+  assert_equal([5, 12], [line('.'), col('.')])
+
+  copen
+  cursor(2, 1)
+  feedkeys("\<CR>", 'txc')
+  assert_equal([win, 3, 5], [win_getid(), line('.'), col('.')])
+  cclose
+  assert_equal([1, 2], [gettagstack(win).length, gettagstack(win).curidx])
+  feedkeys("\<C-T>", 'tx')
+  assert_equal([1, 5], [line('.'), col('.')])
+enddef
+
+def g:Test_another_list_leaves_the_tag_stack_alone()
+  assert_true(t.StartServer(LIST_SERVER, LIST_LINES))
+  var win = win_getid()
+  var buf = bufnr()
+  settagstack(win, {items: []})
+  defer settagstack(win, {items: []})
+
+  cursor(1, 5)
+  LspReferences
+  assert_true(t.WaitFor(() => !getqflist()->empty()))
+  setqflist([{bufnr: buf, lnum: 3, col: 5}], ' ')
+  feedkeys("\<CR>", 'txc')
+  assert_equal([win, 3, 5], [win_getid(), line('.'), col('.')])
+  cclose
+  assert_equal(0, gettagstack(win).length)
+enddef
+
+def g:Test_a_mapped_enter_in_the_list_is_kept()
+  assert_true(t.StartServer(LIST_SERVER, LIST_LINES))
+  var win = win_getid()
+  settagstack(win, {items: []})
+  defer settagstack(win, {items: []})
+
+  setqflist([{bufnr: bufnr(), lnum: 3, col: 5}], ' ')
+  copen
+  nnoremap <buffer> <CR> <Cmd>g:lsp_test_enter = 1<CR>
+  # Wiping the list's buffer takes the mapping along.
+  defer execute($'bwipe {bufnr()}')
+  wincmd p
+  g:lsp_test_enter = 0
+  defer execute('unlet g:lsp_test_enter')
+
+  cursor(1, 5)
+  LspReferences
+  assert_true(t.WaitFor(() => getqflist({title: 0}).title == 'LSP references'))
+  feedkeys("\<CR>", 'tx')
+  assert_equal(1, g:lsp_test_enter)
+  assert_equal(0, gettagstack(win).length)
 enddef
 
 def g:Test_an_empty_list_leaves_the_tag_stack_alone()

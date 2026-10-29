@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.048'
+const VERSION = '0.2.049'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -2009,6 +2009,34 @@ def PushTag(from: dict<any>)
   endif
 enddef
 
+# An entry gone to with <CR> leads back, with CTRL-T, to where the list was
+# asked for: one step of the tag stack, which picking another entry reuses the
+# way :tnext does.  A <CR> the quickfix window has mapped already is left
+# alone.
+def OpenTaggedList()
+  copen
+  var cr = maparg('<CR>', 'n', false, true)
+  if cr->empty() || !cr.buffer
+    nnoremap <buffer> <CR> <ScriptCmd>TaggedListEnter()<CR>
+  endif
+enddef
+
+def TaggedListEnter()
+  var ctx = getqflist({context: 0}).context
+  execute $':{line('.')}cc'
+  if type(ctx) != v:t_dict || !ctx->has_key('lsp_tag')
+    return
+  endif
+  var item = ctx.lsp_tag
+  var win = win_getid()
+  var stack = gettagstack(win)
+  var below = stack.curidx - 2
+  var reuse = below >= 0 && stack.items[below].tagname == item.tagname
+    && stack.items[below].from == item.from
+  settagstack(win, {curidx: reuse ? below + 1 : stack.curidx,
+    items: [item]}, 't')
+enddef
+
 # Four requests have this shape: what comes back is a place to go to.
 def JumpTo(method: string, provider: string, what: string, mods: string)
   var cl = ReadyClient(provider, what)
@@ -3082,10 +3110,9 @@ export def References()
       util.WarningMsg('no references found')
       return
     endif
-    PushTag(from)
     setqflist([], ' ', {title: 'LSP references', items: items,
-      quickfixtextfunc: util.ListText})
-    copen
+      quickfixtextfunc: util.ListText, context: {lsp_tag: from.item}})
+    OpenTaggedList()
   })
 enddef
 
@@ -3215,11 +3242,10 @@ def CallHierarchy(incoming: bool)
               : 'this calls nothing')
             return
           endif
-          PushTag(from)
           setqflist([], ' ', {title: 'LSP ' .. what .. ' calls: '
             .. items[0]->get('name', ''), items: qf,
-            quickfixtextfunc: util.ListText})
-          copen
+            quickfixtextfunc: util.ListText, context: {lsp_tag: from.item}})
+          OpenTaggedList()
         })
     })
 enddef
@@ -3274,11 +3300,10 @@ def TypeHierarchy(up: bool)
             util.WarningMsg(msg)
             return
           endif
-          PushTag(from)
           setqflist([], ' ', {title: 'LSP ' .. what .. ': '
             .. items[0]->get('name', ''), items: qf,
-            quickfixtextfunc: util.ListText})
-          copen
+            quickfixtextfunc: util.ListText, context: {lsp_tag: from.item}})
+          OpenTaggedList()
         })
     })
 enddef

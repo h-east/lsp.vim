@@ -760,8 +760,11 @@ These name a file the way |:ls| does: relative to the current directory when
 it is below it, with "~" for the home directory otherwise.
 
 |:LspReferences|, |:LspIncomingCalls|, |:LspOutgoingCalls|, |:LspSuperTypes|
-and |:LspSubTypes| put where they were run on the |tag-stack|, so CTRL-T leads
-back there from an entry gone to.
+and |:LspSubTypes| make <CR> in the quickfix window put where they were run on
+the |tag-stack|, so CTRL-T leads back there from the entry gone to.  Another
+entry of the same list takes the same step, as |:tnext| does, whether CTRL-T
+was used in between or not.  |:cnext| and the like leave the tag stack alone,
+and so does <CR> when the quickfix window has it mapped already.
 
 						*:LspReferences*
 :LspReferences	Put every mention of the symbol under the cursor into the
