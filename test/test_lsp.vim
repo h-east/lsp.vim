@@ -1978,8 +1978,9 @@ def g:Test_the_status_names_the_version()
   const LINES = execute('LspStatus')->split("\n")
     ->filter((_, l) => l =~ '^lsp\.vim ')
   assert_equal(1, len(LINES))
-  assert_match('^lsp\.vim \d\+\.\d\+\.\d\+  (Vim \d\+\.\d\+\.\d\+)$',
-    LINES[0])
+  # ViAI is named rather than the Vim it is based on.
+  assert_match('^lsp\.vim \d\+\.\d\+\.\d\+  ('
+    .. (has('viai') ? 'ViAI' : 'Vim') .. ' \d\+\.\d\+\.\d\+)$', LINES[0])
 enddef
 
 def g:Test_a_request_the_server_does_not_offer()

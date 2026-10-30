@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.049'
+const VERSION = '0.2.050'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -1253,8 +1253,9 @@ def ShowAnswering()
 enddef
 
 export def Status(answering: bool = false)
-  var long = v:versionlong
-  echo printf('lsp.vim %s  (Vim %d.%d.%04d)', VERSION,
+  var [editor, long] = exists('v:viai_versionlong')
+    ? ['ViAI', eval('v:viai_versionlong')] : ['Vim', v:versionlong]
+  echo printf('lsp.vim %s  (%s %d.%d.%04d)', VERSION, editor,
     long / 1000000, long / 10000 % 100, long % 10000)
   # A word about a setting is easily lost among what a server reports as it
   # starts.
