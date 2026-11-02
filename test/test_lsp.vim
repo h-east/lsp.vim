@@ -3180,6 +3180,30 @@ def g:Test_how_far_the_workspace_has_got_is_told()
   cclose
 enddef
 
+# The end of reading the workspace is told when nothing was reported.
+def g:Test_the_end_of_reading_the_workspace_is_told_when_nothing_came()
+  assert_true(t.StartServer({
+    capabilities: Offering({diagnosticProvider:
+      {interFileDependencies: false, workspaceDiagnostics: true}}),
+    hold: ['workspace/diagnostic'],
+    ask: {'workspace/diagnostic': [
+      {notify: true, before: true, method: '$/progress',
+        params: {token: '$workDoneToken', value: {kind: 'begin',
+          title: 'Reading'}}},
+      {notify: true, before: true, method: '$/progress',
+        params: {token: '$workDoneToken', value: {kind: 'end'}}}]},
+  }, ['int one;']))
+
+  messages clear
+  assert_match('lsp: reading the workspace so far',
+    execute('LspWorkspaceDiag'))
+  assert_true(t.WaitFor(() => execute('messages')
+      =~ 'lsp: the server has reported nothing for the workspace'),
+    'the end should be told: ' .. execute('messages'))
+  assert_equal([], getqflist())
+  cclose
+enddef
+
 def g:Test_a_watched_file_being_written_is_reported()
   defer popup_clear()
   const HEADER = t.SRC->substitute('\.c$', '.h', '')

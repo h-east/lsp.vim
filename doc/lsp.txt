@@ -831,7 +831,9 @@ and so does <CR> when the quickfix window has it mapped already.
 		server is through, the list is filled in with all that came,
 		as long as it is still the current one, and the entry that
 		was selected stays selected; otherwise run it again for a
-		list that has caught up.  See |lsp-workspace-diagnostics|.
+		list that has caught up.  When the server is through with
+		nothing reported, a message tells so.  See
+		|lsp-workspace-diagnostics|.
 
 Changing the text ~
 						*:LspCodeAction*

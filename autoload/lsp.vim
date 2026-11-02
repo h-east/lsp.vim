@@ -15,7 +15,7 @@ import autoload './lsp/select.vim'
 import autoload './lsp/semtok.vim'
 import autoload './lsp/util.vim'
 
-const VERSION = '0.2.050'
+const VERSION = '0.2.051'
 
 # Values of the "textDocumentSync" server capability.
 const SYNC_NONE = 0
@@ -4404,9 +4404,15 @@ def RefreshWorkspaceList(cl: dict<any>)
   if index(keys, ClientKey(cl.name, cl.root)) < 0
     return
   endif
-  setqflist([], 'u', {items: WorkspaceEntries(keys
+  var entries = WorkspaceEntries(keys
     ->filter((_, key) => clients->has_key(key))
-    ->mapnew((_, key) => clients[key]))})
+    ->mapnew((_, key) => clients[key]))
+  setqflist([], 'u', {items: entries})
+  # An empty list looks the same while the server reads and once it is
+  # through.
+  if entries->empty()
+    echomsg 'lsp: the server has reported nothing for the workspace'
+  endif
 enddef
 
 export def WorkspaceDiagnostics()
