@@ -800,7 +800,7 @@ enddef
 def g:Test_a_command_from_a_plugin_that_is_not_there()
   var saved = g:lsp_server_list
   defer execute('g:lsp_server_list = ' .. string(saved))
-  g:lsp_server_list = [{name: 'ghost', filetypes: ['ghostft'],
+  g:lsp_server_list = [{filetypes: ['ghostft'], name: 'ghost',
     cmd: function('nosuchplugin#Command')}]
   assert_match('the configuration is good', execute('LspConfigCheck'))
 
@@ -819,7 +819,7 @@ enddef
 def g:Test_a_buffer_named_like_a_url_gets_no_server()
   var saved = get(g:, 'lsp_server_list', [])
   defer execute('g:lsp_server_list = ' .. string(saved))
-  g:lsp_server_list = [{name: 'fake', filetypes: ['c'], cmd: t.CMD,
+  g:lsp_server_list = [{filetypes: ['c'], name: 'fake', cmd: t.CMD,
     rootPatterns: ['.git']}]
 
   execute 'edit! ' .. fnameescape('fugitive://' .. t.SRC .. '//0/Xsrc.c')
@@ -838,7 +838,7 @@ enddef
 def g:Test_a_root_that_is_not_a_directory_is_reported()
   var saved = get(g:, 'lsp_server_list', [])
   defer execute('g:lsp_server_list = ' .. string(saved))
-  g:lsp_server_list = [{name: 'fake', filetypes: ['c'], cmd: t.CMD,
+  g:lsp_server_list = [{filetypes: ['c'], name: 'fake', cmd: t.CMD,
     rootPatterns: ['.git']}]
 
   # Nothing above it holds a root marker, so its own directory is the root.
@@ -3557,7 +3557,7 @@ def g:Test_the_events_reach_a_buffer_that_is_not_in_the_current_window()
 
   var saved = get(g:, 'lsp_server_list', [])
   defer execute('g:lsp_server_list = ' .. string(saved))
-  g:lsp_server_list = [{name: 'fake', filetypes: ['c'],
+  g:lsp_server_list = [{filetypes: ['c'], name: 'fake',
     cmd: t.CMD + [SCENARIO, TRACE], rootPatterns: ['.git']}]
   writefile(['int x;'], t.SRC)
   execute 'edit! ' .. fnameescape(t.SRC)
@@ -3866,7 +3866,7 @@ def g:Test_a_popup_asked_for_in_a_way_that_cannot_be_read()
   defer execute('unlet g:lsp_client_config.hilight_delay')
   g:lsp_client_config.omnifunc = 'yes'
   defer execute('g:lsp_client_config.omnifunc = true')
-  g:lsp_server_list = [{name: 1, filetypes: []}]
+  g:lsp_server_list = [{filetypes: [], name: 1}]
   var text = execute('LspConfigCheck')
   assert_match('has no such key as "hilight_delay"', text)
   assert_match('"omnifunc" takes true or false', text)
@@ -4099,7 +4099,7 @@ enddef
 def g:Test_use_is_reported_where_it_cannot_be_read()
   var saved = g:lsp_server_list
   defer execute('g:lsp_server_list = ' .. string(saved))
-  g:lsp_server_list = [{name: 'fake', filetypes: ['c'], cmd: ['x'],
+  g:lsp_server_list = [{filetypes: ['c'], name: 'fake', cmd: ['x'],
     use: {nosuchthing: true, hover: 'yes'}}]
   var text = execute('LspConfigCheck')
   assert_match('"use" names no such feature as "nosuchthing"', text)

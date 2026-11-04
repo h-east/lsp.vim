@@ -41,8 +41,8 @@ export def StartServer(scenario: dict<any>, lines: list<string>,
   $LSP_SCENARIO = SCENARIO
   $LSP_TRACE = TRACE
   g:lsp_server_list = [extend({
-    name: 'fake',
     filetypes: ['c'],
+    name: 'fake',
     cmd: CMD,
     rootPatterns: ['.git'],
   }, server)]
@@ -76,8 +76,8 @@ export def StartServers(specs: list<dict<any>>, lines: list<string>): bool
     writefile([json_encode(specs[i]->get('scenario', {}))], scenario)
     delete(trace)
     list->add(extend({
-      name: printf('fake%d', i),
       filetypes: ['c'],
+      name: printf('fake%d', i),
       cmd: CMD + [scenario, trace],
       rootPatterns: ['.git'],
     }, specs[i]->get('server', {})))
