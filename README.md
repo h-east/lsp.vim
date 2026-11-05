@@ -64,7 +64,10 @@ what it asked to hear about, and what it reports about itself is under
 
 ## Installation
 
-With a plugin manager, vim-plug for instance:
+ViAI comes with lsp.vim as an optional package, add `packadd! lsp.vim`
+to your vimrc, see `:help package-lsp.vim` in ViAI.
+
+In Vim, use a plugin manager, vim-plug for instance:
 
 ```vim
 Plug 'h-east/lsp.vim'

@@ -41,6 +41,8 @@ load on its own, and add this to your |vimrc|: >vim9
 
 	packadd! lsp.vim
 <
+ViAI has it in "pack/dist/opt/lsp.vim" already and only needs the line above.
+
 Either way, describe the servers to use in |g:lsp_server_list|.
 
 Vim frames the protocol messages and matches replies to requests itself, see
